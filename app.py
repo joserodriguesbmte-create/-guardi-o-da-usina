@@ -242,36 +242,54 @@ if "Painel" in pagina:
     </div>""", unsafe_allow_html=True)
 
     # ══ 1. TEMPERATURA AMBIENTE CENTRALIZADA ════════════════════════════════
-    amb_c1, amb_c2, amb_c3 = st.columns([2, 2, 3])
-    t_amb = amb_c1.number_input(
-        "🌡️ Temperatura Ambiente do Dia (°C)",
+    # Campos em linha — responsivo no mobile
+    _a1, _a2, _a3 = st.columns(3)
+    t_amb = _a1.number_input(
+        "🌡️ Temperatura (°C)",
         value=float(st.session_state.get("temp_amb_global", 28.0)),
         min_value=-10.0, max_value=60.0, step=0.5, format="%.1f", key="amb_temp_painel"
     )
-    turno_dia = amb_c2.selectbox(
+    u_amb = _a2.number_input(
+        "💧 Umidade (%)",
+        value=float(st.session_state.get("umid_amb_global", 70.0)),
+        min_value=0.0, max_value=100.0, step=1.0, format="%.0f", key="amb_umid_painel"
+    )
+    turno_dia = _a3.selectbox(
         "⏰ Turno",
         ["Manhã (06-14h)", "Tarde (14-22h)", "Noite (22-06h)"],
         index=["Manhã (06-14h)","Tarde (14-22h)","Noite (22-06h)"].index(
             st.session_state.get("turno_global", "Manhã (06-14h)")),
         key="amb_turno_painel"
     )
-    if t_amb > 35:   _conforto_cor = "#ef4444"; _conforto_txt = "Muito Quente"
-    elif t_amb > 30: _conforto_cor = "#f59e0b"; _conforto_txt = "Quente"
-    elif t_amb > 22: _conforto_cor = "#10b981"; _conforto_txt = "Confortável"
-    else:            _conforto_cor = "#3b82f6"; _conforto_txt = "Ameno"
-    amb_c3.markdown(f"""<div style='background:#0a1628;border:1px solid #1e3a5f;border-radius:10px;
-        padding:10px 18px;display:flex;align-items:center;gap:20px;margin-top:6px'>
-        <div style='text-align:center'>
-            <div style='font-size:1.6rem;font-weight:900;color:{_conforto_cor}'>{t_amb:.1f}°C</div>
-            <div style='font-size:0.65rem;color:#475569'>{_conforto_txt}</div>
+
+    if t_amb > 35:   _cc = "#ef4444"; _ct = "Muito Quente"
+    elif t_amb > 30: _cc = "#f59e0b"; _ct = "Quente"
+    elif t_amb > 22: _cc = "#10b981"; _ct = "Confortável"
+    else:            _cc = "#3b82f6"; _ct = "Ameno"
+
+    st.markdown(f"""<div style='background:#0a1628;border:1px solid #1e3a5f;border-radius:10px;
+        padding:10px 16px;margin-top:4px;
+        display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:12px;text-align:center'>
+        <div>
+            <div style='font-size:1.5rem;font-weight:900;color:{_cc}'>{t_amb:.1f}°C</div>
+            <div style='font-size:0.65rem;color:#475569'>{_ct}</div>
         </div>
-        <div style='border-left:1px solid #1e3a5f;height:36px'></div>
-        <div style='color:#475569;font-size:0.8rem'>
-            Variável global usada para correção térmica do SF6<br>
-            <b style='color:#60a5fa'>P₂₀ = P_medida × (293,15 / (T + 273,15))</b>
+        <div>
+            <div style='font-size:1.5rem;font-weight:900;color:#3b82f6'>{u_amb:.0f}%</div>
+            <div style='font-size:0.65rem;color:#475569'>Umidade</div>
+        </div>
+        <div>
+            <div style='font-size:1rem;font-weight:700;color:#f59e0b'>{t_amb + 65:.0f}°C</div>
+            <div style='font-size:0.65rem;color:#475569'>Lim. OTI Trafo</div>
+        </div>
+        <div>
+            <div style='font-size:0.9rem;font-weight:700;color:#10b981'>{turno_dia.split()[0]}</div>
+            <div style='font-size:0.65rem;color:#475569'>Turno</div>
         </div>
     </div>""", unsafe_allow_html=True)
+
     st.session_state["temp_amb_global"] = t_amb
+    st.session_state["umid_amb_global"] = u_amb
     st.session_state["turno_global"]    = turno_dia
 
     st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
