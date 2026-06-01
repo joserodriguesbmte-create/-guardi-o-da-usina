@@ -729,74 +729,116 @@ elif "SF6" in pagina:
 
 # ═══════════════════════════════════════════════════════════════ TEMP ═════
 elif "Temperatura" in pagina:
-    st.markdown("## 🌡️ Monitoramento de Temperaturas")
-    tab1, tab2 = st.tabs(["📥 Registrar", "📈 Histórico / Tendência"])
+    st.markdown("## 🌡️ Transformador — Temperatura OTI / WTI")
+    st.markdown("""<div style='background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;
+        padding:10px 16px;margin-bottom:14px;color:#475569;font-size:0.82rem'>
+        📌 Registre aqui as leituras de <b style='color:#60a5fa'>OTI (óleo)</b> e
+        <b style='color:#60a5fa'>WTI (enrolamentos)</b> do transformador.<br>
+        A temperatura ambiente é herdada do <b style='color:#60a5fa'>Painel Geral</b> —
+        limite OTI = T_amb + 65°C conforme placa.
+    </div>""", unsafe_allow_html=True)
 
-    PONTOS_TEMP = {
-        # TR-SE-01 Toshiba — limites baseados na placa (elevação 65°C + ambient max 40°C = max 105°C)
-        # Alarm temp at 90°C oil / 100°C winding as per NBR 5356 practice
-        "TR-SE-01 Toshiba (Óleo / OTI)":    {"pontos": ["OTI — Temperatura do Óleo","Ambient. junto ao trafo"], "limites": [90,45]},
-        "TR-SE-01 Toshiba (Enrolamentos)":   {"pontos": ["WTI AT — Enrolamento Alta Tensão","WTI BT — Enrolamento Baixa Tensão"], "limites": [100,100]},
-        "Sala Elétrica SE":    {"pontos": ["Ambiente sala","Painel controle 1","Painel controle 2","Corredor"], "limites": [35,55,55,35]},
-        "Cúbilo 13.8kV":      {"pontos": ["Compartimento disjuntor","Compartimento barramento","Compartimento cabos","Ambiente"], "limites": [70,70,60,35]},
-        "Sala Baterias 125V":  {"pontos": ["Ambiente","Bateria (topo)","Retificador"], "limites": [30,35,55]},
-    }
+    _t_amb_tr = float(st.session_state.get("temp_amb_global", 28.0))
+    _limite_oti = _t_amb_tr + 65.0
+    _limite_wti = _t_amb_tr + 65.0
+
+    tab1, tab2 = st.tabs(["📥 Registrar Leitura", "📈 Histórico / Tendência"])
+
+    PONTOS_TR = [
+        {"ponto": "OTI — Temperatura do Óleo",          "limite": _limite_oti},
+        {"ponto": "WTI AT — Enrolamento Alta Tensão",    "limite": _limite_wti},
+        {"ponto": "WTI BT — Enrolamento Baixa Tensão",   "limite": _limite_wti},
+    ]
+    EQUIP_TR = "TR-SE-01 Toshiba 10/12.5 MVA"
 
     with tab1:
-        c1,c2,c3 = st.columns(3)
-        data_t  = c1.date_input("📅 Data", value=date.today())
-        hora_t  = c2.time_input("🕐 Hora", value=datetime.now().time())
-        turno_t = c3.selectbox("Turno", ["Manhã","Tarde","Noite"])
-        equip_t = st.selectbox("📍 Local / Equipamento", list(PONTOS_TEMP.keys()))
+        # Mostrar T ambiente herdada
+        st.markdown(f"""<div style='background:#0f172a;border:1px solid #1e3a5f;border-radius:8px;
+            padding:10px 16px;margin-bottom:12px;display:flex;gap:32px;align-items:center'>
+            <div style='text-align:center'>
+                <div style='font-size:1.4rem;font-weight:900;color:#f59e0b'>{_t_amb_tr:.1f}°C</div>
+                <div style='font-size:0.65rem;color:#475569'>T. Ambiente (Painel Geral)</div>
+            </div>
+            <div style='text-align:center'>
+                <div style='font-size:1.4rem;font-weight:900;color:#ef4444'>{_limite_oti:.0f}°C</div>
+                <div style='font-size:0.65rem;color:#475569'>Limite OTI/WTI (T_amb + 65°C)</div>
+            </div>
+            <div style='color:#334155;font-size:0.78rem'>
+                Atualize a temperatura ambiente no Painel Geral<br>para recalcular os limites automaticamente.
+            </div>
+        </div>""", unsafe_allow_html=True)
 
-        pontos  = PONTOS_TEMP[equip_t]["pontos"]
-        limites = PONTOS_TEMP[equip_t]["limites"]
+        c1, c2, c3 = st.columns(3)
+        data_t  = c1.date_input("📅 Data", value=date.today(), key="data_tr")
+        hora_t  = c2.time_input("🕐 Hora", value=datetime.now().time(), key="hora_tr")
+        turno_t = c3.selectbox("Turno", ["Manhã (06-14h)","Tarde (14-22h)","Noite (22-06h)"],
+                               index=["Manhã (06-14h)","Tarde (14-22h)","Noite (22-06h)"].index(
+                                   st.session_state.get("turno_global","Manhã (06-14h)")),
+                               key="turno_tr")
 
-        st.divider()
-        st.markdown(f"#### Leituras de Temperatura — {equip_t}")
-        for idx, (ponto, limite) in enumerate(zip(pontos, limites)):
-            cc1,cc2,cc3,cc4 = st.columns([2,1.2,1.2,1.5])
-            cc1.markdown(f"<div style='padding:9px 0;color:#94a3b8'>🌡️ {ponto}</div>", unsafe_allow_html=True)
-            t_val  = cc2.number_input("°C", key=f"tv_{idx}", value=25.0, step=0.5, format="%.1f")
-            um_val = cc3.number_input("Umidade %", key=f"uv_{idx}", value=60.0, step=1.0, format="%.0f")
-            status_t = "ALARME" if t_val > limite else "NORMAL"
-            cor_t = "#ef4444" if status_t=="ALARME" else "#10b981"
-            cc4.markdown(f"<div style='padding:9px 0'><span style='color:{cor_t};font-weight:700'>{status_t}</span> <span style='color:#334155;font-size:0.8rem'>(lim: {limite}°C)</span></div>", unsafe_allow_html=True)
+        st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0'></div>", unsafe_allow_html=True)
 
-        obs_t = st.text_area("Observação", height=60, key="obs_t")
+        _leituras_tr = {}
+        hc1, hc2, hc3 = st.columns([3, 1.5, 2])
+        hc1.markdown("<div style='color:#475569;font-size:0.72rem;font-weight:700;text-transform:uppercase'>Ponto de Medição</div>", unsafe_allow_html=True)
+        hc2.markdown("<div style='color:#475569;font-size:0.72rem;font-weight:700;text-transform:uppercase'>Leitura (°C)</div>", unsafe_allow_html=True)
+        hc3.markdown("<div style='color:#475569;font-size:0.72rem;font-weight:700;text-transform:uppercase'>Status</div>", unsafe_allow_html=True)
 
-        if st.button("💾 Salvar Temperaturas", type="primary", use_container_width=True):
-            for idx, (ponto, limite) in enumerate(zip(pontos, limites)):
-                t_v = st.session_state.get(f"tv_{idx}", 25.0)
-                u_v = st.session_state.get(f"uv_{idx}", 60.0)
-                status_t = "ALARME" if t_v > limite else "NORMAL"
-                salvar_temp({"data":str(data_t),"hora":str(hora_t),"turno":turno_t,
-                             "equipamento":equip_t,"ponto":ponto,"temperatura":t_v,
-                             "umidade":u_v,"limite_max":limite,"status":status_t,
-                             "observacao":obs_t,"usuario":st.session_state.login})
-            st.success(f"✅ {len(pontos)} leituras salvas!")
+        for _p in PONTOS_TR:
+            _c1, _c2, _c3 = st.columns([3, 1.5, 2])
+            _c1.markdown(f"<div style='padding:8px 0;color:#94a3b8'>🌡️ {_p['ponto']}</div>", unsafe_allow_html=True)
+            _tv = _c2.number_input("°C", key=f"tr_{_p['ponto']}", value=float(_t_amb_tr + 20),
+                                   min_value=0.0, max_value=200.0, step=0.5, format="%.1f",
+                                   label_visibility="collapsed")
+            _st = "ALARME" if _tv > _p["limite"] else "NORMAL"
+            _cor = "#ef4444" if _st == "ALARME" else "#10b981"
+            _c3.markdown(f"""<div style='padding:8px 0'>
+                <span style='color:{_cor};font-weight:700'>{_st}</span>
+                <span style='color:#334155;font-size:0.75rem'> (lim: {_p['limite']:.0f}°C)</span>
+            </div>""", unsafe_allow_html=True)
+            _leituras_tr[_p["ponto"]] = {"val": _tv, "limite": _p["limite"], "status": _st}
+
+        _obs_tr = st.text_area("Observação", height=60, key="obs_tr",
+                               placeholder="Condições observadas, nível de óleo, alarmes ativos...")
+
+        if st.button("💾 Salvar Leituras do Transformador", type="primary", use_container_width=True, key="save_tr"):
+            for _ponto, _d in _leituras_tr.items():
+                salvar_temp({"data": str(data_t), "hora": str(hora_t), "turno": turno_t,
+                             "equipamento": EQUIP_TR, "ponto": _ponto,
+                             "temperatura": _d["val"], "umidade": 0.0,
+                             "limite_max": _d["limite"], "status": _d["status"],
+                             "observacao": _obs_tr, "usuario": st.session_state.login})
+            st.success("✅ OTI e WTI salvos!")
 
     with tab2:
-        c1,c2,c3 = st.columns(3)
-        eq_f  = c1.selectbox("Equipamento", ["Todos"]+list(PONTOS_TEMP.keys()), key="eq_f")
-        di    = c2.date_input("De", value=date(2026,6,1), key="t_ini")
-        df2   = c3.date_input("Até", value=date.today(), key="t_fim")
-        df_t  = carregar_temps(eq_f, di, df2)
-        if df_t.empty:
-            st.info("Sem registros de temperatura.")
+        _c1, _c2 = st.columns(2)
+        _di = _c1.date_input("De", value=date(2026, 6, 1), key="tr_ini")
+        _df2 = _c2.date_input("Até", value=date.today(), key="tr_fim")
+        _df_t = carregar_temps(EQUIP_TR, _di, _df2)
+        if _df_t.empty:
+            st.info("Sem registros. Use a aba Registrar Leitura para começar.")
         else:
-            df_t["data_hora"] = pd.to_datetime(df_t["data"]+" "+df_t["hora"])
-            fig_t = px.line(df_t, x="data_hora", y="temperatura", color="ponto",
-                           facet_col="equipamento" if eq_f=="Todos" else None,
-                           title="Evolução de Temperatura por Ponto de Medição",
-                           labels={"temperatura":"Temp (°C)","data_hora":"Data/Hora","ponto":"Ponto"})
-            fig_t.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0.15)",
-                               font_color="#94a3b8", height=380)
-            st.plotly_chart(fig_t, use_container_width=True)
-            def cor_t(v):
-                return "color:#ef4444;font-weight:bold" if v=="ALARME" else "color:#10b981;font-weight:bold"
-            st.dataframe(df_t[["data","hora","equipamento","ponto","temperatura","umidade","limite_max","status"]].style.applymap(cor_t, subset=["status"]),
-                        use_container_width=True, hide_index=True)
+            _df_t["data_hora"] = pd.to_datetime(_df_t["data"] + " " + _df_t["hora"])
+            _fig_t = px.line(_df_t, x="data_hora", y="temperatura", color="ponto",
+                            title="Evolução OTI / WTI — TR-SE-01 Toshiba",
+                            labels={"temperatura": "Temp (°C)", "data_hora": "Data/Hora", "ponto": "Ponto"})
+            _fig_t.add_hline(y=_limite_oti, line_dash="dash", line_color="#ef4444",
+                            annotation_text=f"Limite {_limite_oti:.0f}°C",
+                            annotation_font_color="#ef4444", annotation_font_size=10)
+            _fig_t.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0.15)",
+                                font_color="#94a3b8", height=380,
+                                legend=dict(bgcolor="rgba(0,0,0,0)", font_size=10))
+            st.plotly_chart(_fig_t, use_container_width=True)
+
+            def _cor_st(v):
+                return "color:#ef4444;font-weight:bold" if v == "ALARME" else "color:#10b981;font-weight:bold"
+            st.dataframe(
+                _df_t[["data","hora","turno","ponto","temperatura","limite_max","status"]
+                      ].sort_values(["data","hora"], ascending=False
+                      ).reset_index(drop=True
+                      ).style.map(_cor_st, subset=["status"]),
+                use_container_width=True, hide_index=True
+            )
 
 # ══════════════════════════════════════════════════════════ CALCULADORA ════
 elif "Calculadora" in pagina:
