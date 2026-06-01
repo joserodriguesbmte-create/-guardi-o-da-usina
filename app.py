@@ -23,30 +23,34 @@ st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .stApp{background:#07090f;}
-/* ── Esconder elementos do Streamlit Cloud ── */
-header[data-testid="stHeader"]{display:none !important;}
+/* ── Streamlit Cloud: esconder Fork/GitHub mas manter botão ☰ ── */
 footer{display:none !important;}
 #MainMenu{display:none !important;}
-[data-testid="stToolbar"]{display:none !important;}
 [data-testid="stBottom"]{display:none !important;}
 [data-testid="stStatusWidget"]{display:none !important;}
 [data-testid="manage-app-button"]{display:none !important;}
-[data-testid="baseButton-header"]{display:none !important;}
 .stDeployButton{display:none !important;}
-/* Barra inferior fixa do Streamlit Cloud */
 div[class*="StatusWidget"]{display:none !important;}
-div[class*="toolbarActions"]{display:none !important;}
 div[class*="ViewerBadge"]{display:none !important;}
-iframe[src*="streamlit"]{display:none !important;}
+/* Manter header mas esconder apenas toolbar do Cloud */
+[data-testid="stToolbar"]{visibility:hidden !important; height:0 !important;}
+/* Header fica com altura mínima só para o botão ☰ aparecer */
+header[data-testid="stHeader"]{
+  background:transparent !important;
+  border-bottom:none !important;
+  min-height:2.5rem !important;
+}
 
-/* ── Sidebar sempre visível ── */
+/* ── Sidebar ── */
 section[data-testid="stSidebar"]{background:linear-gradient(180deg,#0a0e1a,#111827);border-right:1px solid #1e3a5f;}
-/* Botão ☰ do sidebar — visível e grande no mobile */
+/* Botão ☰ grande e visível no mobile */
 [data-testid="collapsedControl"]{
   display:flex !important; visibility:visible !important;
   background:#1e3a5f !important; border-radius:8px !important;
-  padding:4px !important; top:8px !important; left:8px !important;
-  z-index:9999 !important;
+  padding:6px !important; z-index:9999 !important;
+}
+[data-testid="collapsedControl"] svg{
+  fill:#60a5fa !important; width:24px !important; height:24px !important;
 }
 .card{background:linear-gradient(145deg,#0f172a,#1e293b);border:1px solid #1e3a5f;border-radius:14px;padding:20px;margin:6px 0;}
 .card-green{border-left:4px solid #10b981;} .card-red{border-left:4px solid #ef4444;}
