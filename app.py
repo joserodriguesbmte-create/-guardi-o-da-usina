@@ -23,25 +23,31 @@ st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .stApp{background:#07090f;}
-/* Esconder TUDO do Streamlit — Fork, GitHub, menu, rodapé, botão vermelho */
+/* ── Esconder elementos do Streamlit Cloud ── */
 header[data-testid="stHeader"]{display:none !important;}
-#MainMenu{visibility:hidden !important; display:none !important;}
-footer{visibility:hidden !important; display:none !important;}
+footer{display:none !important;}
+#MainMenu{display:none !important;}
 [data-testid="stToolbar"]{display:none !important;}
-[data-testid="manage-app-button"]{display:none !important;}
-.viewerBadge_container__1QSob{display:none !important;}
-.styles_viewerBadge__CvC9N{display:none !important;}
-.stDeployButton{display:none !important;}
-div[data-testid="stBottom"]{display:none !important;}
-section[data-testid="stBottom"]{display:none !important;}
-/* Botão vermelho flutuante (Streamlit badge / manage app) */
+[data-testid="stBottom"]{display:none !important;}
 [data-testid="stStatusWidget"]{display:none !important;}
+[data-testid="manage-app-button"]{display:none !important;}
+[data-testid="baseButton-header"]{display:none !important;}
+.stDeployButton{display:none !important;}
+/* Barra inferior fixa do Streamlit Cloud */
 div[class*="StatusWidget"]{display:none !important;}
 div[class*="toolbarActions"]{display:none !important;}
-button[kind="header"]{display:none !important;}
-[data-testid="baseButton-header"]{display:none !important;}
+div[class*="ViewerBadge"]{display:none !important;}
+iframe[src*="streamlit"]{display:none !important;}
 
+/* ── Sidebar sempre visível ── */
 section[data-testid="stSidebar"]{background:linear-gradient(180deg,#0a0e1a,#111827);border-right:1px solid #1e3a5f;}
+/* Botão ☰ do sidebar — visível e grande no mobile */
+[data-testid="collapsedControl"]{
+  display:flex !important; visibility:visible !important;
+  background:#1e3a5f !important; border-radius:8px !important;
+  padding:4px !important; top:8px !important; left:8px !important;
+  z-index:9999 !important;
+}
 .card{background:linear-gradient(145deg,#0f172a,#1e293b);border:1px solid #1e3a5f;border-radius:14px;padding:20px;margin:6px 0;}
 .card-green{border-left:4px solid #10b981;} .card-red{border-left:4px solid #ef4444;}
 .card-yellow{border-left:4px solid #f59e0b;} .card-blue{border-left:4px solid #3b82f6;}
@@ -79,8 +85,8 @@ hr{border-color:#1e3a5f;}
   [data-baseweb="select"] span, [data-baseweb="input"] input
   {font-size:1rem !important; color:#f1f5f9 !important;}
 
-  /* Botões OK — mas não exagerados */
-  .stButton>button{font-size:0.95rem !important; min-height:46px !important; padding:0.5rem !important;}
+  /* Botões — tamanho normal para mobile */
+  .stButton>button{font-size:0.85rem !important; min-height:38px !important; padding:0.3rem 0.6rem !important;}
 
   /* Texto */
   label{font-size:0.9rem !important; color:#94a3b8 !important;}
@@ -90,6 +96,24 @@ hr{border-color:#1e3a5f;}
   .card{padding:10px !important;}
 }
 </style>""", unsafe_allow_html=True)
+
+# Remove barra inferior do Streamlit via JavaScript
+st.markdown("""<script>
+function removeStreamlitBar() {
+  const selectors = [
+    '[data-testid="stBottom"]',
+    '[data-testid="stStatusWidget"]',
+    '[data-testid="manage-app-button"]',
+    '.stDeployButton',
+    'iframe[src*="streamlit.io"]'
+  ];
+  selectors.forEach(s => {
+    document.querySelectorAll(s).forEach(el => el.remove());
+  });
+}
+setTimeout(removeStreamlitBar, 500);
+setTimeout(removeStreamlitBar, 1500);
+</script>""", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════ LOGIN ════
 if "user" not in st.session_state:
