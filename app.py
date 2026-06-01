@@ -23,6 +23,13 @@ st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .stApp{background:#07090f;}
+/* Esconder barra do Streamlit Cloud (Fork, GitHub, menu) */
+header[data-testid="stHeader"]{display:none !important;}
+#MainMenu{visibility:hidden !important;}
+footer{visibility:hidden !important;}
+[data-testid="stToolbar"]{display:none !important;}
+.viewerBadge_container__1QSob{display:none !important;}
+
 section[data-testid="stSidebar"]{background:linear-gradient(180deg,#0a0e1a,#111827);border-right:1px solid #1e3a5f;}
 .card{background:linear-gradient(145deg,#0f172a,#1e293b);border:1px solid #1e3a5f;border-radius:14px;padding:20px;margin:6px 0;}
 .card-green{border-left:4px solid #10b981;} .card-red{border-left:4px solid #ef4444;}
