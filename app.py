@@ -578,10 +578,16 @@ elif "Cadastro" in pagina:
 
 # ═══════════════════════════════════════════════════════════════ SF6 ══════
 elif "SF6" in pagina:
-    st.markdown("## ⚡ Monitoramento SF6 — Disjuntores 230kV")
-    tab1, tab2, tab3 = st.tabs(["📥 Registrar Leitura", "📈 Evolução / Tendência", "🔢 Contagem de Operações"])
+    st.markdown("## ⚡ Disjuntores SF6 — Histórico e Operações")
+    st.markdown("""<div style='background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;
+        padding:10px 16px;margin-bottom:14px;color:#475569;font-size:0.82rem'>
+        📌 Leituras SF6 são registradas no <b style='color:#60a5fa'>Painel Geral</b> durante a inspeção diária.
+        Esta página exibe o histórico e a evolução ao longo do tempo.
+    </div>""", unsafe_allow_html=True)
+    tab2, tab3 = st.tabs(["📈 Evolução / Histórico", "🔢 Contagem de Operações"])
 
-    with tab1:
+    if False:  # bloco removido — leituras agora só pelo Painel Geral
+        with st.container():
         st.markdown("### ⚡ Leitura de Pressão SF6 — Cálculo Automático")
 
         # ── TEMPERATURA AMBIENTE DO DIA ───────────────────────────────────
@@ -796,15 +802,9 @@ elif "SF6" in pagina:
                             "status_sf6":dados["status"],
                             "observacao":obs_sf6,
                             "usuario":st.session_state.login})
-            st.success(f"✅ 3 leituras salvas para {dj_sel} — {data_l.strftime('%d/%m/%Y')} {str(hora_l)[:5]}")
-            if alertas_rt:
-                st.error(f"🚨 {len(alertas_rt)} polo(s) com ALARME registrado(s)!")
+            pass  # removido
 
     with tab2:
-        st.markdown("""<div style='background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;
-            padding:10px 16px;margin-bottom:14px;color:#475569;font-size:0.82rem'>
-            📌 As leituras são registradas no <b style='color:#60a5fa'>Painel Geral</b> e acumuladas aqui automaticamente.
-        </div>""", unsafe_allow_html=True)
 
         # Filtros
         df_dj_db2 = carregar_equipamentos("Disjuntor SF6")
