@@ -15,7 +15,7 @@ from email_report import (salvar_config_email, carregar_config_email,
 from checklists import SISTEMAS, CHECKLISTS
 
 st.set_page_config(page_title="Guardião da Usina", page_icon="🛡️",
-                   layout="wide", initial_sidebar_state="expanded")
+                   layout="wide", initial_sidebar_state="collapsed")
 init_db()
 
 # ═══════════════════════════════════════════════════════════════ CSS ══════
@@ -40,6 +40,39 @@ h1,h2,h3,h4{color:#f1f5f9!important;} p,li,label{color:#94a3b8;}
 {background:#0f172a!important;color:#f1f5f9!important;border:1px solid #1e3a5f!important;border-radius:8px!important;}
 .stSlider>div{color:#94a3b8;}
 hr{border-color:#1e3a5f;}
+
+/* ── RESPONSIVO MOBILE ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* Sidebar escondida por padrão no mobile — ok, Streamlit já faz isso */
+  .block-container{padding:0.5rem 0.8rem !important;}
+  /* Colunas empilham verticalmente */
+  [data-testid="column"]{min-width:100% !important;width:100% !important;}
+  /* KPIs menores */
+  .kpi{padding:10px 6px;}
+  .kpi-n{font-size:1.6rem;}
+  .kpi-l{font-size:0.65rem;}
+  /* Botões maiores para toque */
+  .stButton>button{padding:0.6rem 1rem !important;font-size:1rem !important;min-height:48px;}
+  /* Inputs maiores */
+  .stSelectbox>div>div, .stNumberInput>div>div>input,
+  .stTextInput>div>div>input, .stTextArea>div>div>textarea
+  {font-size:1rem !important;padding:0.5rem !important;}
+  /* Texto geral maior */
+  p, li, label, div{font-size:0.9rem;}
+  h1{font-size:1.4rem !important;}
+  h2{font-size:1.2rem !important;}
+  h3{font-size:1rem !important;}
+  /* Cards padding menor */
+  .card{padding:12px !important;}
+  /* Progress text wrap */
+  .stProgress>div>div{font-size:0.75rem;}
+  /* Gauge charts menores */
+  .js-plotly-plot{max-height:200px;}
+}
+@media (max-width: 480px) {
+  .block-container{padding:0.3rem 0.5rem !important;}
+  .kpi-n{font-size:1.3rem;}
+}
 </style>""", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════ LOGIN ════
