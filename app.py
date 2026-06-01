@@ -192,12 +192,47 @@ with st.sidebar:
         "🔄  Troca de Turno",
         "📊  Relatório Mensal",
         "📧  Configurar E-mail",
-    ], label_visibility="collapsed")
+    ], label_visibility="collapsed", key="nav_sidebar")
     st.divider()
     st.markdown(f"<div style='color:#334155;font-size:0.7rem'>📅 {date.today().strftime('%d/%m/%Y')}</div>", unsafe_allow_html=True)
     if st.button("🚪 Sair", use_container_width=True):
         for k in ["user","nivel","login"]: st.session_state.pop(k,None)
         st.rerun()
+
+# ── MENU MOBILE (dropdown no topo — sempre visível) ────────────────────────
+PAGINAS = [
+    "🏠  Painel Geral","🗂️  Cadastro de Equipamentos","⚡  Disjuntores SF6",
+    "🌡️  Temperaturas","🧮  Calculadora Técnica","📋  Inspeção Diária",
+    "⚠️  Pendências","🔄  Troca de Turno","📊  Relatório Mensal","📧  Configurar E-mail",
+]
+st.markdown("""<style>
+.nav-mobile{display:none;}
+@media(max-width:768px){
+  .nav-mobile{display:block !important; margin-bottom:10px;}
+  section[data-testid="stSidebar"]{display:none !important;}
+}
+</style>""", unsafe_allow_html=True)
+
+_nav_container = st.container()
+with _nav_container:
+    st.markdown("<div class='nav-mobile'>", unsafe_allow_html=True)
+    _col_nav, _col_sair = st.columns([4,1])
+    pagina_mobile = _col_nav.selectbox(
+        "📱 Menu",
+        PAGINAS,
+        index=PAGINAS.index(pagina) if pagina in PAGINAS else 0,
+        key="nav_mobile",
+        label_visibility="collapsed"
+    )
+    if _col_sair.button("🚪", key="sair_mobile", help="Sair"):
+        for k in ["user","nivel","login"]: st.session_state.pop(k,None)
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+# No mobile, pagina vem do selectbox; no desktop, da sidebar
+import re as _re
+_is_mobile = False
+pagina = pagina_mobile if "nav_mobile" in st.session_state else pagina
 
 # ═══════════════════════════════════════════════════════════════ PAINEL ══
 if "Painel" in pagina:
