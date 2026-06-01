@@ -3,15 +3,28 @@ import psycopg2
 import psycopg2.extras
 import pandas as pd
 
-def _url():
+def _params():
     try:
         import streamlit as st
-        return st.secrets["DATABASE_URL"]
+        url = st.secrets["DATABASE_URL"]
     except Exception:
-        return os.environ.get("DATABASE_URL", "")
+        url = os.environ.get("DATABASE_URL", "")
+    # Parâmetros separados evitam problemas com caracteres especiais na senha
+    try:
+        from urllib.parse import urlparse, unquote
+        p = urlparse(url)
+        return dict(
+            host=p.hostname, port=p.port or 5432,
+            dbname=(p.path or "/postgres").lstrip("/"),
+            user=p.username,
+            password=unquote(p.password or ""),
+            sslmode="require"
+        )
+    except Exception:
+        return {"dsn": url, "sslmode": "require"}
 
 def conn():
-    return psycopg2.connect(_url())
+    return psycopg2.connect(**_params())
 
 def init_db():
     c = conn(); cur = c.cursor()
