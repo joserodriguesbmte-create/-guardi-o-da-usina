@@ -97,12 +97,14 @@ def init_db():
     ]
     for s in stmts:
         cur.execute(s)
+    c.commit()  # commit tabelas antes do migration
     # Migração segura: adiciona num_polos se não existir
     try:
         cur.execute("ALTER TABLE equipamentos ADD COLUMN num_polos INTEGER DEFAULT 1")
+        c.commit()
     except Exception:
         c.rollback()
-    c.commit(); cur.close(); c.close()
+    cur.close(); c.close()
 
 # ── Equipamentos ──────────────────────────────────────────────────────────
 def salvar_equipamento(d):
