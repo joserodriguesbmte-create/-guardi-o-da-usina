@@ -1,0 +1,9 @@
+*.db
+*.db-shm
+*.db-wal
+__pycache__/
+*.pyc
+.env
+email_config.json
+*.log
+.streamlit/secrets.toml
