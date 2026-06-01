@@ -23,12 +23,19 @@ st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .stApp{background:#07090f;}
-/* Esconder barra do Streamlit Cloud (Fork, GitHub, menu) */
+/* Esconder TUDO do Streamlit Cloud — Fork, GitHub, menu, rodapé */
 header[data-testid="stHeader"]{display:none !important;}
 #MainMenu{visibility:hidden !important;}
 footer{visibility:hidden !important;}
 [data-testid="stToolbar"]{display:none !important;}
+[data-testid="manage-app-button"]{display:none !important;}
 .viewerBadge_container__1QSob{display:none !important;}
+.styles_viewerBadge__CvC9N{display:none !important;}
+iframe[title="st_player"]{display:none !important;}
+/* Rodapé inferior com ícones Git */
+.stDeployButton{display:none !important;}
+div[data-testid="stBottom"]{display:none !important;}
+section[data-testid="stBottom"]{display:none !important;}
 
 section[data-testid="stSidebar"]{background:linear-gradient(180deg,#0a0e1a,#111827);border-right:1px solid #1e3a5f;}
 .card{background:linear-gradient(145deg,#0f172a,#1e293b);border:1px solid #1e3a5f;border-radius:14px;padding:20px;margin:6px 0;}
@@ -87,25 +94,59 @@ if "user" not in st.session_state:
     st.session_state.user = None
 
 if not st.session_state.user:
-    _,col,_ = st.columns([1,1.2,1])
-    with col:
-        st.markdown("<br><br>", unsafe_allow_html=True)
-        st.markdown("""<div style='text-align:center;padding:24px 0'>
-            <div style='font-size:5rem'>🛡️</div>
-            <h1 style='color:#f1f5f9!important;font-size:2rem;font-weight:900;margin:8px 0 4px'>Guardião da Usina</h1>
-            <p style='color:#475569;font-size:0.85rem'>Norte Energia — UHE Belo Monte | SE 230kV</p>
-        </div>""", unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
-        operador = st.selectbox("👤 Selecione seu nome", [
-            "José Aparecido","Lenildo Luiz","Moisés Trindade","Jeferson Moraes",
-            "João Valentim","Tulio Alves","Rodrigo Alves","Bruno Souza",
-            "Gilbert Silva","Deysiele Cristiane"])
-        nivel_map = {"José Aparecido":"SR","Lenildo Luiz":"SR","Moisés Trindade":"SR"}
-        if st.button("🛡️  Entrar no Sistema", use_container_width=True, type="primary"):
+    # PINs por operador — altere conforme necessário
+    PINS = {
+        "José Aparecido":   "1234",
+        "Lenildo Luiz":     "1234",
+        "Moisés Trindade":  "1234",
+        "Jeferson Moraes":  "1234",
+        "João Valentim":    "1234",
+        "Tulio Alves":      "1234",
+        "Rodrigo Alves":    "1234",
+        "Bruno Souza":      "1234",
+        "Gilbert Silva":    "1234",
+        "Deysiele Cristiane": "1234",
+    }
+    NIVEL = {"José Aparecido":"SR","Lenildo Luiz":"SR","Moisés Trindade":"SR"}
+
+    st.markdown("""
+    <style>
+    /* LOGIN — tela cheia, responsivo */
+    .login-box{
+        max-width:420px; margin:40px auto; padding:32px 24px;
+        background:linear-gradient(145deg,#0f172a,#1e293b);
+        border:1px solid #1e3a5f; border-radius:18px;
+    }
+    .login-logo{font-size:4rem;text-align:center;margin-bottom:8px;}
+    .login-title{color:#f1f5f9;font-size:1.6rem;font-weight:900;text-align:center;margin:0 0 4px;}
+    .login-sub{color:#475569;font-size:0.85rem;text-align:center;margin-bottom:24px;}
+    .login-label{color:#94a3b8;font-size:1rem;font-weight:600;margin-bottom:4px;}
+    /* Inputs grandes para celular */
+    .stSelectbox>div>div{font-size:1.1rem !important;min-height:52px !important;}
+    .stTextInput>div>div>input{font-size:1.2rem !important;min-height:52px !important;letter-spacing:4px;}
+    .stButton>button{min-height:54px !important;font-size:1.1rem !important;}
+    </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<div class='login-box'>", unsafe_allow_html=True)
+    st.markdown("<div class='login-logo'>🛡️</div>", unsafe_allow_html=True)
+    st.markdown("<div class='login-title'>Guardião da Usina</div>", unsafe_allow_html=True)
+    st.markdown("<div class='login-sub'>Norte Energia · UHE Belo Monte · SE 230kV</div>", unsafe_allow_html=True)
+
+    operador = st.selectbox("👤 Seu nome", list(PINS.keys()), key="login_nome")
+    pin      = st.text_input("🔑 PIN", type="password", max_chars=4,
+                              placeholder="Digite seu PIN de 4 dígitos", key="login_pin")
+
+    if st.button("🛡️  Entrar", use_container_width=True, type="primary", key="login_btn"):
+        if pin == PINS.get(operador, ""):
             st.session_state.user  = operador
-            st.session_state.nivel = nivel_map.get(operador, "OP")
+            st.session_state.nivel = NIVEL.get(operador, "OP")
             st.session_state.login = operador.split()[0].lower()
             st.rerun()
+        else:
+            st.error("PIN incorreto. Tente novamente.")
+
+    st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
 # ═══════════════════════════════════════════════════════════════ SIDEBAR ══
