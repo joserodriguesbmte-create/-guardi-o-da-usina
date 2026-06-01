@@ -2,11 +2,12 @@
 # num_polos: 1 = câmara única (1 medida SF6), 3 = polos separados (3 medidas SF6)
 
 DISJUNTORES = {
-    "PMDJ6-01": {"descricao": "Disjuntor Bay 01PUL", "fabricante": "ABB", "modelo": "LTB 245E2", "tensao_nominal": 230, "pressao_nominal": 6.0, "pressao_alarme": 5.5, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
-    "PMDJ6-02": {"descricao": "Disjuntor Vão Linha (3 polos separados)", "fabricante": "ABB", "modelo": "LTB 245E2", "tensao_nominal": 230, "pressao_nominal": 6.0, "pressao_alarme": 5.5, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 3},
-    "PMDJ6-03": {"descricao": "Disjuntor Bay 02PVL", "fabricante": "ABB", "modelo": "LTB 245E2", "tensao_nominal": 230, "pressao_nominal": 6.0, "pressao_alarme": 5.5, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
-    "PMDJ6-04": {"descricao": "Disjuntor Vão Trafo", "fabricante": "ABB", "modelo": "LTB 245E2", "tensao_nominal": 230, "pressao_nominal": 6.0, "pressao_alarme": 5.5, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
-    "PMDJ6-05": {"descricao": "Disjuntor Bay 03PVL", "fabricante": "ABB", "modelo": "LTB 245E2", "tensao_nominal": 230, "pressao_nominal": 6.0, "pressao_alarme": 5.5, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
+    # Siemens 3AP1 FG — Placa: Nom=6.0 | Alarme(1°est)=5.2 | Bloqueio(2°est)=5.0 | IEC 62271-100
+    "PMDJ6-01": {"descricao": "Disjuntor Bay 01PUL", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
+    "PMDJ6-02": {"descricao": "Disjuntor Vão Linha (3 polos separados)", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 3},
+    "PMDJ6-03": {"descricao": "Disjuntor Bay 02PVL", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
+    "PMDJ6-04": {"descricao": "Disjuntor Vão Trafo", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
+    "PMDJ6-05": {"descricao": "Disjuntor Bay 03PVL", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
 }
 
 TRANSFORMADORES = {
