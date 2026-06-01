@@ -66,6 +66,20 @@ h1,h2,h3,h4{color:#f1f5f9!important;} p,li,label{color:#94a3b8;}
 .stButton>button{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:white;border:none;border-radius:8px;font-weight:700;width:100%;}
 .stSelectbox>div>div,.stTextInput>div>div>input,.stTextArea>div>div>textarea,.stNumberInput>div>div>input
 {background:#0f172a!important;color:#f1f5f9!important;border:1px solid #1e3a5f!important;border-radius:8px!important;}
+/* Garantir cor do texto em TODOS os inputs — mobile e desktop */
+input, textarea, select, [data-baseweb="input"] input,
+[data-baseweb="textarea"] textarea, [data-baseweb="select"] div,
+div[data-testid="stNumberInput"] input,
+div[data-testid="stTextInput"] input,
+div[data-testid="stTextArea"] textarea
+{color:#f1f5f9 !important; -webkit-text-fill-color:#f1f5f9 !important;
+ font-size:1rem !important; background:#0f172a !important;}
+/* Labels dos campos */
+div[data-testid="stNumberInput"] label,
+div[data-testid="stTextInput"] label,
+div[data-testid="stSelectbox"] label,
+div[data-testid="stTextArea"] label
+{color:#94a3b8 !important; font-size:0.85rem !important;}
 .stSlider>div{color:#94a3b8;}
 hr{border-color:#1e3a5f;}
 
