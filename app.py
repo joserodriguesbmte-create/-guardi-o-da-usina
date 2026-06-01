@@ -15,7 +15,7 @@ from email_report import (salvar_config_email, carregar_config_email,
 from checklists import SISTEMAS, CHECKLISTS
 
 st.set_page_config(page_title="Guardião da Usina", page_icon="🛡️",
-                   layout="wide", initial_sidebar_state="collapsed")
+                   layout="wide", initial_sidebar_state="auto")
 init_db()
 
 # ═══════════════════════════════════════════════════════════════ CSS ══════
@@ -23,19 +23,23 @@ st.markdown("""<style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
 html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 .stApp{background:#07090f;}
-/* Esconder TUDO do Streamlit Cloud — Fork, GitHub, menu, rodapé */
+/* Esconder TUDO do Streamlit — Fork, GitHub, menu, rodapé, botão vermelho */
 header[data-testid="stHeader"]{display:none !important;}
-#MainMenu{visibility:hidden !important;}
-footer{visibility:hidden !important;}
+#MainMenu{visibility:hidden !important; display:none !important;}
+footer{visibility:hidden !important; display:none !important;}
 [data-testid="stToolbar"]{display:none !important;}
 [data-testid="manage-app-button"]{display:none !important;}
 .viewerBadge_container__1QSob{display:none !important;}
 .styles_viewerBadge__CvC9N{display:none !important;}
-iframe[title="st_player"]{display:none !important;}
-/* Rodapé inferior com ícones Git */
 .stDeployButton{display:none !important;}
 div[data-testid="stBottom"]{display:none !important;}
 section[data-testid="stBottom"]{display:none !important;}
+/* Botão vermelho flutuante (Streamlit badge / manage app) */
+[data-testid="stStatusWidget"]{display:none !important;}
+div[class*="StatusWidget"]{display:none !important;}
+div[class*="toolbarActions"]{display:none !important;}
+button[kind="header"]{display:none !important;}
+[data-testid="baseButton-header"]{display:none !important;}
 
 section[data-testid="stSidebar"]{background:linear-gradient(180deg,#0a0e1a,#111827);border-right:1px solid #1e3a5f;}
 .card{background:linear-gradient(145deg,#0f172a,#1e293b);border:1px solid #1e3a5f;border-radius:14px;padding:20px;margin:6px 0;}
@@ -57,35 +61,33 @@ hr{border-color:#1e3a5f;}
 
 /* ── RESPONSIVO MOBILE ─────────────────────────────────────────── */
 @media (max-width: 768px) {
-  /* Sidebar escondida por padrão no mobile — ok, Streamlit já faz isso */
   .block-container{padding:0.5rem 0.8rem !important;}
-  /* Colunas empilham verticalmente */
-  [data-testid="column"]{min-width:100% !important;width:100% !important;}
-  /* KPIs menores */
-  .kpi{padding:10px 6px;}
-  .kpi-n{font-size:1.6rem;}
-  .kpi-l{font-size:0.65rem;}
-  /* Botões maiores para toque */
-  .stButton>button{padding:0.6rem 1rem !important;font-size:1rem !important;min-height:48px;}
-  /* Inputs maiores */
+
+  /* KPIs: grade 2x2 no mobile — NÃO empilha tudo */
+  [data-testid="stHorizontalBlock"]:has(.kpi) [data-testid="column"]{
+    min-width:48% !important; width:48% !important; flex:0 0 48% !important;
+  }
+  .kpi{padding:8px 4px !important;}
+  .kpi-n{font-size:1.3rem !important;}
+  .kpi-l{font-size:0.6rem !important;}
+
+  /* Inputs e selects — texto visível e grande */
+  .stSelectbox label, .stNumberInput label,
+  .stTextInput label, .stTextArea label,
   .stSelectbox>div>div, .stNumberInput>div>div>input,
-  .stTextInput>div>div>input, .stTextArea>div>div>textarea
-  {font-size:1rem !important;padding:0.5rem !important;}
-  /* Texto geral maior */
-  p, li, label, div{font-size:0.9rem;}
-  h1{font-size:1.4rem !important;}
-  h2{font-size:1.2rem !important;}
-  h3{font-size:1rem !important;}
-  /* Cards padding menor */
-  .card{padding:12px !important;}
-  /* Progress text wrap */
-  .stProgress>div>div{font-size:0.75rem;}
-  /* Gauge charts menores */
-  .js-plotly-plot{max-height:200px;}
-}
-@media (max-width: 480px) {
-  .block-container{padding:0.3rem 0.5rem !important;}
-  .kpi-n{font-size:1.3rem;}
+  .stTextInput>div>div>input, .stTextArea>div>div>textarea,
+  [data-baseweb="select"] span, [data-baseweb="input"] input
+  {font-size:1rem !important; color:#f1f5f9 !important;}
+
+  /* Botões OK — mas não exagerados */
+  .stButton>button{font-size:0.95rem !important; min-height:46px !important; padding:0.5rem !important;}
+
+  /* Texto */
+  label{font-size:0.9rem !important; color:#94a3b8 !important;}
+  h1{font-size:1.3rem !important;}
+  h2{font-size:1.1rem !important;}
+  h3{font-size:0.95rem !important;}
+  .card{padding:10px !important;}
 }
 </style>""", unsafe_allow_html=True)
 
