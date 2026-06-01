@@ -282,19 +282,23 @@ if "Painel" in pagina:
     alertas_list.sort(key=lambda x: x["margem"])
 
     # ══ KPIs ════════════════════════════════════════════════════════════════
-    k1,k2,k3,k4,k5 = st.columns(5)
-    for _col,_ic,_n,_lb,_cr in [
-        (k1,"⚡", len(djs_todos),                        "DJ Total",         "#3b82f6"),
-        (k2,"✅", len(djs_todos)-len(djs_pendentes),     "DJ Hoje",          "#10b981"),
-        (k3,"🔌", len(secs_todos)-len(secs_pendentes),   "SEC Hoje",         "#06b6d4"),
-        (k4,"🚨", len(alertas_list),                     "Alertas SF6",      "#ef4444" if alertas_list else "#10b981"),
-        (k5,"⚠️", pend_abertas,                           "Pendências",       "#8b5cf6"),
-    ]:
-        _col.markdown(f"""<div class='kpi' style='border-top:3px solid {_cr}'>
-            <div style='font-size:1.6rem'>{_ic}</div>
-            <div class='kpi-n' style='color:{_cr}'>{_n}</div>
-            <div class='kpi-l'>{_lb}</div>
-        </div>""", unsafe_allow_html=True)
+    # KPIs em grid HTML responsivo — funciona no mobile sem depender de st.columns
+    _kpis = [
+        ("⚡", len(djs_todos),                      "DJ Total",   "#3b82f6"),
+        ("✅", len(djs_todos)-len(djs_pendentes),    "DJ Hoje",    "#10b981"),
+        ("🔌", len(secs_todos)-len(secs_pendentes),  "SEC Hoje",   "#06b6d4"),
+        ("🚨", len(alertas_list),                    "Alertas",    "#ef4444" if alertas_list else "#10b981"),
+        ("⚠️", pend_abertas,                         "Pendências", "#8b5cf6"),
+    ]
+    _kpi_html = "".join([f"""
+        <div style='background:linear-gradient(135deg,#0f1e3a,#162447);border:1px solid #1e3a5f;
+            border-top:3px solid {c};border-radius:12px;padding:12px 6px;text-align:center;'>
+            <div style='font-size:1.4rem'>{ic}</div>
+            <div style='font-size:1.6rem;font-weight:900;color:{c};line-height:1.1'>{n}</div>
+            <div style='font-size:0.65rem;color:#64748b;text-transform:uppercase;letter-spacing:1px;margin-top:3px'>{lb}</div>
+        </div>""" for ic,n,lb,c in _kpis])
+    st.markdown(f"""<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));
+        gap:8px;margin-bottom:12px'>{_kpi_html}</div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
