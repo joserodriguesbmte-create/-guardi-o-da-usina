@@ -120,20 +120,11 @@ if "user" not in st.session_state:
     st.session_state.user = None
 
 if not st.session_state.user:
-    # PINs por operador — altere conforme necessário
+    # PINs por operador — adicione novos operadores aqui conforme necessário
     PINS = {
-        "José Aparecido":   "1234",
-        "Lenildo Luiz":     "1234",
-        "Moisés Trindade":  "1234",
-        "Jeferson Moraes":  "1234",
-        "João Valentim":    "1234",
-        "Tulio Alves":      "1234",
-        "Rodrigo Alves":    "1234",
-        "Bruno Souza":      "1234",
-        "Gilbert Silva":    "1234",
-        "Deysiele Cristiane": "1234",
+        "José Aparecido": "1234",
     }
-    NIVEL = {"José Aparecido":"SR","Lenildo Luiz":"SR","Moisés Trindade":"SR"}
+    NIVEL = {"José Aparecido": "SR"}
 
     st.markdown("""
     <style>
