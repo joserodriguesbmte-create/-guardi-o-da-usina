@@ -1,4 +1,4 @@
-import streamlit as st
+﻿import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -16,7 +16,33 @@ from checklists import SISTEMAS, CHECKLISTS
 
 st.set_page_config(page_title="Guardião da Usina", page_icon="🛡️",
                    layout="wide", initial_sidebar_state="auto")
-init_db()
+
+# Cache das consultas ao banco — evita reconectar a cada interação
+@st.cache_data(ttl=120, show_spinner=False)
+def _carregar_equipamentos(tipo=None, sistema=None, ativo_only=True):
+    return carregar_equipamentos(tipo, sistema, ativo_only)
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _carregar_sf6(disjuntor=None, data_ini=None, data_fim=None):
+    return carregar_sf6(disjuntor, data_ini, data_fim)
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _carregar_inspecoes(sistema=None, data_ini=None, data_fim=None):
+    return carregar_inspecoes(sistema, data_ini, data_fim)
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _carregar_pendencias(status=None):
+    return carregar_pendencias(status)
+
+@st.cache_data(ttl=120, show_spinner=False)
+def _buscar_equipamento_por_tag(tag):
+    return buscar_equipamento_por_tag(tag)
+
+@st.cache_resource(show_spinner=False)
+def _init_db():
+    init_db()
+
+_init_db()
 
 # ═══════════════════════════════════════════════════════════════ CSS ══════
 st.markdown("""<style>
@@ -309,13 +335,13 @@ if "Painel" in pagina:
     st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
 
     # ══ DADOS COMUNS ═════════════════════════════════════════════════════════
-    df_sf6_all  = carregar_sf6()
-    df_pend_all = carregar_pendencias()
-    df_djs_db   = carregar_equipamentos("Disjuntor SF6")
-    df_secs_db  = carregar_equipamentos("Seccionadora")
+    df_sf6_all  = _carregar_sf6()
+    df_pend_all = _carregar_pendencias()
+    df_djs_db   = _carregar_equipamentos("Disjuntor SF6")
+    df_secs_db  = _carregar_equipamentos("Seccionadora")
 
-    df_sf6_hoje  = carregar_sf6(data_ini=date.today(), data_fim=date.today())
-    df_insp_hoje = carregar_inspecoes(sistema="Seccionadora", data_ini=date.today(), data_fim=date.today())
+    df_sf6_hoje  = _carregar_sf6(data_ini=date.today(), data_fim=date.today())
+    df_insp_hoje = _carregar_inspecoes(sistema="Seccionadora", data_ini=date.today(), data_fim=date.today())
 
     djs_todos          = df_djs_db["tag"].tolist() if not df_djs_db.empty else []
     djs_inspecionados  = set(df_sf6_hoje["disjuntor"].unique()) if not df_sf6_hoje.empty else set()
