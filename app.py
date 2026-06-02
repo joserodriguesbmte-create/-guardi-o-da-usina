@@ -1547,6 +1547,8 @@ elif "Relatório" in pagina:
             "fotos":        fotos_dados,
         }
 
+    col_b1, col_b2, col_b3, col_b4 = st.columns(4)
+
     if col_b1.button("👁️ Visualizar", use_container_width=True):
         with st.spinner("Gerando pré-visualização..."):
             html_r = gerar_html_relatorio(montar_dados_relatorio())
@@ -1555,11 +1557,20 @@ elif "Relatório" in pagina:
 
     if col_b2.button("⬇️ Baixar HTML", use_container_width=True):
         html_r = gerar_html_relatorio(montar_dados_relatorio())
-        st.download_button("⬇️ Salvar Relatório.html", html_r,
-                          f"Relatorio_Guardiao_{mes.replace('/','_')}.html",
+        st.download_button("⬇️ Salvar .html", html_r,
+                          f"Relatorio_{mes.replace('/','_')}.html",
                           "text/html", use_container_width=True)
 
-    if col_b3.button("📧 Enviar por E-mail", type="primary", use_container_width=True):
+    if col_b3.button("📄 Baixar PDF", use_container_width=True):
+        with st.spinner("Gerando PDF..."):
+            from email_report import html_para_pdf
+            html_r = gerar_html_relatorio(montar_dados_relatorio())
+            pdf_bytes = html_para_pdf(html_r)
+        st.download_button("📄 Salvar .pdf", pdf_bytes,
+                          f"Relatorio_{mes.replace('/','_')}.pdf",
+                          "application/pdf", use_container_width=True)
+
+    if col_b4.button("📧 Enviar E-mail", type="primary", use_container_width=True):
         if not cfg_email.get("email_remetente") or not cfg_email.get("senha_app"):
             st.error("⚠️ Configure o e-mail primeiro na aba **📧 Configurar E-mail**")
         elif not cfg_email.get("destinatarios"):
