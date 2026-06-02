@@ -140,23 +140,29 @@ def gerar_html_relatorio(dados: dict) -> str:
         for r in trafo_tab])
 
     # Pendências
-    def cor_p(p): return "#ef4444" if p=="Alta" else "#f59e0b" if p=="Média" else "#10b981"
-    pend_rows = "".join([
-        f"<tr><td>{p.get('data_abertura','')}</td><td>{p.get('sistema','')}</td>"
-        f"<td>{str(p.get('descricao',''))[:60]}</td>"
-        f"<td style='color:{cor_p(p.get(\"prioridade\",\"\"))};font-weight:700'>{p.get('prioridade','')}</td>"
-        f"<td>{p.get('nota_sap','—')}</td>"
-        f"<td style='color:#f59e0b'>{p.get('status','')}</td></tr>"
-        for p in pendencias])
+    def cor_p(pri):
+        if pri == "Alta":   return "#ef4444"
+        if pri == "Media":  return "#f59e0b"
+        return "#10b981"
+    pend_rows = ""
+    for p in pendencias:
+        pri = p.get("prioridade","")
+        pend_rows += (
+            f"<tr><td>{p.get('data_abertura','')}</td><td>{p.get('sistema','')}</td>"
+            f"<td>{str(p.get('descricao',''))[:60]}</td>"
+            f"<td style='color:{cor_p(pri)};font-weight:700'>{pri}</td>"
+            f"<td>{p.get('nota_sap','—')}</td>"
+            f"<td style='color:#f59e0b'>{p.get('status','')}</td></tr>"
+        )
 
     # Fotos
     fotos_html = ""
     if fotos:
-        items = "".join([
-            f"<div class='foto-item'>"
-            f"<img src='data:image/jpeg;base64,{f[\"base64\"]}' alt='foto'>"
-            f"<div class='foto-legenda'>{f.get('legenda','')}</div></div>"
-            for f in fotos])
+        items = ""
+        for f in fotos:
+            b64 = f.get("base64", "")
+            leg = f.get("legenda", "")
+            items += f"<div class='foto-item'><img src='data:image/jpeg;base64,{b64}' alt='foto'><div class='foto-legenda'>{leg}</div></div>"
         fotos_html = f"<div class='foto-grid'>{items}</div>"
 
     secao_num = 7 if fotos else 6
