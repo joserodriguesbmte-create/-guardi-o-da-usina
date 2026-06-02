@@ -72,6 +72,8 @@ def gerar_html_relatorio(dados: dict) -> str:
         f"padding:3px 12px;font-size:12px;font-weight:600;margin-right:6px;'>⚡ {s}</span>"
         for s in sistemas])
 
+    data_envio = datetime.now().strftime("%d/%m/%Y")
+
     capa = f"""
     <table width="100%" cellpadding="0" cellspacing="0" border="0"
            style="background:#0c2340;border-radius:12px 12px 0 0;">
@@ -87,15 +89,23 @@ def gerar_html_relatorio(dados: dict) -> str:
               </div>
             </td>
             <td align="right" style="vertical-align:top;font-size:11px;color:#64748b;">
-              Gerado em: {gerado_em}<br>
-              <strong style="color:#f1f5f9;">Ref: {mes}</strong>
+              Enviado em: <strong style="color:#f1f5f9;">{data_envio}</strong><br>
+              Referencia: <strong style="color:#f1f5f9;">{mes}</strong>
             </td>
           </tr>
         </table>
-        <div style="margin-top:16px;font-size:13px;color:#94a3b8;">
-          Guardiao: <strong style="color:#f1f5f9;">{operador}</strong>
-          &nbsp;&nbsp;|&nbsp;&nbsp;
-          Nivel: <strong style="color:#60a5fa;">{nivel}</strong>
+        <div style="margin-top:16px;background:#0f3460;border-radius:8px;padding:12px 16px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
+            <td style="font-size:15px;color:#f1f5f9;font-weight:700;">
+              👤 {operador}
+            </td>
+            <td align="right">
+              <span style="background:#1e5a96;color:#60a5fa;border-radius:20px;
+                    padding:3px 12px;font-size:12px;font-weight:600;">
+                Nivel {nivel}
+              </span>
+            </td>
+          </tr></table>
         </div>
         <div style="margin-top:12px;">{chips}</div>
       </td></tr>
@@ -354,7 +364,7 @@ def gerar_html_relatorio(dados: dict) -> str:
       f"<div style='color:#94a3b8;font-size:12px;'>Guardiao — Nivel {nivel}</div></td>"
       f"<td><div style='border-bottom:1px solid #cbd5e1;width:160px;height:40px;margin-bottom:6px;'></div>"
       f"<div style='color:#475569;font-size:14px;font-weight:600;'>Data</div>"
-      f"<div style='color:#94a3b8;font-size:12px;'>____/____/______</div></td>"
+      f"<div style='color:#94a3b8;font-size:12px;'>{data_envio}</div></td>"
       f"</tr></table>")}
   </td></tr>
 
