@@ -1562,13 +1562,22 @@ elif "Relatório" in pagina:
                           "text/html", use_container_width=True)
 
     if col_b3.button("📄 Baixar PDF", use_container_width=True):
-        with st.spinner("Gerando PDF..."):
-            from email_report import html_para_pdf
+        try:
+            from xhtml2pdf import pisa
+            import io
+            with st.spinner("Gerando PDF..."):
+                from email_report import html_para_pdf
+                html_r = gerar_html_relatorio(montar_dados_relatorio())
+                pdf_bytes = html_para_pdf(html_r)
+            st.download_button("📄 Salvar .pdf", pdf_bytes,
+                              f"Relatorio_{mes.replace('/','_')}.pdf",
+                              "application/pdf", use_container_width=True)
+        except ImportError:
             html_r = gerar_html_relatorio(montar_dados_relatorio())
-            pdf_bytes = html_para_pdf(html_r)
-        st.download_button("📄 Salvar .pdf", pdf_bytes,
-                          f"Relatorio_{mes.replace('/','_')}.pdf",
-                          "application/pdf", use_container_width=True)
+            st.download_button("⬇️ Baixar HTML (abra no Chrome e imprima como PDF)",
+                              html_r, f"Relatorio_{mes.replace('/','_')}.html",
+                              "text/html", use_container_width=True)
+            st.info("💡 Para gerar PDF: abra o arquivo no Chrome → Ctrl+P → 'Salvar como PDF'")
 
     if col_b4.button("📧 Enviar E-mail", type="primary", use_container_width=True):
         if not cfg_email.get("email_remetente") or not cfg_email.get("senha_app"):
