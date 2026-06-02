@@ -1434,19 +1434,33 @@ elif "Relatório" in pagina:
     # Gráficos
     _gc1, _gc2 = st.columns(2)
     with _gc1:
-        st.markdown("#### ⚡ Evolução SF6")
+        st.markdown("#### ⚡ Evolução SF6 por Disjuntor")
         if not df_sf6_r.empty and len(df_sf6_r) > 1:
             fig_sf6_r = go.Figure()
-            _cores_sf6 = {"Polo A":"#3b82f6","Polo B":"#10b981","Polo C":"#f59e0b","Câmara Única":"#60a5fa"}
-            for _polo in df_sf6_r["polo"].unique():
-                _d = df_sf6_r[df_sf6_r.polo==_polo].sort_values("data")
-                fig_sf6_r.add_trace(go.Scatter(x=_d.data, y=_d.pressao_corrigida,
-                    mode="lines+markers", name=_polo,
-                    line=dict(color=_cores_sf6.get(_polo,"#94a3b8"),width=2)))
-            fig_sf6_r.add_hline(y=5.2, line_dash="dash", line_color="#f59e0b", annotation_text="Alarme 5,2")
-            fig_sf6_r.add_hline(y=5.0, line_dash="dash", line_color="#ef4444", annotation_text="Bloqueio 5,0")
-            fig_sf6_r.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0.15)",
-                                    font_color="#94a3b8", height=280, yaxis_title="Pressão (bar)")
+            _cores_base = ["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ef4444","#06b6d4","#f97316"]
+            _combos = df_sf6_r.groupby(["disjuntor","polo"]).size().reset_index()[["disjuntor","polo"]]
+            for _i, (_,row) in enumerate(_combos.iterrows()):
+                _d = df_sf6_r[(df_sf6_r.disjuntor==row.disjuntor) & (df_sf6_r.polo==row.polo)].sort_values("data")
+                _label = f"{row.disjuntor} · {row.polo}"
+                _cor   = _cores_base[_i % len(_cores_base)]
+                fig_sf6_r.add_trace(go.Scatter(
+                    x=_d.data, y=_d.pressao_corrigida,
+                    mode="lines+markers", name=_label,
+                    line=dict(color=_cor, width=2), marker=dict(size=6),
+                    hovertemplate=f"<b>{_label}</b><br>Data: %{{x}}<br>Pressão: %{{y:.3f}} bar<extra></extra>"
+                ))
+            fig_sf6_r.add_hline(y=5.2, line_dash="dash", line_color="#f59e0b",
+                                annotation_text="Alarme 5,2 bar", annotation_font_color="#f59e0b", annotation_font_size=10)
+            fig_sf6_r.add_hline(y=5.0, line_dash="dash", line_color="#ef4444",
+                                annotation_text="Bloqueio 5,0 bar", annotation_font_color="#ef4444", annotation_font_size=10)
+            fig_sf6_r.add_hline(y=6.0, line_dash="dot", line_color="#475569",
+                                annotation_text="Nominal 6,0 bar", annotation_font_color="#475569", annotation_font_size=10)
+            fig_sf6_r.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0.15)",
+                font_color="#94a3b8", height=300,
+                yaxis_title="Pressão (bar)", xaxis_title="Data",
+                legend=dict(bgcolor="rgba(0,0,0,0)", font_size=10,
+                            orientation="h", yanchor="bottom", y=1.01, xanchor="right", x=1))
             st.plotly_chart(fig_sf6_r, use_container_width=True)
         else:
             st.info("Sem dados SF6 no período.")
