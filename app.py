@@ -1387,77 +1387,78 @@ elif "Troca" in pagina:
 # ═══════════════════════════════════════════════════════════════ RELATÓRIO
 elif "Relatório" in pagina:
     st.markdown("## 📊 Relatório Mensal — Guardião da Usina")
-
-    st.markdown(f"""<div class='card card-blue' style='padding:14px 20px'>
-        <b style='color:#f1f5f9;font-size:1rem'>📋 Programa Guardiões — UHE Belo Monte</b><br>
-        <span style='color:#334155;font-size:0.82rem'>
-        Entrega: <b style='color:#f59e0b'>09/07/2026</b> (ref. Junho/2026) &nbsp;|&nbsp;
-        Envio: por e-mail ao gestor</span>
+    st.markdown("""<div class='card card-blue' style='padding:12px 18px'>
+        <b style='color:#f1f5f9'>📋 Programa Guardiões — UHE Belo Monte</b>
+        <span style='color:#334155;font-size:0.82rem'> · Envio mensal ao gestor</span>
     </div>""", unsafe_allow_html=True)
 
     # Período
-    c1,c2,c3 = st.columns(3)
-    mes   = c1.selectbox("📅 Mês de Referência", ["Junho/2026","Julho/2026","Agosto/2026"])
-    d_ini = c2.date_input("Período início", value=date(2026,6,1))
-    d_fim = c3.date_input("Período fim",    value=date(2026,6,30))
+    _r1, _r2, _r3 = st.columns(3)
+    mes   = _r1.selectbox("📅 Mês", ["Junho/2026","Julho/2026","Agosto/2026","Setembro/2026"])
+    d_ini = _r2.date_input("De", value=date(2026,6,1))
+    d_fim = _r3.date_input("Até", value=date(2026,6,30))
 
-    # Carregar dados do período
+    # Carregar dados
     df_sf6_r = carregar_sf6(data_ini=d_ini, data_fim=d_fim)
     df_t_r   = carregar_temps(data_ini=d_ini, data_fim=d_fim)
     df_p_r   = carregar_pendencias()
     df_i_r   = carregar_inspecoes(data_ini=d_ini, data_fim=d_fim)
+    df_i_sec = carregar_inspecoes(sistema="Seccionadora", data_ini=d_ini, data_fim=d_fim)
+    df_secs  = carregar_equipamentos("Seccionadora")
 
-    n_alarmes_sf6  = len(df_sf6_r[df_sf6_r.status_sf6 != "NORMAL"]) if not df_sf6_r.empty else 0
-    pend_abertas   = len(df_p_r[df_p_r.status == "Aberta"])       if not df_p_r.empty else 0
-    pend_concluidas= len(df_p_r[df_p_r.status == "Concluída"])    if not df_p_r.empty else 0
-    itens_nok      = df_i_r[df_i_r.status == "❌ NOK"] if not df_i_r.empty else pd.DataFrame()
+    n_alarmes_sf6   = len(df_sf6_r[df_sf6_r.status_sf6 != "NORMAL"]) if not df_sf6_r.empty else 0
+    pend_abertas    = len(df_p_r[df_p_r.status == "Aberta"])          if not df_p_r.empty else 0
+    pend_concluidas = len(df_p_r[df_p_r.status == "Concluída"])       if not df_p_r.empty else 0
+    nok_sec_lista   = df_i_sec[df_i_sec.status == "NOK"].to_dict("records") if not df_i_sec.empty else []
+    insp_sec_count  = len(df_i_sec["item"].unique()) if not df_i_sec.empty else 0
+    total_sec_count = len(df_secs) if not df_secs.empty else 27
 
-    # KPIs
-    c1,c2,c3,c4,c5,c6 = st.columns(6)
-    for col,n,lbl,cor in [
-        (c1,len(df_sf6_r),"Leituras SF6","#3b82f6"),
-        (c2,n_alarmes_sf6,"Alarmes SF6","#ef4444"),
-        (c3,len(df_t_r),"Reg. Temperatura","#f59e0b"),
-        (c4,len(df_i_r),"Inspeções","#10b981"),
-        (c5,pend_abertas,"Pend. Abertas","#8b5cf6"),
-        (c6,pend_concluidas,"Pend. Concluídas","#06b6d4"),
-    ]:
-        col.markdown(f"""<div class='kpi' style='border-top:3px solid {cor};padding:14px 8px'>
-            <div class='kpi-n' style='color:{cor};font-size:1.8rem'>{n}</div>
-            <div class='kpi-l'>{lbl}</div>
-        </div>""", unsafe_allow_html=True)
+    # KPIs resumo
+    _kpis_r = [
+        (len(df_sf6_r),      "Leituras SF6",     "#3b82f6"),
+        (n_alarmes_sf6,      "Alarmes SF6",       "#ef4444"),
+        (len(df_t_r),        "Reg. Temperatura",  "#f59e0b"),
+        (len(df_i_r),        "Inspeções",         "#10b981"),
+        (pend_abertas,       "Pend. Abertas",     "#8b5cf6"),
+        (pend_concluidas,    "Pend. Concluídas",  "#06b6d4"),
+    ]
+    st.markdown("<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin:12px 0'>" +
+        "".join([f"<div style='background:#0f1e3a;border:1px solid #1e3a5f;border-top:3px solid {c};"
+                 f"border-radius:10px;padding:10px;text-align:center'>"
+                 f"<div style='font-size:1.5rem;font-weight:900;color:{c}'>{n}</div>"
+                 f"<div style='font-size:0.65rem;color:#64748b;text-transform:uppercase'>{l}</div></div>"
+                 for n,l,c in _kpis_r]) + "</div>", unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.divider()
 
-    # Gráficos para o relatório
-    col_ga, col_gb = st.columns(2)
-    with col_ga:
-        st.markdown("#### ⚡ Tendência SF6")
+    # Gráficos
+    _gc1, _gc2 = st.columns(2)
+    with _gc1:
+        st.markdown("#### ⚡ Evolução SF6")
         if not df_sf6_r.empty and len(df_sf6_r) > 1:
             fig_sf6_r = go.Figure()
-            for polo, cor_p in [("Polo A","#3b82f6"),("Polo B","#10b981"),("Polo C","#f59e0b")]:
-                d = df_sf6_r[df_sf6_r.polo==polo].sort_values("data")
-                if not d.empty:
-                    fig_sf6_r.add_trace(go.Scatter(x=d.data, y=d.pressao_corrigida,
-                        mode="lines+markers", name=polo, line=dict(color=cor_p,width=2)))
-            ref = list(DISJUNTORES.values())[0]
-            fig_sf6_r.add_hline(y=ref["pressao_alarme"], line_dash="dash", line_color="#f59e0b", annotation_text="Alarme")
-            fig_sf6_r.add_hline(y=ref["pressao_bloqueio"], line_dash="dash", line_color="#ef4444", annotation_text="Bloqueio")
+            _cores_sf6 = {"Polo A":"#3b82f6","Polo B":"#10b981","Polo C":"#f59e0b","Câmara Única":"#60a5fa"}
+            for _polo in df_sf6_r["polo"].unique():
+                _d = df_sf6_r[df_sf6_r.polo==_polo].sort_values("data")
+                fig_sf6_r.add_trace(go.Scatter(x=_d.data, y=_d.pressao_corrigida,
+                    mode="lines+markers", name=_polo,
+                    line=dict(color=_cores_sf6.get(_polo,"#94a3b8"),width=2)))
+            fig_sf6_r.add_hline(y=5.2, line_dash="dash", line_color="#f59e0b", annotation_text="Alarme 5,2")
+            fig_sf6_r.add_hline(y=5.0, line_dash="dash", line_color="#ef4444", annotation_text="Bloqueio 5,0")
             fig_sf6_r.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0.15)",
-                                   font_color="#94a3b8", height=280,
-                                   yaxis_title="Pressão (bar)", xaxis_title="Data")
+                                    font_color="#94a3b8", height=280, yaxis_title="Pressão (bar)")
             st.plotly_chart(fig_sf6_r, use_container_width=True)
         else:
             st.info("Sem dados SF6 no período.")
             fig_sf6_r = None
 
-    with col_gb:
-        st.markdown("#### 🌡️ Tendência Temperatura")
+    with _gc2:
+        st.markdown("#### 🌡️ Temperatura Trafo")
         if not df_t_r.empty and len(df_t_r) > 1:
             fig_temp_r = px.line(df_t_r.sort_values("data"), x="data", y="temperatura",
                                 color="ponto", labels={"temperatura":"°C","data":"Data"})
             fig_temp_r.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0.15)",
-                                    font_color="#94a3b8", height=280)
+                                     font_color="#94a3b8", height=280)
             st.plotly_chart(fig_temp_r, use_container_width=True)
         else:
             st.info("Sem dados de temperatura no período.")
@@ -1466,54 +1467,80 @@ elif "Relatório" in pagina:
     st.divider()
 
     # Texto do guardião
-    obs_r   = st.text_area("📝 Observações do Guardião", height=120,
+    obs_r   = st.text_area("📝 Observações do Guardião", height=100,
                             placeholder="Descreva as principais atividades, ocorrências e condições dos sistemas...")
     acoes_r = st.text_area("🏆 Ações de Destaque", height=80,
-                            placeholder="1. Identificação de desvio em...\n2. Abertura de nota SAP...")
+                            placeholder="1. Identificou desvio em...\n2. Abriu nota SAP...")
 
-    # Carregar config e destinatários
+    st.divider()
+
+    # Upload de fotos
+    st.markdown("#### 📷 Registro Fotográfico (opcional)")
+    st.markdown("<div style='color:#475569;font-size:0.82rem;margin-bottom:8px'>Adicione fotos de inspeções, anomalias ou registros do período. Serão incluídas no relatório.</div>", unsafe_allow_html=True)
+    fotos_upload = st.file_uploader("Selecione fotos", type=["jpg","jpeg","png","webp"],
+                                    accept_multiple_files=True, key="rel_fotos")
+    fotos_dados = []
+    if fotos_upload:
+        _cols_f = st.columns(min(len(fotos_upload), 3))
+        for i, arq in enumerate(fotos_upload):
+            with _cols_f[i % 3]:
+                st.image(arq, use_container_width=True)
+                leg = st.text_input(f"Legenda", key=f"leg_{i}", placeholder="Descreva a foto...")
+                fotos_dados.append({"base64": foto_para_base64(arq.read()), "legenda": leg})
+
+    st.divider()
+
     cfg_email = carregar_config_email()
     dest_str  = ", ".join(cfg_email.get("destinatarios", []))
 
-    st.markdown("<br>", unsafe_allow_html=True)
     col_b1, col_b2, col_b3 = st.columns(3)
 
-    # ── Gerar HTML ────────────────────────────────────────────────────────
     def montar_dados_relatorio():
-        img_sf6_b64  = fig_para_base64(fig_sf6_r)  if fig_sf6_r  else ""
-        img_temp_b64 = fig_para_base64(fig_temp_r) if fig_temp_r else ""
-        pend_lista = df_p_r[df_p_r.status!="Concluída"].to_dict("records") if not df_p_r.empty else []
-        nok_lista  = itens_nok.to_dict("records") if not itens_nok.empty else []
+        # SF6 — última leitura por disjuntor/polo
+        sf6_tab = []
+        if not df_sf6_r.empty:
+            _ult = df_sf6_r.sort_values("created_at").groupby(["disjuntor","polo"]).last().reset_index()
+            sf6_tab = _ult.to_dict("records")
+
+        # Trafo — últimas leituras
+        trafo_tab = df_t_r.sort_values("data", ascending=False).head(15).to_dict("records") if not df_t_r.empty else []
+
         return {
             "operador": st.session_state.user,
             "nivel":    st.session_state.nivel,
             "mes":      mes,
             "sistemas": ["Subestação 230kV","Sala Elétrica da SE","Cúbilo de 13.8kV da SE"],
             "resumo": {
-                "leituras_sf6":       len(df_sf6_r),
-                "alarmes_sf6":        n_alarmes_sf6,
-                "temp_registradas":   len(df_t_r),
-                "inspecoes":          len(df_i_r),
-                "pendencias_abertas": pend_abertas,
+                "leituras_sf6":          len(df_sf6_r),
+                "alarmes_sf6":           n_alarmes_sf6,
+                "temp_registradas":      len(df_t_r),
+                "inspecoes":             len(df_i_r),
+                "pendencias_abertas":    pend_abertas,
                 "pendencias_concluidas": pend_concluidas,
             },
-            "observacoes":    obs_r,
-            "acoes":          acoes_r,
-            "img_sf6":        img_sf6_b64,
-            "img_temp":       img_temp_b64,
-            "pendencias":     pend_lista,
-            "inspecoes_nok":  nok_lista,
+            "observacoes":   obs_r,
+            "acoes":         acoes_r,
+            "img_sf6":       fig_para_base64(fig_sf6_r)  if fig_sf6_r  else "",
+            "img_temp":      fig_para_base64(fig_temp_r) if fig_temp_r else "",
+            "pendencias":    df_p_r[df_p_r.status!="Concluída"].to_dict("records") if not df_p_r.empty else [],
+            "sf6_tabela":    sf6_tab,
+            "sec_resumo": {
+                "total":         total_sec_count,
+                "inspecionadas": insp_sec_count,
+                "nok":           nok_sec_lista,
+            },
+            "trafo_tabela": trafo_tab,
+            "fotos":        fotos_dados,
         }
 
-    if col_b1.button("👁️ Visualizar Relatório", use_container_width=True):
-        dados_r = montar_dados_relatorio()
-        html_r  = gerar_html_relatorio(dados_r)
-        with st.expander("📄 Pré-visualização HTML", expanded=True):
-            st.components.v1.html(html_r, height=600, scrolling=True)
+    if col_b1.button("👁️ Visualizar", use_container_width=True):
+        with st.spinner("Gerando pré-visualização..."):
+            html_r = gerar_html_relatorio(montar_dados_relatorio())
+        with st.expander("📄 Pré-visualização", expanded=True):
+            st.components.v1.html(html_r, height=700, scrolling=True)
 
     if col_b2.button("⬇️ Baixar HTML", use_container_width=True):
-        dados_r = montar_dados_relatorio()
-        html_r  = gerar_html_relatorio(dados_r)
+        html_r = gerar_html_relatorio(montar_dados_relatorio())
         st.download_button("⬇️ Salvar Relatório.html", html_r,
                           f"Relatorio_Guardiao_{mes.replace('/','_')}.html",
                           "text/html", use_container_width=True)
