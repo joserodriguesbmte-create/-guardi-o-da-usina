@@ -571,7 +571,34 @@ if "Painel" in pagina:
         _sec_sel = st.selectbox("🔌 Seccionadora pendente", list(_opc_sec.keys()),
                                 format_func=lambda t: _opc_sec[t], key="wf_sec_sel")
 
-        st.markdown("<div style='margin:6px 0 4px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção — marque OK ou NC:</div>", unsafe_allow_html=True)
+        # JS injeta estilo inline nos radios após render — coloca OK/NC antes da label
+        st.components.v1.html("""
+        <script>
+        function fixRadios() {
+            var radios = parent.document.querySelectorAll('[data-testid="stRadio"]');
+            radios.forEach(function(r) {
+                r.style.display = 'flex';
+                r.style.flexDirection = 'row';
+                r.style.alignItems = 'center';
+                r.style.gap = '10px';
+                r.style.background = '#0f172a';
+                r.style.border = '1px solid #1e3a5f';
+                r.style.borderRadius = '8px';
+                r.style.padding = '6px 12px';
+                r.style.marginBottom = '4px';
+                var lbl = r.querySelector('[data-testid="stWidgetLabel"]');
+                var opts = r.querySelector('div[class]');
+                if (lbl) { lbl.style.order = '2'; lbl.style.fontSize = '0.85rem'; }
+                if (opts) { opts.style.order = '1'; opts.style.flexShrink = '0'; }
+            });
+        }
+        setTimeout(fixRadios, 200);
+        setTimeout(fixRadios, 600);
+        setTimeout(fixRadios, 1500);
+        </script>
+        """, height=0)
+
+        st.markdown("<div style='margin:6px 0 4px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção:</div>", unsafe_allow_html=True)
 
         _total = len(_ITENS_SEC)
         _resultados = {}
@@ -579,7 +606,7 @@ if "Painel" in pagina:
         for _item in _ITENS_SEC:
             _key = f"sec_{_sec_sel}_{_item}"
             _val = st.radio(
-                f"🔹 {_item}",
+                f"{_item}",
                 ["OK", "NC"],
                 index=None,
                 horizontal=True,
