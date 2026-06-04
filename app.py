@@ -1752,12 +1752,15 @@ elif "Relatório" in pagina:
     d_fim = _r3.date_input("Até", value=date(2026,6,30))
 
     # Carregar dados
-    df_sf6_r = carregar_sf6(data_ini=d_ini, data_fim=d_fim)
-    df_t_r   = carregar_temps(data_ini=d_ini, data_fim=d_fim)
-    df_p_r   = carregar_pendencias()
-    df_i_r   = carregar_inspecoes(data_ini=d_ini, data_fim=d_fim)
-    df_i_sec = carregar_inspecoes(sistema="Seccionadora", data_ini=d_ini, data_fim=d_fim)
-    df_secs  = carregar_equipamentos("Seccionadora")
+    df_sf6_r    = carregar_sf6(data_ini=d_ini, data_fim=d_fim)
+    df_t_r      = carregar_temps(data_ini=d_ini, data_fim=d_fim)
+    df_p_r      = carregar_pendencias()
+    df_i_r      = carregar_inspecoes(data_ini=d_ini, data_fim=d_fim)
+    df_i_sec    = carregar_inspecoes(sistema="Seccionadora",   data_ini=d_ini, data_fim=d_fim)
+    df_i_sf6vis = carregar_inspecoes(sistema="Disjuntor SF6",  data_ini=d_ini, data_fim=d_fim)
+    df_i_trafo  = carregar_inspecoes(sistema="Transformador",  data_ini=d_ini, data_fim=d_fim)
+    df_ops_r    = carregar_operacoes()
+    df_secs     = carregar_equipamentos("Seccionadora")
 
     n_alarmes_sf6   = len(df_sf6_r[df_sf6_r.status_sf6 != "NORMAL"]) if not df_sf6_r.empty else 0
     pend_abertas    = len(df_p_r[df_p_r.status == "Aberta"])          if not df_p_r.empty else 0
@@ -1765,6 +1768,10 @@ elif "Relatório" in pagina:
     nok_sec_lista   = df_i_sec[df_i_sec.status == "NOK"].to_dict("records") if not df_i_sec.empty else []
     insp_sec_count  = len(df_i_sec["item"].unique()) if not df_i_sec.empty else 0
     total_sec_count = len(df_secs) if not df_secs.empty else 27
+    # Operações no período
+    df_ops_periodo = df_ops_r[
+        (df_ops_r.data >= str(d_ini)) & (df_ops_r.data <= str(d_fim))
+    ] if not df_ops_r.empty else pd.DataFrame()
 
     # KPIs resumo
     _kpis_r = [
@@ -1863,14 +1870,41 @@ elif "Relatório" in pagina:
     col_b1, col_b2, col_b3 = st.columns(3)
 
     def montar_dados_relatorio():
-        # SF6 — última leitura por disjuntor/polo
+        import json as _j
+
+        # SF6 — última pressão por disjuntor/polo
         sf6_tab = []
         if not df_sf6_r.empty:
             _ult = df_sf6_r.sort_values("created_at").groupby(["disjuntor","polo"]).last().reset_index()
             sf6_tab = _ult.to_dict("records")
 
-        # Trafo — últimas leituras
+        # SF6 — inspeção visual por disjuntor
+        sf6_visual = []
+        if not df_i_sf6vis.empty:
+            for _, _r in df_i_sf6vis.sort_values("data").groupby("item").last().reset_index().iterrows():
+                try:
+                    _itens = _j.loads(_r.observacao.split(" | ")[0]) if _r.observacao else {}
+                except Exception:
+                    _itens = {}
+                sf6_visual.append({"disjuntor": _r.item, "status": _r.status,
+                                   "data": _r.data, "itens": _itens})
+
+        # Operações no período
+        ops_lista = df_ops_periodo.to_dict("records") if not df_ops_periodo.empty else []
+
+        # Trafo — temperaturas
         trafo_tab = df_t_r.sort_values("data", ascending=False).head(15).to_dict("records") if not df_t_r.empty else []
+
+        # Trafo — última inspeção completa
+        trafo_insp = {}
+        if not df_i_trafo.empty:
+            _ult_tr = df_i_trafo.sort_values("data").iloc[-1]
+            try:
+                trafo_insp = _j.loads(_ult_tr.observacao) if _ult_tr.observacao else {}
+                trafo_insp["data"] = _ult_tr.data
+                trafo_insp["status"] = _ult_tr.status
+            except Exception:
+                trafo_insp = {"data": _ult_tr.data, "status": _ult_tr.status}
 
         return {
             "operador": st.session_state.user,
@@ -1884,6 +1918,7 @@ elif "Relatório" in pagina:
                 "inspecoes":             len(df_i_r),
                 "pendencias_abertas":    pend_abertas,
                 "pendencias_concluidas": pend_concluidas,
+                "operacoes_total":       len(df_ops_periodo),
             },
             "observacoes":   obs_r,
             "acoes":         acoes_r,
@@ -1891,13 +1926,16 @@ elif "Relatório" in pagina:
             "img_temp":      fig_para_base64(fig_temp_r) if fig_temp_r else "",
             "pendencias":    df_p_r[df_p_r.status!="Concluída"].to_dict("records") if not df_p_r.empty else [],
             "sf6_tabela":    sf6_tab,
+            "sf6_visual":    sf6_visual,
+            "operacoes":     ops_lista,
             "sec_resumo": {
                 "total":         total_sec_count,
                 "inspecionadas": insp_sec_count,
                 "nok":           nok_sec_lista,
             },
-            "trafo_tabela": trafo_tab,
-            "fotos":        fotos_dados,
+            "trafo_tabela":  trafo_tab,
+            "trafo_insp":    trafo_insp,
+            "fotos":         fotos_dados,
         }
 
     col_b1, col_b2, col_b3, col_b4 = st.columns(4)
