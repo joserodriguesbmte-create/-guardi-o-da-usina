@@ -471,6 +471,17 @@ if "Painel" in pagina:
         _sec_pct  = _sec_done / _sec_tot if _sec_tot else 0
         st.progress(_sec_pct, text=f"{_sec_done}/{_sec_tot} seccionadoras inspecionadas hoje")
 
+        # Itens de inspeção padrão para seccionadoras
+        _ITENS_SEC = [
+            "Condição geral (visual)",
+            "Isoladores — trincas e sujidade",
+            "Fixação e parafusos",
+            "Lubrificação — articulações e mecanismo",
+            "Contatos — desgaste e oxidação",
+            "Sistema de travamento/bloqueio",
+            "Identificação e sinalização",
+        ]
+
         if not secs_pendentes:
             st.success("✅ Todas as seccionadoras inspecionadas hoje!")
         else:
@@ -480,17 +491,51 @@ if "Painel" in pagina:
             _sec_sel = st.selectbox("🔌 Seccionadora pendente", list(_opc_sec.keys()),
                                     format_func=lambda t: _opc_sec[t], key="wf_sec_sel")
 
-            _cs1, _cs2 = st.columns(2)
-            _st_sec = _cs1.selectbox("Status", ["OK","NOK"], key="wf_sec_status")
-            _obs_sec = _cs2.text_input("Observação", key="wf_sec_obs",
-                                       placeholder="Condição observada...")
+            st.markdown("<div style='margin:8px 0 4px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção — marque os NOK:</div>", unsafe_allow_html=True)
+
+            # Checkboxes dos itens — OK por padrão
+            _resultados = {}
+            for _item in _ITENS_SEC:
+                _key = f"sec_{_sec_sel}_{_item}"
+                _nok = st.checkbox(f"❌ NOK — {_item}", key=_key, value=False)
+                _resultados[_item] = "NOK" if _nok else "OK"
+
+            # Calcular saúde
+            _n_nok = sum(1 for v in _resultados.values() if v == "NOK")
+            _n_ok  = len(_ITENS_SEC) - _n_nok
+            if   _n_nok == 0: _saude_cor="#10b981"; _saude_txt="🟢 BOA";     _saude_bg="#052e16"
+            elif _n_nok <= 2: _saude_cor="#f59e0b"; _saude_txt="🟡 ATENÇÃO"; _saude_bg="#451a03"
+            else:             _saude_cor="#ef4444"; _saude_txt="🔴 CRÍTICA";  _saude_bg="#450a0a"
+
+            st.markdown(f"""<div style='background:{_saude_bg};border:1px solid {_saude_cor};
+                border-radius:8px;padding:10px 16px;margin:8px 0;
+                display:flex;justify-content:space-between;align-items:center'>
+                <span style='color:{_saude_cor};font-weight:700;font-size:0.9rem'>
+                    {_saude_txt} — Saúde do Equipamento
+                </span>
+                <span style='color:{_saude_cor};font-size:0.85rem'>
+                    {_n_ok}/{len(_ITENS_SEC)} itens OK
+                </span>
+            </div>""", unsafe_allow_html=True)
+
+            _obs_sec = st.text_input("Observação geral", key="wf_sec_obs",
+                                     placeholder="Condições observadas, intercorrências...")
+
             if st.button("💾 Registrar e Avançar para a próxima", type="primary",
                          use_container_width=True, key="wf_sec_save"):
+                import json as _json
+                _obs_completo = _json.dumps(_resultados, ensure_ascii=False)
+                if _obs_sec:
+                    _obs_completo += f" | {_obs_sec}"
+                _status_geral = "NOK" if _n_nok > 0 else "OK"
                 salvar_inspecao({"data":str(date.today()),"turno":turno_dia,
                                  "sistema":"Seccionadora","item":_sec_sel,
-                                 "status":_st_sec,"observacao":_obs_sec,
+                                 "status":_status_geral,"observacao":_obs_completo,
                                  "usuario":st.session_state.login})
-                st.success(f"✅ {_sec_sel} registrada como {_st_sec}!")
+                # Limpar checkboxes
+                for _item in _ITENS_SEC:
+                    st.session_state.pop(f"sec_{_sec_sel}_{_item}", None)
+                st.success(f"✅ {_sec_sel} — {_saude_txt} ({_n_ok}/{len(_ITENS_SEC)} OK)")
                 st.rerun()
 
     # ── COLUNA DIREITA: ALERTAS + EVOLUÇÃO SF6 ──────────────────────────────
