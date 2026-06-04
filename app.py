@@ -747,6 +747,150 @@ if "Painel" in pagina:
             st.success(f"✅ {_sec_sel} — {_txt} ({_n_ok}/{_total} OK)")
             st.rerun()
 
+    # ── 4. INSPEÇÃO DO TRANSFORMADOR — largura total ─────────────────────────
+    st.markdown("<div style='border-top:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
+    st.markdown("""<div style='color:#f59e0b;font-size:0.72rem;font-weight:700;
+        text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
+        🔄 Inspeção do Transformador</div>""", unsafe_allow_html=True)
+
+    _TRAFO_TAG  = "TR-SE-01"
+    _TRAFO_NOME = "TR-SE-01 Toshiba 10/12,5 MVA"
+    _t_amb_tr   = float(st.session_state.get("temp_amb_global", 28.0))
+    _lim_oti    = _t_amb_tr + 65.0
+
+    # Verifica se trafo foi inspecionado hoje
+    _df_trafo_hoje = _carregar_inspecoes(sistema="Transformador",
+                                         data_ini=date.today(), data_fim=date.today())
+    _trafo_insp = not _df_trafo_hoje.empty
+
+    _tr_pct = 1.0 if _trafo_insp else 0.0
+    st.progress(_tr_pct, text="1/1 transformador inspecionado hoje" if _trafo_insp else "0/1 transformador inspecionado hoje")
+
+    if _trafo_insp:
+        st.success("✅ Transformador inspecionado hoje!")
+    else:
+        # ── Temperaturas ────────────────────────────────────────────────────
+        st.markdown(f"<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:8px 0 4px'>🌡️ Temperaturas (Limite: T_amb {_t_amb_tr:.0f}°C + 65°C = <b style=\"color:#ef4444\">{_lim_oti:.0f}°C</b>)</div>", unsafe_allow_html=True)
+        _tr1, _tr2, _tr3 = st.columns(3)
+        _oti  = _tr1.number_input("OTI — Topo do Óleo (°C)",    value=_t_amb_tr+20, min_value=0.0, max_value=200.0, step=0.5, format="%.1f", key="tr_oti")
+        _wti_at = _tr2.number_input("WTI AT — Enrolamento AT (°C)", value=_t_amb_tr+20, min_value=0.0, max_value=200.0, step=0.5, format="%.1f", key="tr_wti_at")
+        _wti_bt = _tr3.number_input("WTI BT — Enrolamento BT (°C)", value=_t_amb_tr+20, min_value=0.0, max_value=200.0, step=0.5, format="%.1f", key="tr_wti_bt")
+
+        # Indicadores de temperatura
+        def _tr_badge(v, lim):
+            cor = "#ef4444" if v > lim else "#10b981"
+            txt = "ALARME" if v > lim else "OK"
+            return f"<span style='color:{cor};font-weight:700'>{v:.1f}°C {txt}</span>"
+
+        st.markdown(f"<div style='font-size:0.8rem;margin:4px 0 8px'>{_tr_badge(_oti,_lim_oti)} &nbsp;|&nbsp; {_tr_badge(_wti_at,_lim_oti)} &nbsp;|&nbsp; {_tr_badge(_wti_bt,_lim_oti)}</div>", unsafe_allow_html=True)
+
+        st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:8px 0'></div>", unsafe_allow_html=True)
+
+        # ── Nível de óleo ───────────────────────────────────────────────────
+        st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:4px 0'>💧 Nível de Óleo</div>", unsafe_allow_html=True)
+        _no1, _no2 = st.columns([1, 2])
+        _nivel_oleo = _no1.number_input("Indicador (%)", min_value=0, max_value=100, value=60, step=1, key="tr_nivel_oleo")
+        _status_oleo = _no2.radio("Status", ["Dentro da faixa","Baixo","Alto"], index=0, horizontal=True, key="tr_st_oleo")
+
+        st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:8px 0'></div>", unsafe_allow_html=True)
+
+        # ── Sistema de resfriamento ─────────────────────────────────────────
+        st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:4px 0'>🌀 Sistema de Resfriamento (ONAN/ONAF)</div>", unsafe_allow_html=True)
+        _rs1, _rs2 = st.columns(2)
+        _ventiladores = _rs1.radio("Ventiladores", ["OK","FALHA","MANUAL"], index=0, horizontal=True, key="tr_vent")
+        _vibracao     = _rs2.radio("Ruído/Vibração anormal", ["Não","Sim"], index=0, horizontal=True, key="tr_vib")
+
+        st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:8px 0'></div>", unsafe_allow_html=True)
+
+        # ── OLTC ────────────────────────────────────────────────────────────
+        st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:4px 0'>🔌 Comutador em Carga (OLTC)</div>", unsafe_allow_html=True)
+        _ol1, _ol2 = st.columns([1, 2])
+        _oltc_pos  = _ol1.text_input("Posição atual", value="", placeholder="Ex: 9", key="tr_oltc_pos")
+        _oltc_sync = _ol2.radio("Sincronização", ["Sincronizado","Dessincronizado"], index=0, horizontal=True, key="tr_oltc_sync")
+
+        st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:8px 0'></div>", unsafe_allow_html=True)
+
+        # ── Inspeção visual ─────────────────────────────────────────────────
+        st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:4px 0'>🔍 Inspeção Visual</div>", unsafe_allow_html=True)
+
+        _vi1, _vi2 = st.columns(2)
+        _vazamento  = _vi1.radio("Vazamentos", ["Não","Sim"], index=0, horizontal=True, key="tr_vaz")
+        _silica     = _vi2.radio("Silica Gel", ["Azul (OK)","Rosa (trocar)","Parcial"], index=0, horizontal=True, key="tr_silica")
+        _vi3, _vi4 = st.columns(2)
+        _buchas     = _vi3.radio("Buchas AT/BT", ["Limpas","Sujas","Rachaduras"], index=0, horizontal=True, key="tr_buchas")
+        _caixa      = _vi4.radio("Caixa de controle", ["OK","Alarmes ativos"], index=0, horizontal=True, key="tr_caixa")
+
+        st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:8px 0'></div>", unsafe_allow_html=True)
+
+        # ── Saúde geral ─────────────────────────────────────────────────────
+        _alertas_tr = []
+        if _oti > _lim_oti:    _alertas_tr.append(f"OTI {_oti:.1f}°C acima do limite")
+        if _wti_at > _lim_oti: _alertas_tr.append(f"WTI AT {_wti_at:.1f}°C acima do limite")
+        if _wti_bt > _lim_oti: _alertas_tr.append(f"WTI BT {_wti_bt:.1f}°C acima do limite")
+        if _status_oleo != "Dentro da faixa": _alertas_tr.append(f"Nível óleo: {_status_oleo}")
+        if _ventiladores != "OK":             _alertas_tr.append(f"Ventiladores: {_ventiladores}")
+        if _vibracao == "Sim":                _alertas_tr.append("Vibração/ruído anormal")
+        if _vazamento == "Sim":               _alertas_tr.append("Vazamento detectado")
+        if _silica != "Azul (OK)":            _alertas_tr.append(f"Silica gel: {_silica}")
+        if _buchas != "Limpas":               _alertas_tr.append(f"Buchas: {_buchas}")
+        if _caixa != "OK":                    _alertas_tr.append("Alarmes na caixa de controle")
+        if _oltc_sync != "Sincronizado":      _alertas_tr.append("OLTC dessincronizado")
+
+        if not _alertas_tr:
+            _tr_saude_cor="#10b981"; _tr_saude_txt="🟢 NORMAL"; _tr_saude_bg="#052e16"
+        elif len(_alertas_tr) <= 2:
+            _tr_saude_cor="#f59e0b"; _tr_saude_txt="🟡 ATENÇÃO"; _tr_saude_bg="#451a03"
+        else:
+            _tr_saude_cor="#ef4444"; _tr_saude_txt="🔴 CRÍTICO"; _tr_saude_bg="#450a0a"
+
+        if _alertas_tr:
+            st.markdown(f"<div style='color:#ef4444;font-size:0.78rem;margin:4px 0'>⚠️ {' · '.join(_alertas_tr)}</div>", unsafe_allow_html=True)
+
+        st.markdown(f"""<div style='background:{_tr_saude_bg};border:1px solid {_tr_saude_cor};
+            border-radius:8px;padding:10px 16px;margin:8px 0;
+            display:flex;justify-content:space-between;align-items:center'>
+            <span style='color:{_tr_saude_cor};font-weight:700;font-size:0.95rem'>{_tr_saude_txt} — Status do Transformador</span>
+            <span style='color:{_tr_saude_cor};font-size:0.82rem'>{len(_alertas_tr)} ponto(s) de atenção</span>
+        </div>""", unsafe_allow_html=True)
+
+        _obs_tr = st.text_area("Observações", height=70, key="tr_obs",
+                               placeholder="Condições observadas, ocorrências, ações tomadas...")
+
+        if st.button("💾 Salvar Inspeção do Transformador", type="primary",
+                     use_container_width=True, key="tr_save"):
+            import json as _json
+            _hora_tr = datetime.now().time()
+            # Salvar temperaturas
+            for _ponto, _temp, _lim in [
+                ("OTI — Topo do Óleo", _oti, _lim_oti),
+                ("WTI AT — Enrolamento AT", _wti_at, _lim_oti),
+                ("WTI BT — Enrolamento BT", _wti_bt, _lim_oti),
+            ]:
+                _st_t = "ALARME" if _temp > _lim else "NORMAL"
+                salvar_temp({"data":str(date.today()),"hora":str(_hora_tr),"turno":turno_dia,
+                             "equipamento":_TRAFO_NOME,"ponto":_ponto,
+                             "temperatura":_temp,"umidade":0.0,"limite_max":_lim,
+                             "status":_st_t,"observacao":_obs_tr,"usuario":st.session_state.login})
+
+            # Salvar inspeção completa como JSON
+            _insp_dados = {
+                "nivel_oleo_pct": _nivel_oleo, "status_oleo": _status_oleo,
+                "ventiladores": _ventiladores, "vibracao": _vibracao,
+                "oltc_posicao": _oltc_pos, "oltc_sync": _oltc_sync,
+                "vazamento": _vazamento, "silica_gel": _silica,
+                "buchas": _buchas, "caixa_controle": _caixa,
+                "alertas": _alertas_tr
+            }
+            if _obs_tr: _insp_dados["observacao"] = _obs_tr
+            salvar_inspecao({"data":str(date.today()),"turno":turno_dia,
+                             "sistema":"Transformador","item":_TRAFO_TAG,
+                             "status":_tr_saude_txt.split()[1] if " " in _tr_saude_txt else _tr_saude_txt,
+                             "observacao":_json.dumps(_insp_dados, ensure_ascii=False),
+                             "usuario":st.session_state.login})
+
+            st.success(f"✅ {_TRAFO_NOME} — {_tr_saude_txt}")
+            st.rerun()
+
 # ══════════════════════════════════════════════════════ CADASTRO EQUIPAMENTOS
 elif "Cadastro" in pagina:
     st.markdown("## 🗂️ Cadastro de Equipamentos")
