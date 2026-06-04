@@ -533,9 +533,6 @@ if "Painel" in pagina:
                     </span>
                 </div>""", unsafe_allow_html=True)
 
-            _obs_sec = st.text_input("Observação geral", key="wf_sec_obs",
-                                     placeholder="Condições observadas, intercorrências...")
-
             _todos_preenchidos = len(_preenchidos) == _total
 
             _obs_sec = st.text_input("Observação geral", key="wf_sec_obs",
