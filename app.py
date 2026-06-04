@@ -491,45 +491,33 @@ if "Painel" in pagina:
             _sec_sel = st.selectbox("🔌 Seccionadora pendente", list(_opc_sec.keys()),
                                     format_func=lambda t: _opc_sec[t], key="wf_sec_sel")
 
-            st.markdown("<div style='margin:10px 0 6px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção — selecione OK ou NC para cada item:</div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin:10px 0 6px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção:</div>", unsafe_allow_html=True)
 
-            # Inicializar estado dos itens quando troca de seccionadora
-            _state_key = f"sec_itens_{_sec_sel}"
-            if _state_key not in st.session_state:
-                st.session_state[_state_key] = {i: None for i in _ITENS_SEC}
-
-            _resultados = st.session_state[_state_key]
+            # Radio com index=None — sem pré-seleção
+            _resultados = {}
+            _total = len(_ITENS_SEC)
 
             for _item in _ITENS_SEC:
-                _val_atual = _resultados.get(_item)
-                _c1, _c2, _c3 = st.columns([4, 1, 1])
-                _c1.markdown(f"<div style='padding:5px 0;color:#94a3b8;font-size:0.85rem'>🔹 {_item}</div>", unsafe_allow_html=True)
+                _key = f"sec_{_sec_sel}_{_item}"
+                _c1, _c2, _c3 = st.columns([4, 2, 1])
+                _c1.markdown(f"<div style='padding:8px 0;color:#94a3b8;font-size:0.85rem'>🔹 {_item}</div>", unsafe_allow_html=True)
+                _val = _c2.radio("", ["OK", "NC"], key=_key,
+                                 index=None, horizontal=True,
+                                 label_visibility="collapsed")
+                _resultados[_item] = _val
+                # Indicador visual
+                if   _val == "OK": _c3.markdown("<div style='padding:8px 0;font-size:1.1rem;text-align:center'>🟢</div>", unsafe_allow_html=True)
+                elif _val == "NC": _c3.markdown("<div style='padding:8px 0;font-size:1.1rem;text-align:center'>🔴</div>", unsafe_allow_html=True)
+                else:              _c3.markdown("<div style='padding:8px 0;font-size:1.1rem;text-align:center'>⬜</div>", unsafe_allow_html=True)
 
-                # Botão OK — verde se selecionado
-                _ok_style  = "background:#10b981;color:white;" if _val_atual=="OK" else ""
-                _nc_style  = "background:#ef4444;color:white;" if _val_atual=="NC" else ""
-
-                if _c2.button("OK", key=f"btn_ok_{_sec_sel}_{_item}",
-                              use_container_width=True,
-                              type="primary" if _val_atual=="OK" else "secondary"):
-                    st.session_state[_state_key][_item] = "OK"
-                    st.rerun()
-
-                if _c3.button("NC", key=f"btn_nc_{_sec_sel}_{_item}",
-                              use_container_width=True,
-                              type="primary" if _val_atual=="NC" else "secondary"):
-                    st.session_state[_state_key][_item] = "NC"
-                    st.rerun()
-
-            # Verificar se todos foram preenchidos
+            # Calcular saúde
             _preenchidos = [v for v in _resultados.values() if v is not None]
-            _n_ok  = sum(1 for v in _resultados.values() if v == "OK")
-            _n_nc  = sum(1 for v in _resultados.values() if v == "NC")
-            _total = len(_ITENS_SEC)
+            _n_ok = sum(1 for v in _resultados.values() if v == "OK")
+            _n_nc = sum(1 for v in _resultados.values() if v == "NC")
 
             if len(_preenchidos) < _total:
                 _faltam = _total - len(_preenchidos)
-                st.markdown(f"<div style='color:#475569;font-size:0.8rem;margin:6px 0;'>⏳ {_faltam} item(ns) sem avaliação</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='color:#475569;font-size:0.8rem;margin:6px 0'>⏳ {_faltam} item(ns) pendente(s)</div>", unsafe_allow_html=True)
             else:
                 if   _n_nc == 0: _saude_cor="#10b981"; _saude_txt="🟢 BOA";     _saude_bg="#052e16"
                 elif _n_nc <= 2: _saude_cor="#f59e0b"; _saude_txt="🟡 ATENÇÃO"; _saude_bg="#451a03"
@@ -544,32 +532,31 @@ if "Painel" in pagina:
                         {_n_ok}/{_total} OK · {_n_nc} NC
                     </span>
                 </div>""", unsafe_allow_html=True)
-                _resultados = st.session_state[_state_key]
 
             _obs_sec = st.text_input("Observação geral", key="wf_sec_obs",
                                      placeholder="Condições observadas, intercorrências...")
 
             _todos_preenchidos = len(_preenchidos) == _total
+
+            _obs_sec = st.text_input("Observação geral", key="wf_sec_obs",
+                                     placeholder="Condições observadas, intercorrências...")
+
             if st.button("💾 Registrar e Avançar para a próxima",
-                         type="primary" if _todos_preenchidos else "secondary",
-                         use_container_width=True, key="wf_sec_save",
+                         type="primary", use_container_width=True, key="wf_sec_save",
                          disabled=not _todos_preenchidos):
                 import json as _json
-                _dados_salvos = st.session_state[_state_key]
-                _nc_count = sum(1 for v in _dados_salvos.values() if v == "NC")
-                _ok_count = sum(1 for v in _dados_salvos.values() if v == "OK")
-                _obs_completo = _json.dumps(_dados_salvos, ensure_ascii=False)
+                _status_geral = "NC" if _n_nc > 0 else "OK"
+                _obs_completo = _json.dumps(_resultados, ensure_ascii=False)
                 if _obs_sec:
                     _obs_completo += f" | {_obs_sec}"
-                _status_geral = "NC" if _nc_count > 0 else "OK"
                 salvar_inspecao({"data":str(date.today()),"turno":turno_dia,
                                  "sistema":"Seccionadora","item":_sec_sel,
                                  "status":_status_geral,"observacao":_obs_completo,
                                  "usuario":st.session_state.login})
-                # Limpar estado
-                st.session_state.pop(_state_key, None)
-                _saude_txt2 = "🟢 BOA" if _nc_count==0 else "🟡 ATENÇÃO" if _nc_count<=2 else "🔴 CRÍTICA"
-                st.success(f"✅ {_sec_sel} — {_saude_txt2} ({_ok_count}/{_total} OK)")
+                for _item in _ITENS_SEC:
+                    st.session_state.pop(f"sec_{_sec_sel}_{_item}", None)
+                _txt = "🟢 BOA" if _n_nc==0 else "🟡 ATENÇÃO" if _n_nc<=2 else "🔴 CRÍTICA"
+                st.success(f"✅ {_sec_sel} — {_txt} ({_n_ok}/{_total} OK)")
                 st.rerun()
 
     # ── COLUNA DIREITA: ALERTAS + EVOLUÇÃO SF6 ──────────────────────────────
