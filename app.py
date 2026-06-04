@@ -491,31 +491,23 @@ if "Painel" in pagina:
             _sec_sel = st.selectbox("🔌 Seccionadora pendente", list(_opc_sec.keys()),
                                     format_func=lambda t: _opc_sec[t], key="wf_sec_sel")
 
-            st.markdown("<div style='margin:10px 0 6px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção — toque na célula Status para selecionar:</div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin:10px 0 4px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção:</div>", unsafe_allow_html=True)
 
             _total = len(_ITENS_SEC)
+            _resultados = {}
 
-            # Tabela editável — funciona no mobile, tudo em uma linha
-            _df_itens = pd.DataFrame({
-                "Item de Inspeção": _ITENS_SEC,
-                "Status": [None] * _total
-            })
-            _df_editado = st.data_editor(
-                _df_itens,
-                column_config={
-                    "Item de Inspeção": st.column_config.TextColumn(disabled=True, width="large"),
-                    "Status": st.column_config.SelectboxColumn(
-                        "Status", options=["OK", "NC"],
-                        required=False, width="small"
-                    ),
-                },
-                hide_index=True,
-                use_container_width=True,
-                key=f"checklist_{_sec_sel}"
-            )
+            for _item in _ITENS_SEC:
+                _key = f"sec_{_sec_sel}_{_item}"
+                _val = st.radio(
+                    f"🔹 {_item}",
+                    ["OK", "NC"],
+                    index=None,
+                    horizontal=True,
+                    key=_key
+                )
+                _resultados[_item] = _val
 
-            # Calcular resultados e saúde
-            _resultados = dict(zip(_df_editado["Item de Inspeção"], _df_editado["Status"]))
+            # Calcular saúde
             _preenchidos = [v for v in _resultados.values() if v is not None]
             _n_ok = sum(1 for v in _resultados.values() if v == "OK")
             _n_nc = sum(1 for v in _resultados.values() if v == "NC")
