@@ -790,15 +790,15 @@ if "Painel" in pagina:
         st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:4px 0'>💧 Nível de Óleo</div>", unsafe_allow_html=True)
         _no1, _no2 = st.columns([1, 2])
         _nivel_oleo = _no1.number_input("Indicador (%)", min_value=0, max_value=100, value=60, step=1, key="tr_nivel_oleo")
-        _status_oleo = _no2.radio("Status", ["Dentro da faixa","Baixo","Alto"], index=0, horizontal=True, key="tr_st_oleo")
+        _status_oleo = _no2.radio("Status", ["Dentro da faixa","Baixo","Alto"], index=None, horizontal=True, key="tr_st_oleo")
 
         st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:8px 0'></div>", unsafe_allow_html=True)
 
         # ── Sistema de resfriamento ─────────────────────────────────────────
         st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:4px 0'>🌀 Sistema de Resfriamento (ONAN/ONAF)</div>", unsafe_allow_html=True)
         _rs1, _rs2 = st.columns(2)
-        _ventiladores = _rs1.radio("Ventiladores", ["OK","FALHA","MANUAL"], index=0, horizontal=True, key="tr_vent")
-        _vibracao     = _rs2.radio("Ruído/Vibração anormal", ["Não","Sim"], index=0, horizontal=True, key="tr_vib")
+        _ventiladores = _rs1.radio("Ventiladores", ["OK","FALHA","MANUAL"], index=None, horizontal=True, key="tr_vent")
+        _vibracao     = _rs2.radio("Ruído/Vibração anormal", ["Não","Sim"], index=None, horizontal=True, key="tr_vib")
 
         st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:8px 0'></div>", unsafe_allow_html=True)
 
@@ -806,7 +806,7 @@ if "Painel" in pagina:
         st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:4px 0'>🔌 Comutador em Carga (OLTC)</div>", unsafe_allow_html=True)
         _ol1, _ol2 = st.columns([1, 2])
         _oltc_pos  = _ol1.text_input("Posição atual", value="", placeholder="Ex: 9", key="tr_oltc_pos")
-        _oltc_sync = _ol2.radio("Sincronização", ["Sincronizado","Dessincronizado"], index=0, horizontal=True, key="tr_oltc_sync")
+        _oltc_sync = _ol2.radio("Sincronização", ["Sincronizado","Dessincronizado"], index=None, horizontal=True, key="tr_oltc_sync")
 
         st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:8px 0'></div>", unsafe_allow_html=True)
 
@@ -814,27 +814,36 @@ if "Painel" in pagina:
         st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:4px 0'>🔍 Inspeção Visual</div>", unsafe_allow_html=True)
 
         _vi1, _vi2 = st.columns(2)
-        _vazamento  = _vi1.radio("Vazamentos", ["Não","Sim"], index=0, horizontal=True, key="tr_vaz")
-        _silica     = _vi2.radio("Silica Gel", ["Azul (OK)","Rosa (trocar)","Parcial"], index=0, horizontal=True, key="tr_silica")
+        _vazamento  = _vi1.radio("Vazamentos", ["Não","Sim"], index=None, horizontal=True, key="tr_vaz")
+        _silica     = _vi2.radio("Silica Gel", ["Azul (OK)","Rosa (trocar)","Parcial"], index=None, horizontal=True, key="tr_silica")
         _vi3, _vi4 = st.columns(2)
-        _buchas     = _vi3.radio("Buchas AT/BT", ["Limpas","Sujas","Rachaduras"], index=0, horizontal=True, key="tr_buchas")
-        _caixa      = _vi4.radio("Caixa de controle", ["OK","Alarmes ativos"], index=0, horizontal=True, key="tr_caixa")
+        _buchas     = _vi3.radio("Buchas AT/BT", ["Limpas","Sujas","Rachaduras"], index=None, horizontal=True, key="tr_buchas")
+        _caixa      = _vi4.radio("Caixa de controle", ["OK","Alarmes ativos"], index=None, horizontal=True, key="tr_caixa")
 
         st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:8px 0'></div>", unsafe_allow_html=True)
 
+        # Verificar se todos os radios foram preenchidos
+        _tr_campos = [_status_oleo, _ventiladores, _vibracao, _oltc_sync,
+                      _vazamento, _silica, _buchas, _caixa]
+        _tr_completo = all(v is not None for v in _tr_campos)
+
+        if not _tr_completo:
+            _faltam_tr = sum(1 for v in _tr_campos if v is None)
+            st.markdown(f"<div style='color:#475569;font-size:0.8rem;margin:6px 0'>⏳ {_faltam_tr} campo(s) sem avaliação</div>", unsafe_allow_html=True)
+
         # ── Saúde geral ─────────────────────────────────────────────────────
         _alertas_tr = []
+        if _status_oleo and _status_oleo != "Dentro da faixa": _alertas_tr.append(f"Nível óleo: {_status_oleo}")
+        if _ventiladores and _ventiladores != "OK":             _alertas_tr.append(f"Ventiladores: {_ventiladores}")
+        if _vibracao == "Sim":                                  _alertas_tr.append("Vibração/ruído anormal")
+        if _vazamento == "Sim":                                 _alertas_tr.append("Vazamento detectado")
+        if _silica and _silica != "Azul (OK)":                 _alertas_tr.append(f"Silica gel: {_silica}")
+        if _buchas and _buchas != "Limpas":                    _alertas_tr.append(f"Buchas: {_buchas}")
+        if _caixa and _caixa != "OK":                          _alertas_tr.append("Alarmes na caixa de controle")
+        if _oltc_sync and _oltc_sync != "Sincronizado":        _alertas_tr.append("OLTC dessincronizado")
         if _oti > _lim_oti:    _alertas_tr.append(f"OTI {_oti:.1f}°C acima do limite")
         if _wti_at > _lim_oti: _alertas_tr.append(f"WTI AT {_wti_at:.1f}°C acima do limite")
         if _wti_bt > _lim_oti: _alertas_tr.append(f"WTI BT {_wti_bt:.1f}°C acima do limite")
-        if _status_oleo != "Dentro da faixa": _alertas_tr.append(f"Nível óleo: {_status_oleo}")
-        if _ventiladores != "OK":             _alertas_tr.append(f"Ventiladores: {_ventiladores}")
-        if _vibracao == "Sim":                _alertas_tr.append("Vibração/ruído anormal")
-        if _vazamento == "Sim":               _alertas_tr.append("Vazamento detectado")
-        if _silica != "Azul (OK)":            _alertas_tr.append(f"Silica gel: {_silica}")
-        if _buchas != "Limpas":               _alertas_tr.append(f"Buchas: {_buchas}")
-        if _caixa != "OK":                    _alertas_tr.append("Alarmes na caixa de controle")
-        if _oltc_sync != "Sincronizado":      _alertas_tr.append("OLTC dessincronizado")
 
         if not _alertas_tr:
             _tr_saude_cor="#10b981"; _tr_saude_txt="🟢 NORMAL"; _tr_saude_bg="#052e16"
@@ -857,7 +866,8 @@ if "Painel" in pagina:
                                placeholder="Condições observadas, ocorrências, ações tomadas...")
 
         if st.button("💾 Salvar Inspeção do Transformador", type="primary",
-                     use_container_width=True, key="tr_save"):
+                     use_container_width=True, key="tr_save",
+                     disabled=not _tr_completo):
             import json as _json
             _hora_tr = datetime.now().time()
             # Salvar temperaturas
