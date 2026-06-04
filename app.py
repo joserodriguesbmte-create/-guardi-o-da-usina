@@ -446,18 +446,114 @@ if "Painel" in pagina:
                     </div>""", unsafe_allow_html=True)
                     _dados_wf[_polo] = {"p_med":_p_med,"p_cor":_p_cor,"status":_st.split(" ")[-1]}
 
-            _obs_wf = st.text_input("Observação (opcional)", key="wf_dj_obs",
-                                    placeholder="Condições, instrumento usado...")
-            if st.button("💾 Salvar SF6 e Avançar para o próximo", type="primary",
-                         use_container_width=True, key="wf_dj_save"):
+            st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
+
+            # ── INSPEÇÃO VISUAL ───────────────────────────────────────────────
+            st.markdown("<div style='color:#60a5fa;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>🔍 Inspeção Visual</div>", unsafe_allow_html=True)
+
+            _ITENS_DJ = [
+                "Sem vazamentos visíveis",
+                "Indicador de pressão funcionando",
+                "Sem corrosão / aparência anormal",
+                "Mecanismo de operação normal",
+                "Sem ruídos anormais",
+            ]
+
+            # JS para reposicionar radio OK/NC antes da label
+            st.components.v1.html("""<script>
+            function fixR(){
+                parent.document.querySelectorAll('[data-testid="stRadio"]').forEach(function(r){
+                    r.style.cssText='display:flex!important;flex-direction:row!important;align-items:center!important;gap:10px!important;background:#0f172a;border:1px solid #1e3a5f;border-radius:8px;padding:5px 10px;margin:2px 0';
+                    var l=r.querySelector('[data-testid="stWidgetLabel"]');
+                    var o=r.querySelector('div[class]');
+                    if(l){l.style.order='2';l.style.fontSize='0.82rem';}
+                    if(o){o.style.order='1';o.style.flexShrink='0';}
+                });
+            }
+            setTimeout(fixR,200);setTimeout(fixR,700);setTimeout(fixR,1800);
+            </script>""", height=0)
+
+            _res_visual = {}
+            for _iv in _ITENS_DJ:
+                _vv = st.radio(f"{_iv}", ["OK","NC"], index=None,
+                               horizontal=True, key=f"dj_vis_{_dj_sel}_{_iv}")
+                _res_visual[_iv] = _vv
+
+            _vis_preench = [v for v in _res_visual.values() if v is not None]
+            _vis_nc = sum(1 for v in _res_visual.values() if v == "NC")
+            _vis_ok = len(_ITENS_DJ) - _vis_nc
+
+            if len(_vis_preench) == len(_ITENS_DJ):
+                if   _vis_nc == 0: _vs_cor="#10b981"; _vs_txt="🟢 BOA"
+                elif _vis_nc <= 2: _vs_cor="#f59e0b"; _vs_txt="🟡 ATENÇÃO"
+                else:              _vs_cor="#ef4444"; _vs_txt="🔴 CRÍTICA"
+                st.markdown(f"""<div style='background:#0a1628;border:1px solid {_vs_cor};
+                    border-radius:8px;padding:8px 14px;margin:6px 0;
+                    display:flex;justify-content:space-between'>
+                    <span style='color:{_vs_cor};font-weight:700'>{_vs_txt}</span>
+                    <span style='color:{_vs_cor};font-size:0.85rem'>{_vis_ok}/{len(_ITENS_DJ)} OK</span>
+                </div>""", unsafe_allow_html=True)
+
+            st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
+
+            # ── OPERAÇÕES NO TURNO ────────────────────────────────────────────
+            st.markdown("<div style='color:#8b5cf6;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>🔢 Operações no Turno</div>", unsafe_allow_html=True)
+
+            _houve_op = st.radio("Houve operações neste turno?", ["Não","Sim"],
+                                 index=0, horizontal=True, key=f"op_houve_{_dj_sel}")
+
+            _op_tipo = None; _op_qtd = 0
+            if _houve_op == "Sim":
+                _oc1, _oc2 = st.columns(2)
+                _op_tipo = _oc1.selectbox("Tipo de operação", [
+                    "Abertura Normal","Fechamento Normal",
+                    "Abertura por Falta","Fechamento Automático","Teste"
+                ], key=f"op_tipo_{_dj_sel}")
+                _op_qtd = _oc2.number_input("Quantidade", min_value=1, max_value=50,
+                                            value=1, step=1, key=f"op_qtd_{_dj_sel}")
+
+            st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
+
+            # ── OBSERVAÇÃO E SALVAR ───────────────────────────────────────────
+            _obs_wf = st.text_input("Observação geral (opcional)", key="wf_dj_obs",
+                                    placeholder="Condições de campo, instrumento usado...")
+
+            _vis_completo = len(_vis_preench) == len(_ITENS_DJ)
+            if not _vis_completo:
+                st.warning(f"⏳ Preencha todos os {len(_ITENS_DJ)} itens da inspeção visual.")
+
+            if st.button("💾 Salvar e Avançar para o próximo", type="primary",
+                         use_container_width=True, key="wf_dj_save",
+                         disabled=not _vis_completo):
+                import json as _json
                 _hora_wf = datetime.now().time()
+                _obs_completo = _json.dumps(_res_visual, ensure_ascii=False)
+                if _obs_wf: _obs_completo += f" | {_obs_wf}"
+
+                # Salvar pressão SF6
                 for _polo, _d in _dados_wf.items():
                     salvar_sf6({"data":str(date.today()),"hora":str(_hora_wf),
                                 "turno":turno_dia,"disjuntor":_dj_sel,"polo":_polo,
                                 "pressao_medida":_d["p_med"],"temperatura":t_amb,
                                 "pressao_corrigida":_d["p_cor"],"status_sf6":_d["status"],
-                                "observacao":_obs_wf,"usuario":st.session_state.login})
-                st.success(f"✅ {_dj_sel} registrado! Próximo na lista.")
+                                "observacao":_obs_completo,"usuario":st.session_state.login})
+
+                # Salvar inspeção visual
+                _st_vis = "NC" if _vis_nc > 0 else "OK"
+                salvar_inspecao({"data":str(date.today()),"turno":turno_dia,
+                                 "sistema":"Disjuntor SF6","item":_dj_sel,
+                                 "status":_st_vis,"observacao":_obs_completo,
+                                 "usuario":st.session_state.login})
+
+                # Salvar operações se houver
+                if _houve_op == "Sim" and _op_tipo:
+                    salvar_operacao({"data":str(date.today()),"disjuntor":_dj_sel,
+                                     "tipo_operacao":_op_tipo,"motivo":turno_dia,
+                                     "num_operacoes_total":int(_op_qtd),
+                                     "usuario":st.session_state.login})
+
+                _vs2 = "🟢 BOA" if _vis_nc==0 else "🟡 ATENÇÃO" if _vis_nc<=2 else "🔴 CRÍTICA"
+                st.success(f"✅ {_dj_sel} — Visual: {_vs2} | {'Operação registrada' if _houve_op=='Sim' else 'Sem operações'}")
                 st.rerun()
 
     # ── COLUNA DIREITA: ALERTAS + EVOLUÇÃO SF6 ──────────────────────────────
