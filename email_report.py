@@ -54,8 +54,11 @@ def gerar_html_relatorio(dados: dict) -> str:
     img_temp      = dados.get("img_temp", "")
     pendencias    = dados.get("pendencias", [])
     sf6_tabela    = dados.get("sf6_tabela", [])
+    sf6_visual    = dados.get("sf6_visual", [])
+    operacoes     = dados.get("operacoes", [])
     sec_resumo    = dados.get("sec_resumo", {})
     trafo_tab     = dados.get("trafo_tabela", [])
+    trafo_insp    = dados.get("trafo_insp", {})
     fotos         = dados.get("fotos", [])
     gerado_em     = datetime.now().strftime("%d/%m/%Y as %H:%M")
 
@@ -300,7 +303,31 @@ def gerar_html_relatorio(dados: dict) -> str:
       f"Siemens 3AP1 FG · Nominal: <strong>6,0 bar</strong> · "
       f"Alarme 1 est.: <strong style='color:#f59e0b;'>5,2 bar</strong> · "
       f"Bloqueio 2 est.: <strong style='color:#ef4444;'>5,0 bar</strong> · Corrigida 20°C"
-      f"</p>{sf6_table}{img_sf6_html}")}
+      f"</p>{sf6_table}{img_sf6_html}"
+      + (f"<br><p style='font-size:11px;font-weight:700;color:#0f3460;text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;'>Inspecao Visual por Disjuntor</p>"
+         f"<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse;font-size:13px;'>"
+         f"<tr><th style='{th_style}'>Disjuntor</th><th style='{th_style}'>Data</th>"
+         f"<th style='{th_style}'>Status Geral</th><th style='{th_style}'>Itens NC</th></tr>"
+         + "".join([
+             f"<tr><td style='padding:8px 10px;font-weight:700;color:#0f3460;'>{v['disjuntor']}</td>"
+             f"<td style='padding:8px 10px;color:#475569;'>{v['data']}</td>"
+             f"<td style='padding:8px 10px;'>{badge(v['status'])}</td>"
+             f"<td style='padding:8px 10px;color:#ef4444;font-size:12px;'>"
+             f"{', '.join([k for k,val in v.get('itens',{}).items() if val=='NC']) or '—'}</td></tr>"
+             for v in sf6_visual])
+         + "</table>" if sf6_visual else "")
+      + (f"<br><p style='font-size:11px;font-weight:700;color:#0f3460;text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;'>Operacoes Registradas</p>"
+         f"<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse;font-size:13px;'>"
+         f"<tr><th style='{th_style}'>Data</th><th style='{th_style}'>Disjuntor</th>"
+         f"<th style='{th_style}'>Tipo</th><th style='{th_style}'>Qtd</th></tr>"
+         + "".join([
+             f"<tr><td style='padding:8px 10px;color:#475569;'>{o.get('data','')}</td>"
+             f"<td style='padding:8px 10px;font-weight:700;color:#0f3460;'>{o.get('disjuntor','')}</td>"
+             f"<td style='padding:8px 10px;color:#475569;'>{o.get('tipo_operacao','')}</td>"
+             f"<td style='padding:8px 10px;color:#475569;'>{o.get('num_operacoes_total','')}</td></tr>"
+             for o in operacoes])
+         + "</table>" if operacoes else "")
+    )}
   </td></tr>
 
   <!-- SEÇÃO 3: SECCIONADORAS -->
@@ -327,11 +354,25 @@ def gerar_html_relatorio(dados: dict) -> str:
       f"</td></tr></table>{sec_nok_table}")}
   </td></tr>
 
-  <!-- SEÇÃO 4: TEMPERATURA -->
+  <!-- SEÇÃO 4: TRANSFORMADOR -->
   <tr><td style="padding-bottom:16px;">
-    {secao("🌡️ 4. Temperatura — Transformador TR-SE-01 Toshiba",
-      img_temp_html + trafo_table if trafo_table else
-      img_temp_html + "<p style='color:#94a3b8;font-style:italic;'>Sem registros no periodo.</p>")}
+    {secao("🔄 4. Transformador TR-SE-01 Toshiba 10/12,5 MVA",
+      (f"<p style='font-size:12px;color:#64748b;margin:0 0 10px;'>Ultima inspecao: "
+       f"<strong>{trafo_insp.get('data','—')}</strong> · Status: {badge(trafo_insp.get('status','—'))}</p>"
+       f"<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse;font-size:13px;margin-bottom:12px;'>"
+       f"<tr><th style='{th_style}' colspan='2'>Item Inspecionado</th><th style='{th_style}'>Resultado</th></tr>"
+       + "".join([
+           f"<tr><td colspan='2' style='padding:7px 10px;color:#475569;'>{k.replace('_',' ').title()}</td>"
+           f"<td style='padding:7px 10px;'>"
+           f"{'<span style=\"color:#10b981;font-weight:700\">' + str(v) + '</span>' if str(v) in ['OK','Nao','Dentro da faixa','Sincronizado','Limpas','Azul (OK)'] else '<span style=\"color:#f59e0b;font-weight:700\">' + str(v) + '</span>'}"
+           f"</td></tr>"
+           for k,v in trafo_insp.items() if k not in ['data','status','observacao','alertas'] and v
+       ])
+       + "</table>"
+       if trafo_insp else "")
+      + f"<p style='font-size:11px;font-weight:700;color:#0f3460;text-transform:uppercase;letter-spacing:0.5px;margin:10px 0 6px;'>Historico de Temperaturas OTI / WTI</p>"
+      + (img_temp_html + (f"<br>{trafo_table}" if trafo_table else ""))
+    )}
   </td></tr>
 
   <!-- SEÇÃO 5: PENDÊNCIAS -->
