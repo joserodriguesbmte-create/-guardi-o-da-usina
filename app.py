@@ -118,13 +118,6 @@ hr{border-color:#1e3a5f;}
     min-width:48% !important; width:48% !important; flex:0 0 48% !important;
   }
 
-  /* Checklist seccionadoras: colunas ficam na mesma linha */
-  [data-testid="stHorizontalBlock"]:has([data-testid="stRadio"]) [data-testid="column"]{
-    min-width:0 !important; width:auto !important; flex-shrink:0 !important;
-  }
-  [data-testid="stHorizontalBlock"]:has([data-testid="stRadio"]){
-    flex-wrap:nowrap !important; align-items:center !important;
-  }
   .kpi{padding:8px 4px !important;}
   .kpi-n{font-size:1.3rem !important;}
   .kpi-l{font-size:0.6rem !important;}
@@ -467,100 +460,6 @@ if "Painel" in pagina:
                 st.success(f"✅ {_dj_sel} registrado! Próximo na lista.")
                 st.rerun()
 
-        st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
-
-        # ── 3. WORKFLOW SECCIONADORAS ────────────────────────────────────────
-        st.markdown("""<div style='color:#06b6d4;font-size:0.72rem;font-weight:700;
-            text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
-            🔌 Inspeção de Seccionadoras</div>""", unsafe_allow_html=True)
-
-        _sec_tot  = len(secs_todos)
-        _sec_done = _sec_tot - len(secs_pendentes)
-        _sec_pct  = _sec_done / _sec_tot if _sec_tot else 0
-        st.progress(_sec_pct, text=f"{_sec_done}/{_sec_tot} seccionadoras inspecionadas hoje")
-
-        # Itens de inspeção padrão para seccionadoras
-        _ITENS_SEC = [
-            "Condição geral (visual)",
-            "Isoladores — trincas e sujidade",
-            "Fixação e parafusos",
-            "Lubrificação — articulações e mecanismo",
-            "Contatos — desgaste e oxidação",
-            "Sistema de travamento/bloqueio",
-            "Identificação e sinalização",
-        ]
-
-        if not secs_pendentes:
-            st.success("✅ Todas as seccionadoras inspecionadas hoje!")
-        else:
-            _df_sec_pend = df_secs_db[df_secs_db["tag"].isin(secs_pendentes)]
-            _opc_sec = {r.tag: f"{r.tag}  ·  {(r.descricao or '')[:55]}"
-                        for _, r in _df_sec_pend.iterrows()}
-            _sec_sel = st.selectbox("🔌 Seccionadora pendente", list(_opc_sec.keys()),
-                                    format_func=lambda t: _opc_sec[t], key="wf_sec_sel")
-
-            st.markdown("<div style='margin:6px 0 4px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção:</div>", unsafe_allow_html=True)
-
-            _total = len(_ITENS_SEC)
-            _resultados = {}
-
-            for _item in _ITENS_SEC:
-                _key = f"sec_{_sec_sel}_{_item}"
-                _cr, _cd = st.columns([3, 5])
-                _val = _cr.radio("", ["OK", "NC"], index=None,
-                                 horizontal=True, key=_key,
-                                 label_visibility="collapsed")
-                _cd.markdown(f"<div style='padding:7px 0;color:#94a3b8;font-size:0.82rem'>{_item}</div>",
-                             unsafe_allow_html=True)
-                _resultados[_item] = _val
-
-
-            # Calcular saúde
-            _preenchidos = [v for v in _resultados.values() if v is not None]
-            _n_ok = sum(1 for v in _resultados.values() if v == "OK")
-            _n_nc = sum(1 for v in _resultados.values() if v == "NC")
-
-            if len(_preenchidos) < _total:
-                _faltam = _total - len(_preenchidos)
-                st.markdown(f"<div style='color:#475569;font-size:0.8rem;margin:6px 0'>⏳ {_faltam} item(ns) pendente(s)</div>", unsafe_allow_html=True)
-            else:
-                if   _n_nc == 0: _saude_cor="#10b981"; _saude_txt="🟢 BOA";     _saude_bg="#052e16"
-                elif _n_nc <= 2: _saude_cor="#f59e0b"; _saude_txt="🟡 ATENÇÃO"; _saude_bg="#451a03"
-                else:            _saude_cor="#ef4444"; _saude_txt="🔴 CRÍTICA";  _saude_bg="#450a0a"
-                st.markdown(f"""<div style='background:{_saude_bg};border:1px solid {_saude_cor};
-                    border-radius:8px;padding:10px 16px;margin:8px 0;
-                    display:flex;justify-content:space-between;align-items:center'>
-                    <span style='color:{_saude_cor};font-weight:700;font-size:0.95rem'>
-                        {_saude_txt} — Saúde do Equipamento
-                    </span>
-                    <span style='color:{_saude_cor};font-size:0.85rem;font-weight:700'>
-                        {_n_ok}/{_total} OK · {_n_nc} NC
-                    </span>
-                </div>""", unsafe_allow_html=True)
-
-            _todos_preenchidos = len(_preenchidos) == _total
-
-            _obs_sec = st.text_input("Observação geral", key="wf_sec_obs",
-                                     placeholder="Condições observadas, intercorrências...")
-
-            if st.button("💾 Registrar e Avançar para a próxima",
-                         type="primary", use_container_width=True, key="wf_sec_save",
-                         disabled=not _todos_preenchidos):
-                import json as _json
-                _status_geral = "NC" if _n_nc > 0 else "OK"
-                _obs_completo = _json.dumps(_resultados, ensure_ascii=False)
-                if _obs_sec:
-                    _obs_completo += f" | {_obs_sec}"
-                salvar_inspecao({"data":str(date.today()),"turno":turno_dia,
-                                 "sistema":"Seccionadora","item":_sec_sel,
-                                 "status":_status_geral,"observacao":_obs_completo,
-                                 "usuario":st.session_state.login})
-                for _item in _ITENS_SEC:
-                    st.session_state.pop(f"sec_{_sec_sel}_{_item}", None)
-                _txt = "🟢 BOA" if _n_nc==0 else "🟡 ATENÇÃO" if _n_nc<=2 else "🔴 CRÍTICA"
-                st.success(f"✅ {_sec_sel} — {_txt} ({_n_ok}/{_total} OK)")
-                st.rerun()
-
     # ── COLUNA DIREITA: ALERTAS + EVOLUÇÃO SF6 ──────────────────────────────
     with col_painel:
 
@@ -641,6 +540,89 @@ if "Painel" in pagina:
             st.plotly_chart(_fig, use_container_width=True)
         else:
             st.info("Sem histórico SF6. Registre leituras para visualizar tendências.")
+
+    # ── 3. WORKFLOW SECCIONADORAS — largura total ────────────────────────────
+    st.markdown("<div style='border-top:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
+    st.markdown("""<div style='color:#06b6d4;font-size:0.72rem;font-weight:700;
+        text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
+        🔌 Inspeção de Seccionadoras</div>""", unsafe_allow_html=True)
+
+    _sec_tot  = len(secs_todos)
+    _sec_done = _sec_tot - len(secs_pendentes)
+    _sec_pct  = _sec_done / _sec_tot if _sec_tot else 0
+    st.progress(_sec_pct, text=f"{_sec_done}/{_sec_tot} seccionadoras inspecionadas hoje")
+
+    _ITENS_SEC = [
+        "Condição geral (visual)",
+        "Isoladores — trincas e sujidade",
+        "Fixação e parafusos",
+        "Lubrificação — articulações e mecanismo",
+        "Contatos — desgaste e oxidação",
+        "Sistema de travamento/bloqueio",
+        "Identificação e sinalização",
+    ]
+
+    if not secs_pendentes:
+        st.success("✅ Todas as seccionadoras inspecionadas hoje!")
+    else:
+        _df_sec_pend = df_secs_db[df_secs_db["tag"].isin(secs_pendentes)]
+        _opc_sec = {r.tag: f"{r.tag}  ·  {(r.descricao or '')[:55]}"
+                    for _, r in _df_sec_pend.iterrows()}
+        _sec_sel = st.selectbox("🔌 Seccionadora pendente", list(_opc_sec.keys()),
+                                format_func=lambda t: _opc_sec[t], key="wf_sec_sel")
+
+        st.markdown("<div style='margin:6px 0 4px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção — marque OK ou NC:</div>", unsafe_allow_html=True)
+
+        _total = len(_ITENS_SEC)
+        _resultados = {}
+
+        for _item in _ITENS_SEC:
+            _key = f"sec_{_sec_sel}_{_item}"
+            _val = st.radio(
+                f"🔹 {_item}",
+                ["OK", "NC"],
+                index=None,
+                horizontal=True,
+                key=_key
+            )
+            _resultados[_item] = _val
+
+        _preenchidos = [v for v in _resultados.values() if v is not None]
+        _n_ok = sum(1 for v in _resultados.values() if v == "OK")
+        _n_nc = sum(1 for v in _resultados.values() if v == "NC")
+
+        if len(_preenchidos) < _total:
+            st.markdown(f"<div style='color:#475569;font-size:0.8rem;margin:6px 0'>⏳ {_total - len(_preenchidos)} item(ns) pendente(s)</div>", unsafe_allow_html=True)
+        else:
+            if   _n_nc == 0: _saude_cor="#10b981"; _saude_txt="🟢 BOA";     _saude_bg="#052e16"
+            elif _n_nc <= 2: _saude_cor="#f59e0b"; _saude_txt="🟡 ATENÇÃO"; _saude_bg="#451a03"
+            else:            _saude_cor="#ef4444"; _saude_txt="🔴 CRÍTICA";  _saude_bg="#450a0a"
+            st.markdown(f"""<div style='background:{_saude_bg};border:1px solid {_saude_cor};
+                border-radius:8px;padding:10px 16px;margin:8px 0;
+                display:flex;justify-content:space-between;align-items:center'>
+                <span style='color:{_saude_cor};font-weight:700'>{_saude_txt} — Saúde do Equipamento</span>
+                <span style='color:{_saude_cor};font-weight:700'>{_n_ok}/{_total} OK · {_n_nc} NC</span>
+            </div>""", unsafe_allow_html=True)
+
+        _todos_preenchidos = len(_preenchidos) == _total
+        _obs_sec = st.text_input("Observação geral", key="wf_sec_obs",
+                                 placeholder="Condições observadas, intercorrências...")
+
+        if st.button("💾 Registrar e Avançar para a próxima",
+                     type="primary", use_container_width=True, key="wf_sec_save",
+                     disabled=not _todos_preenchidos):
+            import json as _json
+            _status_geral = "NC" if _n_nc > 0 else "OK"
+            _obs_completo = _json.dumps(_resultados, ensure_ascii=False)
+            if _obs_sec:
+                _obs_completo += f" | {_obs_sec}"
+            salvar_inspecao({"data":str(date.today()),"turno":turno_dia,
+                             "sistema":"Seccionadora","item":_sec_sel,
+                             "status":_status_geral,"observacao":_obs_completo,
+                             "usuario":st.session_state.login})
+            _txt = "🟢 BOA" if _n_nc==0 else "🟡 ATENÇÃO" if _n_nc<=2 else "🔴 CRÍTICA"
+            st.success(f"✅ {_sec_sel} — {_txt} ({_n_ok}/{_total} OK)")
+            st.rerun()
 
 # ══════════════════════════════════════════════════════ CADASTRO EQUIPAMENTOS
 elif "Cadastro" in pagina:
