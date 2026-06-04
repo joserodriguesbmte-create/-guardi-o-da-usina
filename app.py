@@ -491,55 +491,85 @@ if "Painel" in pagina:
             _sec_sel = st.selectbox("🔌 Seccionadora pendente", list(_opc_sec.keys()),
                                     format_func=lambda t: _opc_sec[t], key="wf_sec_sel")
 
-            st.markdown("<div style='margin:10px 0 6px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção:</div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin:10px 0 6px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção — selecione OK ou NC para cada item:</div>", unsafe_allow_html=True)
 
-            # Radio OK/NOK por item — claro e visível
-            _resultados = {}
+            # Inicializar estado dos itens quando troca de seccionadora
+            _state_key = f"sec_itens_{_sec_sel}"
+            if _state_key not in st.session_state:
+                st.session_state[_state_key] = {i: None for i in _ITENS_SEC}
+
+            _resultados = st.session_state[_state_key]
+
             for _item in _ITENS_SEC:
-                _key = f"sec_{_sec_sel}_{_item}"
-                _col_lbl, _col_radio = st.columns([3, 1])
-                _col_lbl.markdown(f"<div style='padding:6px 0;color:#94a3b8;font-size:0.85rem'>🔹 {_item}</div>", unsafe_allow_html=True)
-                _val = _col_radio.radio("", ["OK", "NOK"], key=_key,
-                                        index=0, horizontal=True,
-                                        label_visibility="collapsed")
-                _resultados[_item] = _val
+                _val_atual = _resultados.get(_item)
+                _c1, _c2, _c3 = st.columns([4, 1, 1])
+                _c1.markdown(f"<div style='padding:5px 0;color:#94a3b8;font-size:0.85rem'>🔹 {_item}</div>", unsafe_allow_html=True)
 
-            # Calcular saúde
-            _n_nok = sum(1 for v in _resultados.values() if v == "NOK")
-            _n_ok  = len(_ITENS_SEC) - _n_nok
-            if   _n_nok == 0: _saude_cor="#10b981"; _saude_txt="🟢 BOA";     _saude_bg="#052e16"
-            elif _n_nok <= 2: _saude_cor="#f59e0b"; _saude_txt="🟡 ATENÇÃO"; _saude_bg="#451a03"
-            else:             _saude_cor="#ef4444"; _saude_txt="🔴 CRÍTICA";  _saude_bg="#450a0a"
+                # Botão OK — verde se selecionado
+                _ok_style  = "background:#10b981;color:white;" if _val_atual=="OK" else ""
+                _nc_style  = "background:#ef4444;color:white;" if _val_atual=="NC" else ""
 
-            st.markdown(f"""<div style='background:{_saude_bg};border:1px solid {_saude_cor};
-                border-radius:8px;padding:10px 16px;margin:10px 0;
-                display:flex;justify-content:space-between;align-items:center'>
-                <span style='color:{_saude_cor};font-weight:700;font-size:0.95rem'>
-                    {_saude_txt} — Saúde do Equipamento
-                </span>
-                <span style='color:{_saude_cor};font-size:0.85rem;font-weight:700'>
-                    {_n_ok}/{len(_ITENS_SEC)} OK
-                </span>
-            </div>""", unsafe_allow_html=True)
+                if _c2.button("OK", key=f"btn_ok_{_sec_sel}_{_item}",
+                              use_container_width=True,
+                              type="primary" if _val_atual=="OK" else "secondary"):
+                    st.session_state[_state_key][_item] = "OK"
+                    st.rerun()
+
+                if _c3.button("NC", key=f"btn_nc_{_sec_sel}_{_item}",
+                              use_container_width=True,
+                              type="primary" if _val_atual=="NC" else "secondary"):
+                    st.session_state[_state_key][_item] = "NC"
+                    st.rerun()
+
+            # Verificar se todos foram preenchidos
+            _preenchidos = [v for v in _resultados.values() if v is not None]
+            _n_ok  = sum(1 for v in _resultados.values() if v == "OK")
+            _n_nc  = sum(1 for v in _resultados.values() if v == "NC")
+            _total = len(_ITENS_SEC)
+
+            if len(_preenchidos) < _total:
+                _faltam = _total - len(_preenchidos)
+                st.markdown(f"<div style='color:#475569;font-size:0.8rem;margin:6px 0;'>⏳ {_faltam} item(ns) sem avaliação</div>", unsafe_allow_html=True)
+            else:
+                if   _n_nc == 0: _saude_cor="#10b981"; _saude_txt="🟢 BOA";     _saude_bg="#052e16"
+                elif _n_nc <= 2: _saude_cor="#f59e0b"; _saude_txt="🟡 ATENÇÃO"; _saude_bg="#451a03"
+                else:            _saude_cor="#ef4444"; _saude_txt="🔴 CRÍTICA";  _saude_bg="#450a0a"
+                st.markdown(f"""<div style='background:{_saude_bg};border:1px solid {_saude_cor};
+                    border-radius:8px;padding:10px 16px;margin:8px 0;
+                    display:flex;justify-content:space-between;align-items:center'>
+                    <span style='color:{_saude_cor};font-weight:700;font-size:0.95rem'>
+                        {_saude_txt} — Saúde do Equipamento
+                    </span>
+                    <span style='color:{_saude_cor};font-size:0.85rem;font-weight:700'>
+                        {_n_ok}/{_total} OK · {_n_nc} NC
+                    </span>
+                </div>""", unsafe_allow_html=True)
+                _resultados = st.session_state[_state_key]
 
             _obs_sec = st.text_input("Observação geral", key="wf_sec_obs",
                                      placeholder="Condições observadas, intercorrências...")
 
-            if st.button("💾 Registrar e Avançar para a próxima", type="primary",
-                         use_container_width=True, key="wf_sec_save"):
+            _todos_preenchidos = len(_preenchidos) == _total
+            if st.button("💾 Registrar e Avançar para a próxima",
+                         type="primary" if _todos_preenchidos else "secondary",
+                         use_container_width=True, key="wf_sec_save",
+                         disabled=not _todos_preenchidos):
                 import json as _json
-                _obs_completo = _json.dumps(_resultados, ensure_ascii=False)
+                _dados_salvos = st.session_state[_state_key]
+                _nc_count = sum(1 for v in _dados_salvos.values() if v == "NC")
+                _ok_count = sum(1 for v in _dados_salvos.values() if v == "OK")
+                _obs_completo = _json.dumps(_dados_salvos, ensure_ascii=False)
                 if _obs_sec:
                     _obs_completo += f" | {_obs_sec}"
-                _status_geral = "NOK" if _n_nok > 0 else "OK"
+                _status_geral = "NC" if _nc_count > 0 else "OK"
                 salvar_inspecao({"data":str(date.today()),"turno":turno_dia,
                                  "sistema":"Seccionadora","item":_sec_sel,
                                  "status":_status_geral,"observacao":_obs_completo,
                                  "usuario":st.session_state.login})
-                # Limpar checkboxes
-                for _item in _ITENS_SEC:
-                    st.session_state.pop(f"sec_{_sec_sel}_{_item}", None)
-                st.success(f"✅ {_sec_sel} — {_saude_txt} ({_n_ok}/{len(_ITENS_SEC)} OK)")
+                # Limpar estado
+                st.session_state.pop(_state_key, None)
+                _saude_txt2 = "🟢 BOA" if _nc_count==0 else "🟡 ATENÇÃO" if _nc_count<=2 else "🔴 CRÍTICA"
+                st.success(f"✅ {_sec_sel} — {_saude_txt2} ({_ok_count}/{_total} OK)")
                 st.rerun()
 
     # ── COLUNA DIREITA: ALERTAS + EVOLUÇÃO SF6 ──────────────────────────────
