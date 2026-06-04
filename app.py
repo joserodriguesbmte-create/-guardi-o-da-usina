@@ -491,28 +491,27 @@ if "Painel" in pagina:
             _sec_sel = st.selectbox("🔌 Seccionadora pendente", list(_opc_sec.keys()),
                                     format_func=lambda t: _opc_sec[t], key="wf_sec_sel")
 
-            # CSS para colocar radio à esquerda e label à direita na mesma linha
+            # CSS: radio antes da descrição na área principal (não afeta sidebar)
             st.markdown("""<style>
-.checklist-sec div[data-testid="stRadio"]{
-    display:flex !important; flex-direction:row !important;
-    align-items:center !important; gap:10px !important;
-    background:#0f172a; border:1px solid #1e3a5f;
-    border-radius:8px; padding:6px 10px; margin:3px 0;
+section.main div[data-testid="stRadio"]{
+    display:flex !important;
+    flex-direction:row-reverse !important;
+    justify-content:flex-end !important;
+    align-items:center !important;
+    gap:10px !important;
+    background:#0f172a;
+    border:1px solid #1e3a5f;
+    border-radius:8px;
+    padding:6px 12px;
+    margin:3px 0;
 }
-.checklist-sec div[data-testid="stRadio"] > label:first-child{
-    order:2 !important; font-size:0.82rem !important;
-    color:#94a3b8 !important; margin:0 !important;
-}
-.checklist-sec div[data-testid="stRadio"] > div[data-testid="stWidgetLabel"]{
-    order:2 !important; font-size:0.82rem !important;
-    color:#94a3b8 !important; margin:0 !important;
-}
-.checklist-sec div[data-testid="stRadio"] > div:last-child{
-    order:1 !important; flex-shrink:0 !important;
+section.main div[data-testid="stRadio"] div[data-testid="stWidgetLabel"] p{
+    font-size:0.83rem !important;
+    color:#94a3b8 !important;
+    margin:0 !important;
 }
 </style>""", unsafe_allow_html=True)
 
-            st.markdown("<div class='checklist-sec'>", unsafe_allow_html=True)
             st.markdown("<div style='margin:6px 0 4px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção:</div>", unsafe_allow_html=True)
 
             _total = len(_ITENS_SEC)
@@ -529,7 +528,6 @@ if "Painel" in pagina:
                 )
                 _resultados[_item] = _val
 
-            st.markdown("</div>", unsafe_allow_html=True)
 
             # Calcular saúde
             _preenchidos = [v for v in _resultados.values() if v is not None]
