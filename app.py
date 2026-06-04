@@ -113,9 +113,17 @@ hr{border-color:#1e3a5f;}
 @media (max-width: 768px) {
   .block-container{padding:0.5rem 0.8rem !important;}
 
-  /* KPIs: grade 2x2 no mobile — NÃO empilha tudo */
+  /* KPIs: grade 2x2 no mobile */
   [data-testid="stHorizontalBlock"]:has(.kpi) [data-testid="column"]{
     min-width:48% !important; width:48% !important; flex:0 0 48% !important;
+  }
+
+  /* Checklist seccionadoras: colunas ficam na mesma linha */
+  [data-testid="stHorizontalBlock"]:has([data-testid="stRadio"]) [data-testid="column"]{
+    min-width:0 !important; width:auto !important; flex-shrink:0 !important;
+  }
+  [data-testid="stHorizontalBlock"]:has([data-testid="stRadio"]){
+    flex-wrap:nowrap !important; align-items:center !important;
   }
   .kpi{padding:8px 4px !important;}
   .kpi-n{font-size:1.3rem !important;}
@@ -491,27 +499,6 @@ if "Painel" in pagina:
             _sec_sel = st.selectbox("🔌 Seccionadora pendente", list(_opc_sec.keys()),
                                     format_func=lambda t: _opc_sec[t], key="wf_sec_sel")
 
-            # CSS: radio antes da descrição na área principal (não afeta sidebar)
-            st.markdown("""<style>
-section.main div[data-testid="stRadio"]{
-    display:flex !important;
-    flex-direction:row-reverse !important;
-    justify-content:flex-end !important;
-    align-items:center !important;
-    gap:10px !important;
-    background:#0f172a;
-    border:1px solid #1e3a5f;
-    border-radius:8px;
-    padding:6px 12px;
-    margin:3px 0;
-}
-section.main div[data-testid="stRadio"] div[data-testid="stWidgetLabel"] p{
-    font-size:0.83rem !important;
-    color:#94a3b8 !important;
-    margin:0 !important;
-}
-</style>""", unsafe_allow_html=True)
-
             st.markdown("<div style='margin:6px 0 4px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção:</div>", unsafe_allow_html=True)
 
             _total = len(_ITENS_SEC)
@@ -519,13 +506,12 @@ section.main div[data-testid="stRadio"] div[data-testid="stWidgetLabel"] p{
 
             for _item in _ITENS_SEC:
                 _key = f"sec_{_sec_sel}_{_item}"
-                _val = st.radio(
-                    f"{_item}",
-                    ["OK", "NC"],
-                    index=None,
-                    horizontal=True,
-                    key=_key
-                )
+                _cr, _cd = st.columns([3, 5])
+                _val = _cr.radio("", ["OK", "NC"], index=None,
+                                 horizontal=True, key=_key,
+                                 label_visibility="collapsed")
+                _cd.markdown(f"<div style='padding:7px 0;color:#94a3b8;font-size:0.82rem'>{_item}</div>",
+                             unsafe_allow_html=True)
                 _resultados[_item] = _val
 
 
