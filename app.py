@@ -491,26 +491,31 @@ if "Painel" in pagina:
             _sec_sel = st.selectbox("🔌 Seccionadora pendente", list(_opc_sec.keys()),
                                     format_func=lambda t: _opc_sec[t], key="wf_sec_sel")
 
-            st.markdown("<div style='margin:10px 0 6px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção:</div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin:10px 0 6px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção — toque na célula Status para selecionar:</div>", unsafe_allow_html=True)
 
-            # Radio com index=None — sem pré-seleção
-            _resultados = {}
             _total = len(_ITENS_SEC)
 
-            for _item in _ITENS_SEC:
-                _key = f"sec_{_sec_sel}_{_item}"
-                _c1, _c2, _c3 = st.columns([4, 2, 1])
-                _c1.markdown(f"<div style='padding:8px 0;color:#94a3b8;font-size:0.85rem'>🔹 {_item}</div>", unsafe_allow_html=True)
-                _val = _c2.radio("", ["OK", "NC"], key=_key,
-                                 index=None, horizontal=True,
-                                 label_visibility="collapsed")
-                _resultados[_item] = _val
-                # Indicador visual
-                if   _val == "OK": _c3.markdown("<div style='padding:8px 0;font-size:1.1rem;text-align:center'>🟢</div>", unsafe_allow_html=True)
-                elif _val == "NC": _c3.markdown("<div style='padding:8px 0;font-size:1.1rem;text-align:center'>🔴</div>", unsafe_allow_html=True)
-                else:              _c3.markdown("<div style='padding:8px 0;font-size:1.1rem;text-align:center'>⬜</div>", unsafe_allow_html=True)
+            # Tabela editável — funciona no mobile, tudo em uma linha
+            _df_itens = pd.DataFrame({
+                "Item de Inspeção": _ITENS_SEC,
+                "Status": [None] * _total
+            })
+            _df_editado = st.data_editor(
+                _df_itens,
+                column_config={
+                    "Item de Inspeção": st.column_config.TextColumn(disabled=True, width="large"),
+                    "Status": st.column_config.SelectboxColumn(
+                        "Status", options=["OK", "NC"],
+                        required=False, width="small"
+                    ),
+                },
+                hide_index=True,
+                use_container_width=True,
+                key=f"checklist_{_sec_sel}"
+            )
 
-            # Calcular saúde
+            # Calcular resultados e saúde
+            _resultados = dict(zip(_df_editado["Item de Inspeção"], _df_editado["Status"]))
             _preenchidos = [v for v in _resultados.values() if v is not None]
             _n_ok = sum(1 for v in _resultados.values() if v == "OK")
             _n_nc = sum(1 for v in _resultados.values() if v == "NC")
