@@ -491,14 +491,18 @@ if "Painel" in pagina:
             _sec_sel = st.selectbox("🔌 Seccionadora pendente", list(_opc_sec.keys()),
                                     format_func=lambda t: _opc_sec[t], key="wf_sec_sel")
 
-            st.markdown("<div style='margin:8px 0 4px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção — marque os NOK:</div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin:10px 0 6px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção:</div>", unsafe_allow_html=True)
 
-            # Checkboxes dos itens — OK por padrão
+            # Radio OK/NOK por item — claro e visível
             _resultados = {}
             for _item in _ITENS_SEC:
                 _key = f"sec_{_sec_sel}_{_item}"
-                _nok = st.checkbox(f"❌ NOK — {_item}", key=_key, value=False)
-                _resultados[_item] = "NOK" if _nok else "OK"
+                _col_lbl, _col_radio = st.columns([3, 1])
+                _col_lbl.markdown(f"<div style='padding:6px 0;color:#94a3b8;font-size:0.85rem'>🔹 {_item}</div>", unsafe_allow_html=True)
+                _val = _col_radio.radio("", ["OK", "NOK"], key=_key,
+                                        index=0, horizontal=True,
+                                        label_visibility="collapsed")
+                _resultados[_item] = _val
 
             # Calcular saúde
             _n_nok = sum(1 for v in _resultados.values() if v == "NOK")
@@ -508,13 +512,13 @@ if "Painel" in pagina:
             else:             _saude_cor="#ef4444"; _saude_txt="🔴 CRÍTICA";  _saude_bg="#450a0a"
 
             st.markdown(f"""<div style='background:{_saude_bg};border:1px solid {_saude_cor};
-                border-radius:8px;padding:10px 16px;margin:8px 0;
+                border-radius:8px;padding:10px 16px;margin:10px 0;
                 display:flex;justify-content:space-between;align-items:center'>
-                <span style='color:{_saude_cor};font-weight:700;font-size:0.9rem'>
+                <span style='color:{_saude_cor};font-weight:700;font-size:0.95rem'>
                     {_saude_txt} — Saúde do Equipamento
                 </span>
-                <span style='color:{_saude_cor};font-size:0.85rem'>
-                    {_n_ok}/{len(_ITENS_SEC)} itens OK
+                <span style='color:{_saude_cor};font-size:0.85rem;font-weight:700'>
+                    {_n_ok}/{len(_ITENS_SEC)} OK
                 </span>
             </div>""", unsafe_allow_html=True)
 
