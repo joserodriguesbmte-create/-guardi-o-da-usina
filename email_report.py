@@ -7,20 +7,53 @@ from datetime import datetime
 
 CFG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "email_config.json")
 
+_CFG_PADRAO = {
+    "smtp_server": "smtp.gmail.com", "smtp_port": 587,
+    "email_remetente": "", "senha_app": "",
+    "destinatarios": [],
+    "assunto_padrao": "Relatorio Mensal - Guardiao da Usina | UHE Belo Monte"
+}
+
+def _db_salvar(chave: str, valor: str):
+    """Salva no Supabase via database.py (funciona no Streamlit Cloud)."""
+    try:
+        from database import salvar_config as _sc
+        _sc(chave, valor)
+    except Exception:
+        pass
+
+def _db_carregar(chave: str) -> str | None:
+    """Lê do Supabase. Retorna None se não encontrado."""
+    try:
+        from database import carregar_config as _cc
+        return _cc(chave)
+    except Exception:
+        return None
+
 def salvar_config_email(cfg: dict):
-    with open(CFG_PATH, "w") as f:
-        json.dump(cfg, f, indent=2)
+    """Salva no banco (Streamlit Cloud) E no arquivo local (desenvolvimento)."""
+    _db_salvar("email_config", json.dumps(cfg, ensure_ascii=False))
+    try:
+        with open(CFG_PATH, "w", encoding="utf-8") as f:
+            json.dump(cfg, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
 
 def carregar_config_email() -> dict:
+    """Tenta banco primeiro (Streamlit Cloud), depois arquivo local."""
+    v = _db_carregar("email_config")
+    if v:
+        try:
+            return json.loads(v)
+        except Exception:
+            pass
     if os.path.exists(CFG_PATH):
-        with open(CFG_PATH) as f:
-            return json.load(f)
-    return {
-        "smtp_server": "smtp.gmail.com", "smtp_port": 587,
-        "email_remetente": "", "senha_app": "",
-        "destinatarios": [],
-        "assunto_padrao": "Relatorio Mensal - Guardiao da Usina | UHE Belo Monte"
-    }
+        try:
+            with open(CFG_PATH, encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return dict(_CFG_PADRAO)
 
 def fig_para_base64(fig) -> str:
     try:
