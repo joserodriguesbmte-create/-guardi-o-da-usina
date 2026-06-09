@@ -12,8 +12,20 @@ DISJUNTORES = {
 }
 
 TRANSFORMADORES = {
-    "TR-01": {"descricao": "Transformador Principal AT/MT T1", "fabricante": "WEG", "potencia_mva": 150, "tensao_at": 230, "tensao_bt": 13.8, "temp_oleo_max": 85, "temp_enrolamento_max": 95, "nivel_oleo_min": 40, "nivel_oleo_max": 80},
-    "TR-02": {"descricao": "Transformador Principal AT/MT T2", "fabricante": "WEG", "potencia_mva": 150, "tensao_at": 230, "tensao_bt": 13.8, "temp_oleo_max": 85, "temp_enrolamento_max": 95, "nivel_oleo_min": 40, "nivel_oleo_max": 80},
+    # Dados reais da plaqueta Norte Energia — patrimônio 10004079
+    "SE+01TRF": {
+        "descricao": "Trafo Trifásico 230/69kV 12,5 MVA — SE+01TRF",
+        "fabricante": "Toshiba",
+        "patrimonio_ne": "10004079",
+        "patrimonio_caixa": "10004075",
+        "potencia_mva": 12.5,
+        "tensao_at": 230,
+        "tensao_bt": 69,
+        "delta_t_oleo": 65,
+        "delta_t_enrolamento": 65,
+        "temp_oleo_max": 95,
+        "temp_enrolamento_max": 95,
+    },
 }
 
 BATERIAS = {
