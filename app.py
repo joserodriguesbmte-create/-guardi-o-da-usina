@@ -915,6 +915,177 @@ if "Painel" in pagina:
                 _carregar_inspecoes.clear()
                 st.rerun()
 
+    # ── 5. PARA-RAIOS — largura total ────────────────────────────────────────
+    st.markdown("<div style='border-top:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
+    st.markdown("""<div style='color:#f97316;font-size:0.72rem;font-weight:700;
+        text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
+        ⚡ Inspeção de Para-raios — 230kV</div>""", unsafe_allow_html=True)
+
+    _PR_TAG = "PARA-RAIOS-230kV"
+    _df_pr_hoje = _carregar_inspecoes(sistema="Subestação 230kV",
+                                      data_ini=_data_insp, data_fim=_data_insp)
+    _pr_insp = not _df_pr_hoje[_df_pr_hoje.item == _PR_TAG].empty if not _df_pr_hoje.empty else False
+    st.progress(1.0 if _pr_insp else 0.0,
+                text="Para-raios inspecionados" if _pr_insp else "Para-raios pendente")
+
+    if _pr_insp:
+        st.success("✅ Para-raios inspecionados!")
+    else:
+        with st.form("form_pr", clear_on_submit=True):
+            st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:4px 0'>🔍 Inspeção Visual — Para-raios 230kV (por fase: A, B, C)</div>", unsafe_allow_html=True)
+            _pr1, _pr2 = st.columns(2)
+            _pr_cond   = _pr1.radio("Condição geral (sem trincas, sujidade ou marcas de descarga)",
+                                    ["Normal","Anomalia"], index=None, horizontal=True, key="pr_cond")
+            _pr_isol   = _pr2.radio("Isoladores — ausência de trincas e poluição",
+                                    ["Normal","Anomalia"], index=None, horizontal=True, key="pr_isol")
+            _pr3, _pr4 = st.columns(2)
+            _pr_conex  = _pr3.radio("Conexões e aterramento firmes",
+                                    ["Normal","Anomalia"], index=None, horizontal=True, key="pr_conex")
+            _pr_sinal  = _pr4.radio("Identificação e sinalização",
+                                    ["OK","NC"], index=None, horizontal=True, key="pr_sinal")
+            _obs_pr    = st.text_input("Observações", key="obs_pr", placeholder="Condições observadas...")
+            _salvar_pr = st.form_submit_button("💾 Registrar Para-raios",
+                                               type="primary", use_container_width=True)
+
+        if _salvar_pr:
+            import json as _json
+            _campos_pr = [_pr_cond, _pr_isol, _pr_conex, _pr_sinal]
+            _falt_pr   = [n for v,n in zip(_campos_pr,["Condição geral","Isoladores","Conexões","Identificação"]) if v is None]
+            if _falt_pr:
+                st.warning("⚠️ Preencha: " + " · ".join(_falt_pr))
+            else:
+                _nc_pr = sum(1 for v in _campos_pr if v in ("Anomalia","NC"))
+                _st_pr = "NC" if _nc_pr else "OK"
+                _dados_pr = {"condicao":_pr_cond,"isoladores":_pr_isol,
+                             "conexoes":_pr_conex,"identificacao":_pr_sinal}
+                if _obs_pr: _dados_pr["observacao"] = _obs_pr
+                salvar_inspecao({"data":str(_data_insp),"turno":turno_dia,
+                                 "sistema":"Subestação 230kV","item":_PR_TAG,
+                                 "status":_st_pr,
+                                 "observacao":_json.dumps(_dados_pr, ensure_ascii=False),
+                                 "usuario":st.session_state.login})
+                _txt_pr = "🟢 NORMAL" if not _nc_pr else f"🔴 {_nc_pr} ANOMALIA(S)"
+                st.success(f"✅ Para-raios — {_txt_pr}")
+                _carregar_inspecoes.clear()
+                st.rerun()
+
+    # ── 6. SALA ELÉTRICA DA SE — largura total ───────────────────────────────
+    st.markdown("<div style='border-top:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
+    st.markdown("""<div style='color:#8b5cf6;font-size:0.72rem;font-weight:700;
+        text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
+        🏢 Inspeção Diária — Sala Elétrica da SE</div>""", unsafe_allow_html=True)
+
+    _SE_TAG = "SALA-ELETRICA-SE"
+    _df_se_hoje = _carregar_inspecoes(sistema="Sala Elétrica da SE",
+                                      data_ini=_data_insp, data_fim=_data_insp)
+    _se_insp = not _df_se_hoje[_df_se_hoje.item == _SE_TAG].empty if not _df_se_hoje.empty else False
+    st.progress(1.0 if _se_insp else 0.0,
+                text="Sala Elétrica inspecionada" if _se_insp else "Sala Elétrica pendente")
+
+    if _se_insp:
+        st.success("✅ Sala Elétrica inspecionada!")
+    else:
+        with st.form("form_se", clear_on_submit=True):
+            _se_cols = st.columns(3)
+            _se_temp = _se_cols[0].number_input("🌡️ Temperatura sala (°C)",
+                                                min_value=0.0, max_value=60.0, value=float(t_amb),
+                                                step=0.5, format="%.1f", key="se_temp")
+            st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:6px 0 4px'>Verificações</div>", unsafe_allow_html=True)
+            _a1, _a2 = st.columns(2)
+            _se_ac    = _a1.radio("A/C e ventilação", ["OK","Falha","Desligado"],
+                                  index=None, horizontal=True, key="se_ac")
+            _se_alarm = _a2.radio("Ausência de alarmes nos painéis",
+                                  ["Sem alarmes","Alarme ativo"], index=None, horizontal=True, key="se_alarm")
+            _b1, _b2 = st.columns(2)
+            _se_agua  = _b1.radio("Ausência de água / infiltração",
+                                  ["Não","Sim"], index=None, horizontal=True, key="se_agua")
+            _se_cond  = _b2.radio("Condição geral dos painéis e cabos",
+                                  ["Normal","Anomalia"], index=None, horizontal=True, key="se_cond")
+            _obs_se   = st.text_input("Observações", key="obs_se", placeholder="Temperatura, A/C, intercorrências...")
+            _salvar_se = st.form_submit_button("💾 Registrar Sala Elétrica",
+                                               type="primary", use_container_width=True)
+
+        if _salvar_se:
+            import json as _json
+            _campos_se = [_se_ac, _se_alarm, _se_agua, _se_cond]
+            _falt_se   = [n for v,n in zip(_campos_se,["A/C","Alarmes","Infiltração","Painéis"]) if v is None]
+            if _falt_se:
+                st.warning("⚠️ Preencha: " + " · ".join(_falt_se))
+            else:
+                _nc_se = sum(1 for v in [_se_alarm, _se_agua, _se_cond]
+                             if v in ("Alarme ativo","Sim","Anomalia"))
+                _nc_se += 1 if _se_ac in ("Falha","Desligado") else 0
+                _nc_se += 1 if _se_temp > 35 else 0
+                _st_se = "NC" if _nc_se else "OK"
+                _dados_se = {"temperatura_sala": _se_temp, "ac_ventilacao": _se_ac,
+                             "alarmes": _se_alarm, "infiltracao": _se_agua, "paineis": _se_cond}
+                if _obs_se: _dados_se["observacao"] = _obs_se
+                salvar_inspecao({"data":str(_data_insp),"turno":turno_dia,
+                                 "sistema":"Sala Elétrica da SE","item":_SE_TAG,
+                                 "status":_st_se,
+                                 "observacao":_json.dumps(_dados_se, ensure_ascii=False),
+                                 "usuario":st.session_state.login})
+                _txt_se = "🟢 NORMAL" if not _nc_se else f"🟡 {_nc_se} ponto(s) de atenção"
+                st.success(f"✅ Sala Elétrica — {_txt_se}")
+                _carregar_inspecoes.clear()
+                st.rerun()
+
+    # ── 7. CÚBILO DE 13.8kV — largura total ──────────────────────────────────
+    st.markdown("<div style='border-top:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
+    st.markdown("""<div style='color:#06b6d4;font-size:0.72rem;font-weight:700;
+        text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
+        ⚡ Inspeção Diária — Cúbilo de 13.8kV da SE</div>""", unsafe_allow_html=True)
+
+    _CUB_TAG = "CUBILO-13.8kV-SE"
+    _df_cub_hoje = _carregar_inspecoes(sistema="Cúbilo de 13.8kV da SE",
+                                       data_ini=_data_insp, data_fim=_data_insp)
+    _cub_insp = not _df_cub_hoje[_df_cub_hoje.item == _CUB_TAG].empty if not _df_cub_hoje.empty else False
+    st.progress(1.0 if _cub_insp else 0.0,
+                text="Cúbilo inspecionado" if _cub_insp else "Cúbilo pendente")
+
+    if _cub_insp:
+        st.success("✅ Cúbilo de 13.8kV inspecionado!")
+    else:
+        with st.form("form_cub", clear_on_submit=True):
+            st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:4px 0'>Verificações</div>", unsafe_allow_html=True)
+            _c1, _c2 = st.columns(2)
+            _cub_pos   = _c1.radio("Posição das chaves/disjuntores conforme esperado",
+                                   ["Conforme","Divergência"], index=None, horizontal=True, key="cub_pos")
+            _cub_alarm = _c2.radio("Ausência de alarmes",
+                                   ["Sem alarmes","Alarme ativo"], index=None, horizontal=True, key="cub_alarm")
+            _c3, _c4 = st.columns(2)
+            _cub_ind   = _c3.radio("Indicadores de tensão presentes",
+                                   ["Presentes","Ausentes"], index=None, horizontal=True, key="cub_ind")
+            _cub_cond  = _c4.radio("Condição visual (buchas, barras, limpeza)",
+                                   ["Normal","Anomalia"], index=None, horizontal=True, key="cub_cond")
+            _obs_cub   = st.text_input("Observações", key="obs_cub",
+                                       placeholder="Posição de chaves, alarmes, temperatura...")
+            _salvar_cub = st.form_submit_button("💾 Registrar Cúbilo 13.8kV",
+                                                type="primary", use_container_width=True)
+
+        if _salvar_cub:
+            import json as _json
+            _campos_cub = [_cub_pos, _cub_alarm, _cub_ind, _cub_cond]
+            _falt_cub   = [n for v,n in zip(_campos_cub,["Posição","Alarmes","Indicadores","Condição visual"]) if v is None]
+            if _falt_cub:
+                st.warning("⚠️ Preencha: " + " · ".join(_falt_cub))
+            else:
+                _nc_cub = sum(1 for v in _campos_cub
+                              if v in ("Divergência","Alarme ativo","Ausentes","Anomalia"))
+                _st_cub = "NC" if _nc_cub else "OK"
+                _dados_cub = {"posicao_chaves": _cub_pos, "alarmes": _cub_alarm,
+                              "indicadores_tensao": _cub_ind, "condicao_visual": _cub_cond}
+                if _obs_cub: _dados_cub["observacao"] = _obs_cub
+                salvar_inspecao({"data":str(_data_insp),"turno":turno_dia,
+                                 "sistema":"Cúbilo de 13.8kV da SE","item":_CUB_TAG,
+                                 "status":_st_cub,
+                                 "observacao":_json.dumps(_dados_cub, ensure_ascii=False),
+                                 "usuario":st.session_state.login})
+                _txt_cub = "🟢 NORMAL" if not _nc_cub else f"🔴 {_nc_cub} ponto(s) de atenção"
+                st.success(f"✅ Cúbilo 13.8kV — {_txt_cub}")
+                _carregar_inspecoes.clear()
+                st.rerun()
+
 # ══════════════════════════════════════════════════════ CADASTRO EQUIPAMENTOS
 elif "Cadastro" in pagina:
     st.markdown("## 🗂️ Cadastro de Equipamentos")

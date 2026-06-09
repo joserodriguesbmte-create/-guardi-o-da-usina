@@ -44,11 +44,10 @@ CHECKLISTS = {
         "Verificar funcionamento das lâmpadas indicadoras",
         "Verificar condição da porta e vedação do cubículo",
     ],
-    "Transformador TR-SE-01 (Toshiba 10/12.5 MVA)": [
+    "Transformador SE+01TRF (230/69kV 12,5 MVA)": [
         # Temperatura e Óleo — NBR 5356 + INTEC
         "Registrar leitura do OTI (Termômetro de Óleo) — máx. elevação 65°C",
-        "Registrar leitura do WTI AT (Termômetro de Enrolamento AT) — máx. elevação 65°C",
-        "Registrar leitura do WTI BT (Termômetro de Enrolamento BT) — máx. elevação 65°C",
+        "Registrar leitura do WTI — Termômetro de Enrolamento (TM1 Treetech) — máx. elevação 65°C",
         "Verificar nível de óleo no conservador (visíglass) — nível entre mín. e máx.",
         "Verificar cor e aspecto do óleo (transparente/amarelo claro = normal)",
         "Verificar ausência de vazamentos de óleo no tanque, buchas e conservador",
@@ -104,7 +103,7 @@ ITENS_5S = {
         "Etiquetas e cartões atualizados",
         "Extintor próximo e em bom estado",
     ],
-    "Transformador TR-SE-01 (Toshiba 10/12.5 MVA)": [
+    "Transformador SE+01TRF (230/69kV 12,5 MVA)": [
         "Bacia de contenção limpa e sem óleo acumulado",
         "Área ao redor livre e sinalizada",
         "Painéis e instrumentos limpos e legíveis",
