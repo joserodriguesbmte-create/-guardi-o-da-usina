@@ -241,27 +241,44 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     # ── Fotos ─────────────────────────────────────────────────────────────────
     fotos_section = ""
     if fotos:
+        # Grid 3 colunas × 2 linhas (máx. 6 fotos) — numeradas com legenda
         fotos_html = ""
         _idx = 0
-        for i in range(0, len(fotos), 2):
+        for i in range(0, len(fotos), 3):
+            lote = fotos[i:i+3]
             fotos_html += "<tr>"
-            for f in fotos[i:i+2]:
-                b64  = f.get("base64", "")
-                leg  = f.get("legenda", "")
-                # CID para e-mail (Gmail/Outlook), data URI para download HTML
-                src  = f"cid:foto_{_idx}" if usar_cid else f"data:image/jpeg;base64,{b64}"
+            for f in lote:
+                b64     = f.get("base64", "")
+                leg     = f.get("legenda", "").strip()
+                num     = _idx + 1
+                src     = f"cid:foto_{_idx}" if usar_cid else f"data:image/jpeg;base64,{b64}"
                 fotos_html += (
-                    f"<td width='50%' style='padding:6px;vertical-align:top;'>"
+                    f"<td width='33%' style='padding:8px;vertical-align:top;'>"
+                    f"<table width='100%' cellpadding='0' cellspacing='0' border='0' "
+                    f"style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
+                    f"overflow:hidden;'>"
+                    f"<tr><td style='padding:0;'>"
                     f"<img src='{src}' width='100%' "
-                    f"style='border-radius:8px;border:1px solid #e2e8f0;display:block;'>"
-                    f"<div style='font-size:11px;color:#64748b;text-align:center;margin-top:4px;'>{leg}</div>"
+                    f"style='display:block;border-radius:10px 10px 0 0;'>"
+                    f"</td></tr>"
+                    f"<tr><td style='padding:6px 8px;background:#f8fafc;'>"
+                    f"<div style='font-size:10px;color:#94a3b8;font-weight:700;"
+                    f"text-transform:uppercase;letter-spacing:0.5px;'>Foto {num}</div>"
+                    f"<div style='font-size:12px;color:#475569;margin-top:2px;"
+                    f"line-height:1.4;'>{leg or '—'}</div>"
+                    f"</td></tr>"
+                    f"</table>"
                     f"</td>")
                 _idx += 1
-            if len(fotos[i:i+2]) == 1:
-                fotos_html += "<td width='50%'></td>"
+            # Preencher células vazias na última linha
+            for _ in range(3 - len(lote)):
+                fotos_html += "<td width='33%'></td>"
             fotos_html += "</tr>"
-        fotos_section = secao("📷 6. Registro Fotografico",
-                              f"<table width='100%' cellpadding='0' cellspacing='0' border='0'>{fotos_html}</table>")
+
+        fotos_section = secao(
+            "📷 6. Registro Fotografico do Periodo",
+            f"<table width='100%' cellpadding='0' cellspacing='4' border='0'>{fotos_html}</table>"
+        )
 
     num_obs = 7 if fotos else 6
 

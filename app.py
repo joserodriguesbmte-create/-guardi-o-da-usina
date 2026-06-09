@@ -1976,23 +1976,36 @@ elif "Relatório" in pagina:
 
     st.divider()
 
-    # Upload de fotos
-    st.markdown("#### 📷 Registro Fotográfico (opcional)")
-    st.markdown("<div style='color:#475569;font-size:0.82rem;margin-bottom:8px'>Adicione fotos de inspeções, anomalias ou registros do período. Serão incluídas no relatório.</div>", unsafe_allow_html=True)
+    # Upload de fotos — grid 3×2 organizado
+    st.markdown("#### 📷 Registro Fotográfico do Período")
+    st.markdown("""<div style='background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;
+        padding:10px 16px;margin-bottom:10px;color:#475569;font-size:0.82rem'>
+        📌 Carregue até <b style='color:#60a5fa'>6 fotos</b> (JPG/PNG) de inspeções, anomalias ou
+        registros do período. Adicione uma <b style='color:#60a5fa'>legenda</b> para cada foto —
+        elas serão exibidas no relatório em grade organizada 3×2.
+    </div>""", unsafe_allow_html=True)
     _fk = st.session_state.get("foto_counter", 0)
-    fotos_upload = st.file_uploader("Selecione até 6 fotos", type=["jpg","jpeg","png","webp"],
+    fotos_upload = st.file_uploader("Selecione as fotos", type=["jpg","jpeg","png","webp"],
                                     accept_multiple_files=True, key=f"rel_fotos_{_fk}")
     fotos_dados = []
     if fotos_upload:
+        _total_f = min(len(fotos_upload), 6)
+        st.markdown(f"<div style='color:#60a5fa;font-size:0.8rem;margin:4px 0 8px'>"
+                    f"📷 {_total_f} foto(s) carregada(s)"
+                    + (" — apenas as 6 primeiras serão usadas" if len(fotos_upload) > 6 else "")
+                    + "</div>", unsafe_allow_html=True)
         _cols_f = st.columns(3)
         for i, arq in enumerate(fotos_upload[:6]):
             img_bytes = arq.read()
             with _cols_f[i % 3]:
+                st.markdown(f"<div style='color:#94a3b8;font-size:0.72rem;font-weight:700;"
+                             f"text-transform:uppercase;margin-bottom:3px'>📷 Foto {i+1}</div>",
+                             unsafe_allow_html=True)
                 st.image(img_bytes, use_container_width=True)
-                leg = st.text_input(f"Legenda {i+1}", key=f"leg_{i}", placeholder="Descreva a foto...")
+                leg = st.text_input("Legenda", key=f"leg_{i}",
+                                    placeholder=f"Descreva a foto {i+1}...",
+                                    label_visibility="collapsed")
                 fotos_dados.append({"base64": foto_para_base64(img_bytes), "legenda": leg})
-        if len(fotos_upload) > 6:
-            st.caption(f"⚠️ Somente as primeiras 6 fotos são incluídas no relatório.")
 
     st.divider()
 
