@@ -42,7 +42,7 @@ def html_para_pdf(html: str) -> bytes:
 # ─────────────────────────────────────────────────────────────────────────────
 # HTML compatível com Gmail (layout por tabelas, sem CSS Grid/Flex)
 # ─────────────────────────────────────────────────────────────────────────────
-def gerar_html_relatorio(dados: dict) -> str:
+def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     operador      = dados.get("operador", "—")
     nivel         = dados.get("nivel", "—")
     mes           = dados.get("mes", "—")
@@ -242,17 +242,21 @@ def gerar_html_relatorio(dados: dict) -> str:
     fotos_section = ""
     if fotos:
         fotos_html = ""
+        _idx = 0
         for i in range(0, len(fotos), 2):
             fotos_html += "<tr>"
             for f in fotos[i:i+2]:
-                b64 = f.get("base64", "")
-                leg = f.get("legenda", "")
+                b64  = f.get("base64", "")
+                leg  = f.get("legenda", "")
+                # CID para e-mail (Gmail/Outlook), data URI para download HTML
+                src  = f"cid:foto_{_idx}" if usar_cid else f"data:image/jpeg;base64,{b64}"
                 fotos_html += (
                     f"<td width='50%' style='padding:6px;vertical-align:top;'>"
-                    f"<img src='data:image/jpeg;base64,{b64}' width='100%' "
+                    f"<img src='{src}' width='100%' "
                     f"style='border-radius:8px;border:1px solid #e2e8f0;display:block;'>"
                     f"<div style='font-size:11px;color:#64748b;text-align:center;margin-top:4px;'>{leg}</div>"
                     f"</td>")
+                _idx += 1
             if len(fotos[i:i+2]) == 1:
                 fotos_html += "<td width='50%'></td>"
             fotos_html += "</tr>"
@@ -424,16 +428,38 @@ def gerar_html_relatorio(dados: dict) -> str:
     return html
 
 
-def enviar_relatorio(cfg: dict, html: str, assunto: str, anexos: list = None) -> tuple:
+def enviar_relatorio(cfg: dict, html: str, assunto: str,
+                     fotos: list = None, anexos: list = None) -> tuple:
+    """
+    fotos: lista de {"base64": str, "legenda": str} — embutidas inline (CID) no e-mail.
+    O html deve ter sido gerado com usar_cid=True quando fotos for fornecida.
+    """
     try:
         msg = MIMEMultipart("mixed")
         msg["Subject"] = assunto
         msg["From"]    = cfg["email_remetente"]
         msg["To"]      = ", ".join(cfg["destinatarios"])
 
-        alt = MIMEMultipart("alternative")
-        alt.attach(MIMEText(html, "html", "utf-8"))
-        msg.attach(alt)
+        if fotos:
+            # multipart/related: HTML + imagens inline por CID
+            rel = MIMEMultipart("related")
+            rel.attach(MIMEText(html, "html", "utf-8"))
+            for i, foto in enumerate(fotos):
+                img_bytes = base64.b64decode(foto.get("base64", ""))
+                if not img_bytes:
+                    continue
+                img_part = MIMEBase("image", "jpeg")
+                img_part.set_payload(img_bytes)
+                encoders.encode_base64(img_part)
+                img_part.add_header("Content-Disposition", "inline",
+                                    filename=f"foto_{i+1}.jpg")
+                img_part.add_header("Content-ID", f"<foto_{i}>")
+                rel.attach(img_part)
+            msg.attach(rel)
+        else:
+            alt = MIMEMultipart("alternative")
+            alt.attach(MIMEText(html, "html", "utf-8"))
+            msg.attach(alt)
 
         if anexos:
             for nome, conteudo in anexos:

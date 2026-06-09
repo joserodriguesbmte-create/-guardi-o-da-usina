@@ -2108,9 +2108,12 @@ elif "Relatório" in pagina:
         else:
             with st.spinner("Gerando relatório e enviando..."):
                 dados_r  = montar_dados_relatorio()
-                html_r   = gerar_html_relatorio(dados_r)
+                _fotos_e = dados_r.get("fotos", [])
+                # Para e-mail: HTML com CID (Gmail/Outlook renderizam as fotos)
+                html_r   = gerar_html_relatorio(dados_r, usar_cid=bool(_fotos_e))
                 assunto  = f"🛡️ Relatório Guardião da Usina — {mes} | {st.session_state.user}"
-                ok, msg  = enviar_relatorio(cfg_email, html_r, assunto)
+                ok, msg  = enviar_relatorio(cfg_email, html_r, assunto,
+                                            fotos=_fotos_e if _fotos_e else None)
             if ok:
                 st.success(msg)
                 st.session_state["foto_counter"] = st.session_state.get("foto_counter", 0) + 1
