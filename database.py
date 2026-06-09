@@ -99,6 +99,18 @@ def init_db():
             chave TEXT PRIMARY KEY,
             valor TEXT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""",
+
+        """CREATE TABLE IF NOT EXISTS contadores_dj (
+            id SERIAL PRIMARY KEY,
+            data TEXT, hora TEXT, turno TEXT,
+            disjuntor TEXT,
+            polo_a INTEGER DEFAULT 0,
+            polo_b INTEGER DEFAULT 0,
+            polo_v INTEGER DEFAULT 0,
+            tripolar INTEGER DEFAULT 0,
+            curto_circuito INTEGER DEFAULT 0,
+            usuario TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""",
     ]
     for s in stmts:
         cur.execute(s)
@@ -270,6 +282,23 @@ def carregar_melhorias():
     c = conn()
     df = pd.read_sql_query("SELECT * FROM melhorias ORDER BY created_at DESC", c)
     c.close(); return df
+
+# ── Contadores de operações dos disjuntores ───────────────────────────────
+def salvar_contador(d):
+    c = conn(); cur = c.cursor()
+    cur.execute("""INSERT INTO contadores_dj
+        (data,hora,turno,disjuntor,polo_a,polo_b,polo_v,tripolar,curto_circuito,usuario)
+        VALUES(%(data)s,%(hora)s,%(turno)s,%(disjuntor)s,%(polo_a)s,%(polo_b)s,%(polo_v)s,
+               %(tripolar)s,%(curto_circuito)s,%(usuario)s)""", d)
+    c.commit(); cur.close(); c.close()
+
+def carregar_contadores(disjuntor=None, data_ini=None, data_fim=None):
+    c = conn(); q = "SELECT * FROM contadores_dj WHERE 1=1"; p = []
+    if disjuntor and disjuntor != "Todos": q += " AND disjuntor=%s"; p.append(disjuntor)
+    if data_ini: q += " AND data>=%s"; p.append(str(data_ini))
+    if data_fim: q += " AND data<=%s"; p.append(str(data_fim))
+    q += " ORDER BY data DESC, hora DESC"
+    df = pd.read_sql_query(q, c, params=p); c.close(); return df
 
 # ── Configuração persistente do app ───────────────────────────────────────
 def salvar_config(chave: str, valor: str):

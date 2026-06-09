@@ -9,7 +9,8 @@ from database import (init_db, salvar_sf6, carregar_sf6, salvar_temp, carregar_t
                       salvar_troca, carregar_trocas, salvar_melhoria, carregar_melhorias,
                       salvar_equipamento, atualizar_equipamento, desativar_equipamento,
                       carregar_equipamentos, buscar_equipamento_por_tag,
-                      salvar_config, carregar_config)
+                      salvar_config, carregar_config,
+                      salvar_contador, carregar_contadores)
 from equipamentos import DISJUNTORES, TRANSFORMADORES, BATERIAS, corrigir_pressao_sf6, status_sf6
 from email_report import (salvar_config_email, carregar_config_email,
                            gerar_html_relatorio, enviar_relatorio, fig_para_base64)
@@ -38,6 +39,10 @@ def _carregar_pendencias(status=None):
 @st.cache_data(ttl=120, show_spinner=False)
 def _buscar_equipamento_por_tag(tag):
     return buscar_equipamento_por_tag(tag)
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _carregar_contadores(disjuntor=None, data_ini=None, data_fim=None):
+    return carregar_contadores(disjuntor, data_ini, data_fim)
 
 @st.cache_resource(show_spinner=False)
 def _init_db():
@@ -442,7 +447,7 @@ if "Painel" in pagina:
             _p_al_wf  = float(_eq_dj.get("pressao_alarme",  5.5)) if _eq_dj else 5.5
             _p_bl_wf  = float(_eq_dj.get("pressao_bloqueio",5.0)) if _eq_dj else 5.0
             _np_wf    = int(_eq_dj.get("num_polos") or DISJUNTORES.get(_dj_sel,{}).get("num_polos",1)) if _eq_dj else 1
-            _polos_wf = ["Polo A","Polo B","Polo C"] if _np_wf == 3 else ["Câmara Única"]
+            _polos_wf = ["Polo A","Polo B","Polo V"] if _np_wf == 3 else ["Câmara Única"]
 
             _dados_wf = {}
             _cols_polo = st.columns(len(_polos_wf))
@@ -498,6 +503,21 @@ if "Painel" in pagina:
                 _op_qtd = _oc2.number_input("Quantidade", min_value=1, max_value=50,
                                             value=1, step=1, key=f"op_qtd_{_dj_sel}")
                 st.caption("Preencha tipo e quantidade apenas se houver operações.")
+
+                st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='color:#06b6d4;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>📟 Contadores de Operações</div>", unsafe_allow_html=True)
+                st.caption("Informe 0 se não verificado nesta inspeção.")
+                _cc1, _cc2 = st.columns(2)
+                _cnt_trip = _cc1.number_input("P1LT — Tripolar", min_value=0, value=0, step=1, key=f"cnt_trip_{_dj_sel}")
+                _cnt_cc   = _cc2.number_input("P2 — Curto Circuito", min_value=0, value=0, step=1, key=f"cnt_cc_{_dj_sel}")
+                if _np_wf == 3:
+                    _ca, _cb, _cv = st.columns(3)
+                    _cnt_a = _ca.number_input("P1LA — Polo A", min_value=0, value=0, step=1, key=f"cnt_a_{_dj_sel}")
+                    _cnt_b = _cb.number_input("P1LB — Polo B", min_value=0, value=0, step=1, key=f"cnt_b_{_dj_sel}")
+                    _cnt_v = _cv.number_input("P1LV — Polo V", min_value=0, value=0, step=1, key=f"cnt_v_{_dj_sel}")
+                else:
+                    _cnt_a = _cnt_b = _cnt_v = 0
+
                 st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
                 _obs_wf = st.text_input("Observação geral (opcional)", key="wf_dj_obs",
                                         placeholder="Condições de campo, instrumento usado...")
@@ -530,6 +550,13 @@ if "Painel" in pagina:
                                          "tipo_operacao":_op_tipo,"motivo":turno_dia,
                                          "num_operacoes_total":int(_op_qtd),
                                          "usuario":st.session_state.login})
+                    if any([_cnt_trip, _cnt_cc, _cnt_a, _cnt_b, _cnt_v]):
+                        salvar_contador({"data":str(_data_insp),"hora":str(_hora_wf),"turno":turno_dia,
+                                         "disjuntor":_dj_sel,
+                                         "polo_a":int(_cnt_a),"polo_b":int(_cnt_b),"polo_v":int(_cnt_v),
+                                         "tripolar":int(_cnt_trip),"curto_circuito":int(_cnt_cc),
+                                         "usuario":st.session_state.login})
+                        _carregar_contadores.clear()
                     _vs2 = "🟢 BOA" if _vis_nc==0 else "🟡 ATENÇÃO" if _vis_nc<=2 else "🔴 CRÍTICA"
                     st.success(f"✅ {_dj_sel} — Visual: {_vs2} | {'Operação registrada' if _houve_op=='Sim' else 'Sem operações'}")
                     _carregar_sf6.clear()
@@ -1084,7 +1111,7 @@ elif "SF6" in pagina:
         📌 Leituras SF6 são registradas no <b style='color:#60a5fa'>Painel Geral</b> durante a inspeção diária.
         Esta página exibe o histórico e a evolução ao longo do tempo.
     </div>""", unsafe_allow_html=True)
-    tab2, tab3 = st.tabs(["📈 Evolução / Histórico", "🔢 Contagem de Operações"])
+    tab2, tab3, tab4 = st.tabs(["📈 Evolução / Histórico", "🔢 Contagem de Operações", "📟 Contadores"])
 
     with tab2:
 
@@ -1142,7 +1169,7 @@ elif "SF6" in pagina:
             # ── Gráfico de evolução ─────────────────────────────────────────
             st.markdown("#### 📈 Evolução da Pressão SF6 Corrigida a 20°C")
             fig_ev = go.Figure()
-            _cores_ev = {"Polo A": "#3b82f6", "Polo B": "#10b981", "Polo C": "#f59e0b",
+            _cores_ev = {"Polo A": "#3b82f6", "Polo B": "#10b981", "Polo V": "#f59e0b",
                          "Câmara Única": "#60a5fa"}
             _cores_dj = ["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ef4444","#06b6d4","#f97316"]
 
@@ -1226,6 +1253,79 @@ elif "SF6" in pagina:
             st.plotly_chart(fig_op, use_container_width=True)
             st.dataframe(df_op[["data","disjuntor","tipo_operacao","motivo","num_operacoes_total","usuario"]],
                         use_container_width=True, hide_index=True)
+
+    with tab4:
+        st.markdown("### 📟 Contadores de Operações — Disjuntores 3 Polos")
+        st.markdown("""<div style='background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;
+            padding:10px 16px;margin-bottom:14px;color:#475569;font-size:0.82rem'>
+            📌 Registre aqui as leituras dos contadores físicos (P1LA, P1LB, P1LV, P1LT, P2).<br>
+            Os contadores também podem ser registrados durante a inspeção SF6 no <b style='color:#60a5fa'>Painel Geral</b>.
+        </div>""", unsafe_allow_html=True)
+
+        df_dj_cnt = carregar_equipamentos("Disjuntor SF6")
+        _tags_3p = [r.tag for _,r in df_dj_cnt.iterrows() if int(r.get("num_polos",1) or 1)==3] if not df_dj_cnt.empty else []
+        _tags_cnt_all = df_dj_cnt["tag"].tolist() if not df_dj_cnt.empty else []
+
+        _cnt_col1, _cnt_col2 = st.columns([2,1])
+        dj_cnt = _cnt_col1.selectbox("⚡ Disjuntor", _tags_cnt_all, key="dj_cnt_sel")
+        d_cnt  = _cnt_col2.date_input("📅 Data", value=date.today(), key="d_cnt")
+
+        # Última leitura
+        df_cnt_hist = _carregar_contadores(dj_cnt)
+        if not df_cnt_hist.empty:
+            _ult = df_cnt_hist.iloc[0]
+            _is3p = dj_cnt in _tags_3p
+            st.markdown(f"<div style='color:#94a3b8;font-size:0.78rem;margin:4px 0'>Última leitura registrada: <b style='color:#60a5fa'>{_ult.data}</b></div>", unsafe_allow_html=True)
+            _kpis_cnt = []
+            if _is3p:
+                _kpis_cnt += [("P1LA\nPolo A", _ult.polo_a, "#3b82f6"),
+                               ("P1LB\nPolo B", _ult.polo_b, "#10b981"),
+                               ("P1LV\nPolo V", _ult.polo_v, "#f59e0b")]
+            _kpis_cnt += [("P1LT\nTripolar", _ult.tripolar, "#8b5cf6"),
+                           ("P2\nCurto Circ.", _ult.curto_circuito, "#ef4444")]
+            _cnt_kpi_html = "".join([f"""<div style='background:#0f1e3a;border:1px solid #1e3a5f;
+                border-top:3px solid {c};border-radius:10px;padding:10px;text-align:center'>
+                <div style='font-size:1.5rem;font-weight:900;color:{c}'>{v}</div>
+                <div style='font-size:0.65rem;color:#64748b;white-space:pre-line'>{l}</div></div>"""
+                for l,v,c in _kpis_cnt])
+            st.markdown(f"<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:8px;margin:8px 0'>{_cnt_kpi_html}</div>", unsafe_allow_html=True)
+
+        # Formulário de registro
+        st.markdown("#### Registrar Leitura dos Contadores")
+        _is3p_form = dj_cnt in _tags_3p
+        with st.form("form_contadores", clear_on_submit=True):
+            _fc1, _fc2 = st.columns(2)
+            _f_trip = _fc1.number_input("P1LT — Tripolar",      min_value=0, value=0, step=1, key="f_trip")
+            _f_cc   = _fc2.number_input("P2 — Curto Circuito",  min_value=0, value=0, step=1, key="f_cc")
+            if _is3p_form:
+                _fa, _fb, _fv = st.columns(3)
+                _f_a = _fa.number_input("P1LA — Polo A", min_value=0, value=0, step=1, key="f_a")
+                _f_b = _fb.number_input("P1LB — Polo B", min_value=0, value=0, step=1, key="f_b")
+                _f_v = _fv.number_input("P1LV — Polo V", min_value=0, value=0, step=1, key="f_v")
+            else:
+                _f_a = _f_b = _f_v = 0
+            turno_cnt = st.selectbox("Turno", ["Manhã (06-14h)","Tarde (14-22h)","Noite (22-06h)"],
+                                     index=["Manhã (06-14h)","Tarde (14-22h)","Noite (22-06h)"].index(
+                                         st.session_state.get("turno_global","Manhã (06-14h)")), key="tc")
+            _salvar_cnt = st.form_submit_button("💾 Registrar Contadores", type="primary", use_container_width=True)
+
+        if _salvar_cnt:
+            salvar_contador({"data":str(d_cnt),"hora":str(datetime.now().time()),"turno":turno_cnt,
+                             "disjuntor":dj_cnt,
+                             "polo_a":int(_f_a),"polo_b":int(_f_b),"polo_v":int(_f_v),
+                             "tripolar":int(_f_trip),"curto_circuito":int(_f_cc),
+                             "usuario":st.session_state.login})
+            _carregar_contadores.clear()
+            st.success(f"✅ Contadores de {dj_cnt} registrados em {d_cnt.strftime('%d/%m/%Y')}")
+            st.rerun()
+
+        # Histórico
+        if not df_cnt_hist.empty:
+            st.markdown("#### Histórico de Contadores")
+            _cols_cnt = ["data","turno","disjuntor","polo_a","polo_b","polo_v","tripolar","curto_circuito","usuario"]
+            st.dataframe(df_cnt_hist[_cols_cnt].rename(columns={
+                "polo_a":"P1LA","polo_b":"P1LB","polo_v":"P1LV","tripolar":"P1LT","curto_circuito":"P2"
+            }), use_container_width=True, hide_index=True)
 
 # ═══════════════════════════════════════════════════════════════ TEMP ═════
 elif "Temperatura" in pagina:
