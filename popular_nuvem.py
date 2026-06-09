@@ -4,22 +4,23 @@ Execute: py -3.12 popular_nuvem.py
 """
 import os, psycopg2
 
-DB_URL = "postgresql://postgres:minhaCasa%232026@db.stgibmuefxrnistysckt.supabase.co:5432/postgres?sslmode=require"
+DB_URL = "postgresql://postgres.stgibmuefxrnistysckt:Guardiao2026.@aws-1-sa-east-1.pooler.supabase.com:6543/postgres"
 
 DISJUNTORES = [
     ("Disjuntor SF6","PMDJ6-01","Disjuntor Bay 01PUL","ABB","LTB 245E2",230,6.0,5.5,5.0,"Bay 01PUL","Subestacao 230kV",1),
     ("Disjuntor SF6","PMDJ6-02","Disjuntor Vao Linha (3 polos separados)","ABB","LTB 245E2",230,6.0,5.5,5.0,"Vao Linha","Subestacao 230kV",3),
     ("Disjuntor SF6","PMDJ6-03","Disjuntor Bay 02PVL","ABB","LTB 245E2",230,6.0,5.5,5.0,"Bay 02PVL","Subestacao 230kV",1),
     ("Disjuntor SF6","PMDJ6-04","Disjuntor Vao Trafo","ABB","LTB 245E2",230,6.0,5.5,5.0,"Vao Trafo","Subestacao 230kV",1),
-    ("Disjuntor SF6","PMDJ6-05","Disjuntor Bay 03PVL","ABB","LTB 245E2",230,6.0,5.5,5.0,"Bay 03PVL","Subestacao 230kV",1),
+    ("Disjuntor SF6","PMDJ6-05","Disjuntor Bay 03PVL","Siemens","3AP1 FG",230,6.0,5.2,5.0,"Bay 03PVL","Subestacao 230kV",1),
+    ("Disjuntor SF6","PMDB6-01","Disjuntor Acoplamento de Barras (3 polos separados)","Siemens","3AP1 FG",230,6.0,5.2,5.0,"Acoplamento Barras - Bay 01PCB","Subestacao 230kV",3),
 ]
 
 SECCIONADORAS = [
-    ("Seccionadora","PMCA6-01","PMCA - Chave de Conexao 01","Siemens","LAV",245,"Bay 01PUL","Subestacao 230kV",1),
-    ("Seccionadora","PMCA6-02","PMCA - Chave de Conexao 02","Siemens","LAV",245,"Bay 02PVL","Subestacao 230kV",1),
-    ("Seccionadora","PMCA6-03","PMCA - Chave de Conexao 03","Siemens","LAV",245,"Acoplamento","Subestacao 230kV",1),
-    ("Seccionadora","PMCA6-04","PMCA - Chave de Conexao 04","Siemens","LAV",245,"Vao Trafo","Subestacao 230kV",1),
-    ("Seccionadora","PMCA6-05","PMCA - Chave de Conexao 05","Siemens","LAV",245,"Bay 03PVL","Subestacao 230kV",1),
+    ("Seccionadora","PMCA6-01","PMCA - Chave de Aterramento 01","Siemens","LAV",245,"Bay 01PVL","Subestacao 230kV",1),
+    ("Seccionadora","PMCA6-02","PMCA - Chave de Aterramento 02","Siemens","LAV",245,"Bay 01PCL","Subestacao 230kV",1),
+    ("Seccionadora","PMCA6-03","PMCA - Chave de Aterramento 03","Siemens","LAV",245,"Bay 02PVL","Subestacao 230kV",1),
+    ("Seccionadora","PMCA6-04","PMCA - Chave de Aterramento 04","Siemens","LAV",245,"Bay Trafo - 01PCT","Subestacao 230kV",1),
+    ("Seccionadora","PMCA6-05","PMCA - Chave de Aterramento 05","Siemens","LAV",245,"Bay 03PVL","Subestacao 230kV",1),
     ("Seccionadora","PMSD6-01","PMSD - Seccionadora de Disjuntor 01","Siemens","LAV",245,"Bay 01PUL","Subestacao 230kV",1),
     ("Seccionadora","PMSD6-02","PMSD - Seccionadora de Disjuntor 02","Siemens","LAV",245,"Vao Linha","Subestacao 230kV",1),
     ("Seccionadora","PMSD6-03","PMSD - Seccionadora de Disjuntor 03","Siemens","LAV",245,"Bay 02PVL","Subestacao 230kV",1),

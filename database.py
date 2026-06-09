@@ -94,6 +94,11 @@ def init_db():
             data TEXT, sistema TEXT, descricao TEXT,
             status TEXT DEFAULT 'Aberto',
             usuario TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""",
+
+        """CREATE TABLE IF NOT EXISTS config_app (
+            chave TEXT PRIMARY KEY,
+            valor TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""",
     ]
     for s in stmts:
         cur.execute(s)
@@ -265,3 +270,21 @@ def carregar_melhorias():
     c = conn()
     df = pd.read_sql_query("SELECT * FROM melhorias ORDER BY created_at DESC", c)
     c.close(); return df
+
+# ── Configuração persistente do app ───────────────────────────────────────
+def salvar_config(chave: str, valor: str):
+    c = conn(); cur = c.cursor()
+    cur.execute("""INSERT INTO config_app (chave, valor, updated_at)
+        VALUES (%s, %s, NOW())
+        ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor, updated_at = NOW()""",
+        (chave, valor))
+    c.commit(); cur.close(); c.close()
+
+def carregar_config(chave: str, padrao: str = None) -> str:
+    try:
+        c = conn(); cur = c.cursor()
+        cur.execute("SELECT valor FROM config_app WHERE chave = %s", (chave,))
+        row = cur.fetchone(); cur.close(); c.close()
+        return row[0] if row else padrao
+    except Exception:
+        return padrao

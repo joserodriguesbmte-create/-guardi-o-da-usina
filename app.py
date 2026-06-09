@@ -8,7 +8,8 @@ from database import (init_db, salvar_sf6, carregar_sf6, salvar_temp, carregar_t
                       salvar_pendencia, carregar_pendencias, atualizar_pendencia,
                       salvar_troca, carregar_trocas, salvar_melhoria, carregar_melhorias,
                       salvar_equipamento, atualizar_equipamento, desativar_equipamento,
-                      carregar_equipamentos, buscar_equipamento_por_tag)
+                      carregar_equipamentos, buscar_equipamento_por_tag,
+                      salvar_config, carregar_config)
 from equipamentos import DISJUNTORES, TRANSFORMADORES, BATERIAS, corrigir_pressao_sf6, status_sf6
 from email_report import (salvar_config_email, carregar_config_email,
                            gerar_html_relatorio, enviar_relatorio, fig_para_base64)
@@ -43,6 +44,13 @@ def _init_db():
     init_db()
 
 _init_db()
+
+# Restaurar condições ambientais salvas — persiste entre sessões
+if "temp_amb_global" not in st.session_state:
+    st.session_state["temp_amb_global"] = float(carregar_config("temp_amb", "28.0") or 28.0)
+    st.session_state["umid_amb_global"] = float(carregar_config("umid_amb", "70.0") or 70.0)
+    _t = carregar_config("turno", "Manhã (06-14h)")
+    st.session_state["turno_global"] = _t if _t in ["Manhã (06-14h)","Tarde (14-22h)","Noite (22-06h)"] else "Manhã (06-14h)"
 
 # ═══════════════════════════════════════════════════════════════ CSS ══════
 st.markdown("""<style>
@@ -284,7 +292,7 @@ if "Painel" in pagina:
 
     # ══ 1. TEMPERATURA AMBIENTE CENTRALIZADA ════════════════════════════════
     # Campos em linha — responsivo no mobile
-    _a1, _a2, _a3 = st.columns(3)
+    _a1, _a2, _a3, _a4 = st.columns(4)
     t_amb = _a1.number_input(
         "🌡️ Temperatura (°C)",
         value=float(st.session_state.get("temp_amb_global", 28.0)),
@@ -301,6 +309,12 @@ if "Painel" in pagina:
         index=["Manhã (06-14h)","Tarde (14-22h)","Noite (22-06h)"].index(
             st.session_state.get("turno_global", "Manhã (06-14h)")),
         key="amb_turno_painel"
+    )
+    _data_insp = _a4.date_input(
+        "📅 Data da inspeção",
+        value=date.today(),
+        key="data_insp_painel",
+        help="Mude para continuar uma inspeção iniciada em outro dia"
     )
 
     if t_amb > 35:   _cc = "#ef4444"; _ct = "Muito Quente"
@@ -332,6 +346,13 @@ if "Painel" in pagina:
     st.session_state["temp_amb_global"] = t_amb
     st.session_state["umid_amb_global"] = u_amb
     st.session_state["turno_global"]    = turno_dia
+    # Persistir no banco — restaura ao reabrir o app
+    if t_amb    != st.session_state.get("_cfg_temp"):
+        salvar_config("temp_amb", str(t_amb));   st.session_state["_cfg_temp"]  = t_amb
+    if u_amb    != st.session_state.get("_cfg_umid"):
+        salvar_config("umid_amb", str(u_amb));   st.session_state["_cfg_umid"]  = u_amb
+    if turno_dia != st.session_state.get("_cfg_turno"):
+        salvar_config("turno", turno_dia);       st.session_state["_cfg_turno"] = turno_dia
 
     st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
 
@@ -341,8 +362,8 @@ if "Painel" in pagina:
     df_djs_db   = _carregar_equipamentos("Disjuntor SF6")
     df_secs_db  = _carregar_equipamentos("Seccionadora")
 
-    df_sf6_hoje  = _carregar_sf6(data_ini=date.today(), data_fim=date.today())
-    df_insp_hoje = _carregar_inspecoes(sistema="Seccionadora", data_ini=date.today(), data_fim=date.today())
+    df_sf6_hoje  = _carregar_sf6(data_ini=_data_insp, data_fim=_data_insp)
+    df_insp_hoje = _carregar_inspecoes(sistema="Seccionadora", data_ini=_data_insp, data_fim=_data_insp)
 
     djs_todos          = df_djs_db["tag"].tolist() if not df_djs_db.empty else []
     djs_inspecionados  = set(df_sf6_hoje["disjuntor"].unique()) if not df_sf6_hoje.empty else set()
@@ -448,9 +469,7 @@ if "Painel" in pagina:
 
             st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
 
-            # ── INSPEÇÃO VISUAL ───────────────────────────────────────────────
-            st.markdown("<div style='color:#60a5fa;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>🔍 Inspeção Visual</div>", unsafe_allow_html=True)
-
+            # ── INSPEÇÃO VISUAL + OPERAÇÕES (form — sem reload a cada clique) ─
             _ITENS_DJ = [
                 "Sem vazamentos visíveis",
                 "Indicador de pressão funcionando",
@@ -459,51 +478,18 @@ if "Painel" in pagina:
                 "Sem ruídos anormais",
             ]
 
-            # JS para reposicionar radio OK/NC antes da label
-            st.components.v1.html("""<script>
-            function fixR(){
-                parent.document.querySelectorAll('[data-testid="stRadio"]').forEach(function(r){
-                    r.style.cssText='display:flex!important;flex-direction:row!important;align-items:center!important;gap:10px!important;background:#0f172a;border:1px solid #1e3a5f;border-radius:8px;padding:5px 10px;margin:2px 0';
-                    var l=r.querySelector('[data-testid="stWidgetLabel"]');
-                    var o=r.querySelector('div[class]');
-                    if(l){l.style.order='2';l.style.fontSize='0.82rem';}
-                    if(o){o.style.order='1';o.style.flexShrink='0';}
-                });
-            }
-            setTimeout(fixR,200);setTimeout(fixR,700);setTimeout(fixR,1800);
-            </script>""", height=0)
+            with st.form(f"form_sf6_{_dj_sel}", clear_on_submit=True):
+                st.markdown("<div style='color:#60a5fa;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>🔍 Inspeção Visual</div>", unsafe_allow_html=True)
+                _res_visual = {}
+                for _iv in _ITENS_DJ:
+                    _vv = st.radio(f"{_iv}", ["OK","NC"], index=None,
+                                   horizontal=True, key=f"dj_vis_{_dj_sel}_{_iv}")
+                    _res_visual[_iv] = _vv
 
-            _res_visual = {}
-            for _iv in _ITENS_DJ:
-                _vv = st.radio(f"{_iv}", ["OK","NC"], index=None,
-                               horizontal=True, key=f"dj_vis_{_dj_sel}_{_iv}")
-                _res_visual[_iv] = _vv
-
-            _vis_preench = [v for v in _res_visual.values() if v is not None]
-            _vis_nc = sum(1 for v in _res_visual.values() if v == "NC")
-            _vis_ok = len(_ITENS_DJ) - _vis_nc
-
-            if len(_vis_preench) == len(_ITENS_DJ):
-                if   _vis_nc == 0: _vs_cor="#10b981"; _vs_txt="🟢 BOA"
-                elif _vis_nc <= 2: _vs_cor="#f59e0b"; _vs_txt="🟡 ATENÇÃO"
-                else:              _vs_cor="#ef4444"; _vs_txt="🔴 CRÍTICA"
-                st.markdown(f"""<div style='background:#0a1628;border:1px solid {_vs_cor};
-                    border-radius:8px;padding:8px 14px;margin:6px 0;
-                    display:flex;justify-content:space-between'>
-                    <span style='color:{_vs_cor};font-weight:700'>{_vs_txt}</span>
-                    <span style='color:{_vs_cor};font-size:0.85rem'>{_vis_ok}/{len(_ITENS_DJ)} OK</span>
-                </div>""", unsafe_allow_html=True)
-
-            st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
-
-            # ── OPERAÇÕES NO TURNO ────────────────────────────────────────────
-            st.markdown("<div style='color:#8b5cf6;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>🔢 Operações no Turno</div>", unsafe_allow_html=True)
-
-            _houve_op = st.radio("Houve operações neste turno?", ["Não","Sim"],
-                                 index=0, horizontal=True, key=f"op_houve_{_dj_sel}")
-
-            _op_tipo = None; _op_qtd = 0
-            if _houve_op == "Sim":
+                st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
+                st.markdown("<div style='color:#8b5cf6;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>🔢 Operações no Turno</div>", unsafe_allow_html=True)
+                _houve_op = st.radio("Houve operações neste turno?", ["Não","Sim"],
+                                     index=0, horizontal=True, key=f"op_houve_{_dj_sel}")
                 _oc1, _oc2 = st.columns(2)
                 _op_tipo = _oc1.selectbox("Tipo de operação", [
                     "Abertura Normal","Fechamento Normal",
@@ -511,50 +497,44 @@ if "Painel" in pagina:
                 ], key=f"op_tipo_{_dj_sel}")
                 _op_qtd = _oc2.number_input("Quantidade", min_value=1, max_value=50,
                                             value=1, step=1, key=f"op_qtd_{_dj_sel}")
+                st.caption("Preencha tipo e quantidade apenas se houver operações.")
+                st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
+                _obs_wf = st.text_input("Observação geral (opcional)", key="wf_dj_obs",
+                                        placeholder="Condições de campo, instrumento usado...")
+                _salvar_sf6 = st.form_submit_button("💾 Salvar e Avançar para o próximo",
+                                                     type="primary", use_container_width=True)
 
-            st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
-
-            # ── OBSERVAÇÃO E SALVAR ───────────────────────────────────────────
-            _obs_wf = st.text_input("Observação geral (opcional)", key="wf_dj_obs",
-                                    placeholder="Condições de campo, instrumento usado...")
-
-            _vis_completo = len(_vis_preench) == len(_ITENS_DJ)
-            if not _vis_completo:
-                st.warning(f"⏳ Preencha todos os {len(_ITENS_DJ)} itens da inspeção visual.")
-
-            if st.button("💾 Salvar e Avançar para o próximo", type="primary",
-                         use_container_width=True, key="wf_dj_save",
-                         disabled=not _vis_completo):
+            if _salvar_sf6:
                 import json as _json
-                _hora_wf = datetime.now().time()
-                _obs_completo = _json.dumps(_res_visual, ensure_ascii=False)
-                if _obs_wf: _obs_completo += f" | {_obs_wf}"
-
-                # Salvar pressão SF6
-                for _polo, _d in _dados_wf.items():
-                    salvar_sf6({"data":str(date.today()),"hora":str(_hora_wf),
-                                "turno":turno_dia,"disjuntor":_dj_sel,"polo":_polo,
-                                "pressao_medida":_d["p_med"],"temperatura":t_amb,
-                                "pressao_corrigida":_d["p_cor"],"status_sf6":_d["status"],
-                                "observacao":_obs_completo,"usuario":st.session_state.login})
-
-                # Salvar inspeção visual
-                _st_vis = "NC" if _vis_nc > 0 else "OK"
-                salvar_inspecao({"data":str(date.today()),"turno":turno_dia,
-                                 "sistema":"Disjuntor SF6","item":_dj_sel,
-                                 "status":_st_vis,"observacao":_obs_completo,
-                                 "usuario":st.session_state.login})
-
-                # Salvar operações se houver
-                if _houve_op == "Sim" and _op_tipo:
-                    salvar_operacao({"data":str(date.today()),"disjuntor":_dj_sel,
-                                     "tipo_operacao":_op_tipo,"motivo":turno_dia,
-                                     "num_operacoes_total":int(_op_qtd),
+                _vis_preench = [v for v in _res_visual.values() if v is not None]
+                if len(_vis_preench) < len(_ITENS_DJ):
+                    st.warning(f"⚠️ Preencha todos os {len(_ITENS_DJ)} itens da inspeção visual ({len(_vis_preench)}/{len(_ITENS_DJ)} preenchidos).")
+                else:
+                    _vis_nc = sum(1 for v in _res_visual.values() if v == "NC")
+                    _hora_wf = datetime.now().time()
+                    _obs_completo = _json.dumps(_res_visual, ensure_ascii=False)
+                    if _obs_wf: _obs_completo += f" | {_obs_wf}"
+                    for _polo, _d in _dados_wf.items():
+                        salvar_sf6({"data":str(_data_insp),"hora":str(_hora_wf),
+                                    "turno":turno_dia,"disjuntor":_dj_sel,"polo":_polo,
+                                    "pressao_medida":_d["p_med"],"temperatura":t_amb,
+                                    "pressao_corrigida":_d["p_cor"],"status_sf6":_d["status"],
+                                    "observacao":_obs_completo,"usuario":st.session_state.login})
+                    _st_vis = "NC" if _vis_nc > 0 else "OK"
+                    salvar_inspecao({"data":str(_data_insp),"turno":turno_dia,
+                                     "sistema":"Disjuntor SF6","item":_dj_sel,
+                                     "status":_st_vis,"observacao":_obs_completo,
                                      "usuario":st.session_state.login})
-
-                _vs2 = "🟢 BOA" if _vis_nc==0 else "🟡 ATENÇÃO" if _vis_nc<=2 else "🔴 CRÍTICA"
-                st.success(f"✅ {_dj_sel} — Visual: {_vs2} | {'Operação registrada' if _houve_op=='Sim' else 'Sem operações'}")
-                st.rerun()
+                    if _houve_op == "Sim" and _op_tipo:
+                        salvar_operacao({"data":str(_data_insp),"disjuntor":_dj_sel,
+                                         "tipo_operacao":_op_tipo,"motivo":turno_dia,
+                                         "num_operacoes_total":int(_op_qtd),
+                                         "usuario":st.session_state.login})
+                    _vs2 = "🟢 BOA" if _vis_nc==0 else "🟡 ATENÇÃO" if _vis_nc<=2 else "🔴 CRÍTICA"
+                    st.success(f"✅ {_dj_sel} — Visual: {_vs2} | {'Operação registrada' if _houve_op=='Sim' else 'Sem operações'}")
+                    _carregar_sf6.clear()
+                    _carregar_inspecoes.clear()
+                    st.rerun()
 
     # ── COLUNA DIREITA: ALERTAS + EVOLUÇÃO SF6 ──────────────────────────────
     with col_painel:
@@ -694,58 +674,50 @@ if "Painel" in pagina:
         </script>
         """, height=0)
 
-        st.markdown("<div style='margin:6px 0 4px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção:</div>", unsafe_allow_html=True)
-
-        _total = len(_ITENS_SEC)
-        _resultados = {}
-
-        for _item in _ITENS_SEC:
-            _key = f"sec_{_sec_sel}_{_item}"
-            _val = st.radio(
-                f"{_item}",
-                ["OK", "NC"],
-                index=None,
-                horizontal=True,
-                key=_key
-            )
-            _resultados[_item] = _val
-
-        _preenchidos = [v for v in _resultados.values() if v is not None]
-        _n_ok = sum(1 for v in _resultados.values() if v == "OK")
-        _n_nc = sum(1 for v in _resultados.values() if v == "NC")
-
-        if len(_preenchidos) < _total:
-            st.markdown(f"<div style='color:#475569;font-size:0.8rem;margin:6px 0'>⏳ {_total - len(_preenchidos)} item(ns) pendente(s)</div>", unsafe_allow_html=True)
+        if _sec_sel.startswith("PMCA"):
+            st.markdown("<div style='background:#0c2340;border:1px solid #1e3a5f;border-radius:6px;padding:5px 12px;margin:4px 0;font-size:0.75rem;color:#60a5fa'>⚡ Chave de Aterramento — varão simples, sem isoladores de porcelana</div>", unsafe_allow_html=True)
+            _ITENS_INSP = [
+                "Condição geral (visual)",
+                "Fixação e parafusos",
+                "Lubrificação — articulações e mecanismo",
+                "Contatos — desgaste e oxidação",
+                "Sistema de travamento/bloqueio",
+                "Identificação e sinalização",
+            ]
         else:
-            if   _n_nc == 0: _saude_cor="#10b981"; _saude_txt="🟢 BOA";     _saude_bg="#052e16"
-            elif _n_nc <= 2: _saude_cor="#f59e0b"; _saude_txt="🟡 ATENÇÃO"; _saude_bg="#451a03"
-            else:            _saude_cor="#ef4444"; _saude_txt="🔴 CRÍTICA";  _saude_bg="#450a0a"
-            st.markdown(f"""<div style='background:{_saude_bg};border:1px solid {_saude_cor};
-                border-radius:8px;padding:10px 16px;margin:8px 0;
-                display:flex;justify-content:space-between;align-items:center'>
-                <span style='color:{_saude_cor};font-weight:700'>{_saude_txt} — Saúde do Equipamento</span>
-                <span style='color:{_saude_cor};font-weight:700'>{_n_ok}/{_total} OK · {_n_nc} NC</span>
-            </div>""", unsafe_allow_html=True)
+            _ITENS_INSP = _ITENS_SEC
 
-        _todos_preenchidos = len(_preenchidos) == _total
-        _obs_sec = st.text_input("Observação geral", key="wf_sec_obs",
-                                 placeholder="Condições observadas, intercorrências...")
+        with st.form(f"form_sec_{_sec_sel}", clear_on_submit=True):
+            st.markdown("<div style='margin:6px 0 4px;color:#94a3b8;font-size:0.78rem;font-weight:600'>Itens de inspeção:</div>", unsafe_allow_html=True)
+            _resultados = {}
+            for _item in _ITENS_INSP:
+                _val = st.radio(f"{_item}", ["OK","NC"], index=None,
+                                horizontal=True, key=f"sec_{_sec_sel}_{_item}")
+                _resultados[_item] = _val
+            _obs_sec = st.text_input("Observação geral", key="wf_sec_obs",
+                                     placeholder="Condições observadas, intercorrências...")
+            _salvar_sec = st.form_submit_button("💾 Registrar e Avançar para a próxima",
+                                                type="primary", use_container_width=True)
 
-        if st.button("💾 Registrar e Avançar para a próxima",
-                     type="primary", use_container_width=True, key="wf_sec_save",
-                     disabled=not _todos_preenchidos):
+        if _salvar_sec:
             import json as _json
-            _status_geral = "NC" if _n_nc > 0 else "OK"
-            _obs_completo = _json.dumps(_resultados, ensure_ascii=False)
-            if _obs_sec:
-                _obs_completo += f" | {_obs_sec}"
-            salvar_inspecao({"data":str(date.today()),"turno":turno_dia,
-                             "sistema":"Seccionadora","item":_sec_sel,
-                             "status":_status_geral,"observacao":_obs_completo,
-                             "usuario":st.session_state.login})
-            _txt = "🟢 BOA" if _n_nc==0 else "🟡 ATENÇÃO" if _n_nc<=2 else "🔴 CRÍTICA"
-            st.success(f"✅ {_sec_sel} — {_txt} ({_n_ok}/{_total} OK)")
-            st.rerun()
+            _preenchidos = [v for v in _resultados.values() if v is not None]
+            if len(_preenchidos) < len(_ITENS_INSP):
+                st.warning(f"⚠️ Preencha todos os {len(_ITENS_INSP)} itens antes de salvar ({len(_preenchidos)}/{len(_ITENS_INSP)} preenchidos).")
+            else:
+                _n_nc = sum(1 for v in _resultados.values() if v == "NC")
+                _n_ok = len(_ITENS_INSP) - _n_nc
+                _status_geral = "NC" if _n_nc > 0 else "OK"
+                _obs_completo = _json.dumps(_resultados, ensure_ascii=False)
+                if _obs_sec: _obs_completo += f" | {_obs_sec}"
+                salvar_inspecao({"data":str(_data_insp),"turno":turno_dia,
+                                 "sistema":"Seccionadora","item":_sec_sel,
+                                 "status":_status_geral,"observacao":_obs_completo,
+                                 "usuario":st.session_state.login})
+                _txt = "🟢 BOA" if _n_nc==0 else "🟡 ATENÇÃO" if _n_nc<=2 else "🔴 CRÍTICA"
+                st.success(f"✅ {_sec_sel} — {_txt} ({_n_ok}/{len(_ITENS_INSP)} OK)")
+                _carregar_inspecoes.clear()
+                st.rerun()
 
     # ── 4. INSPEÇÃO DO TRANSFORMADOR — largura total ─────────────────────────
     st.markdown("<div style='border-top:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
@@ -760,11 +732,12 @@ if "Painel" in pagina:
 
     # Verifica se trafo foi inspecionado hoje
     _df_trafo_hoje = _carregar_inspecoes(sistema="Transformador",
-                                         data_ini=date.today(), data_fim=date.today())
+                                         data_ini=_data_insp, data_fim=_data_insp)
     _trafo_insp = not _df_trafo_hoje.empty
 
     _tr_pct = 1.0 if _trafo_insp else 0.0
-    st.progress(_tr_pct, text="1/1 transformador inspecionado hoje" if _trafo_insp else "0/1 transformador inspecionado hoje")
+    _data_insp_str = _data_insp.strftime("%d/%m")
+    st.progress(_tr_pct, text=f"1/1 transformador inspecionado em {_data_insp_str}" if _trafo_insp else f"0/1 transformador inspecionado em {_data_insp_str}")
 
     if _trafo_insp:
         st.success("✅ Transformador inspecionado hoje!")
@@ -877,7 +850,7 @@ if "Painel" in pagina:
                 ("WTI BT — Enrolamento BT", _wti_bt, _lim_oti),
             ]:
                 _st_t = "ALARME" if _temp > _lim else "NORMAL"
-                salvar_temp({"data":str(date.today()),"hora":str(_hora_tr),"turno":turno_dia,
+                salvar_temp({"data":str(_data_insp),"hora":str(_hora_tr),"turno":turno_dia,
                              "equipamento":_TRAFO_NOME,"ponto":_ponto,
                              "temperatura":_temp,"umidade":0.0,"limite_max":_lim,
                              "status":_st_t,"observacao":_obs_tr,"usuario":st.session_state.login})
@@ -892,13 +865,14 @@ if "Painel" in pagina:
                 "alertas": _alertas_tr
             }
             if _obs_tr: _insp_dados["observacao"] = _obs_tr
-            salvar_inspecao({"data":str(date.today()),"turno":turno_dia,
+            salvar_inspecao({"data":str(_data_insp),"turno":turno_dia,
                              "sistema":"Transformador","item":_TRAFO_TAG,
                              "status":_tr_saude_txt.split()[1] if " " in _tr_saude_txt else _tr_saude_txt,
                              "observacao":_json.dumps(_insp_dados, ensure_ascii=False),
                              "usuario":st.session_state.login})
 
             st.success(f"✅ {_TRAFO_NOME} — {_tr_saude_txt}")
+            _carregar_inspecoes.clear()
             st.rerun()
 
 # ══════════════════════════════════════════════════════ CADASTRO EQUIPAMENTOS

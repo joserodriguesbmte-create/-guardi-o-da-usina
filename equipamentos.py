@@ -8,6 +8,7 @@ DISJUNTORES = {
     "PMDJ6-03": {"descricao": "Disjuntor Bay 02PVL", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
     "PMDJ6-04": {"descricao": "Disjuntor Vão Trafo", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
     "PMDJ6-05": {"descricao": "Disjuntor Bay 03PVL", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
+    "PMDB6-01": {"descricao": "Disjuntor Acoplamento de Barras (3 polos separados)", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 3},
 }
 
 TRANSFORMADORES = {
