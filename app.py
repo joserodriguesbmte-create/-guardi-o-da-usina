@@ -2,7 +2,8 @@
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
+import calendar
 from database import (init_db, salvar_sf6, carregar_sf6, salvar_temp, carregar_temps,
                       salvar_operacao, carregar_operacoes, salvar_inspecao, carregar_inspecoes,
                       salvar_pendencia, carregar_pendencias, atualizar_pendencia,
@@ -432,6 +433,21 @@ if "Painel" in pagina:
         _dj_done = _dj_tot - len(djs_pendentes)
         _dj_pct  = _dj_done / _dj_tot if _dj_tot else 0
         st.progress(_dj_pct, text=f"{_dj_done}/{_dj_tot} disjuntores inspecionados hoje")
+
+        # Última leitura por disjuntor — verde=hoje, amarelo=≤7d, vermelho=>7d
+        if not df_sf6_all.empty:
+            _ult_sf6 = df_sf6_all.sort_values("data").groupby("disjuntor").last()[["data","pressao_corrigida","status_sf6"]].reset_index()
+            _chips = []
+            for _, _r in _ult_sf6.iterrows():
+                try: _dias = (date.today() - date.fromisoformat(str(_r.data))).days
+                except: _dias = 999
+                _cor = "#10b981" if _dias == 0 else "#f59e0b" if _dias <= 7 else "#ef4444"
+                _chips.append(f"<span style='background:#0a1628;border:1px solid {_cor};border-radius:6px;"
+                               f"padding:2px 8px;font-size:0.7rem;color:{_cor};margin:2px;display:inline-block'>"
+                               f"{_r.disjuntor} · {_r.data} · {_r.pressao_corrigida:.3f} bar</span>")
+            if _chips:
+                st.markdown("<div style='margin:4px 0 10px;line-height:2'>" + "".join(_chips) + "</div>",
+                            unsafe_allow_html=True)
 
         if not djs_pendentes:
             st.success("✅ Todos os disjuntores inspecionados hoje!")
@@ -1785,9 +1801,19 @@ elif "Pendências" in pagina:
         df_p = carregar_pendencias()
         if df_p.empty: st.info("Sem pendências.")
         else:
-            for _,row in df_p[df_p.status!="Concluída"].iterrows():
+            _ab   = len(df_p[df_p.status == "Aberta"])
+            _and  = len(df_p[df_p.status == "Em andamento"])
+            _conc = len(df_p[df_p.status.isin(["Concluída","Cancelada"])])
+            st.markdown(f"<div style='font-size:0.82rem;margin:4px 0 8px'>"
+                        f"🔴 <b>{_ab}</b> abertas &nbsp;·&nbsp; "
+                        f"🟡 <b>{_and}</b> em andamento &nbsp;·&nbsp; "
+                        f"✅ <b>{_conc}</b> concluídas/canceladas</div>", unsafe_allow_html=True)
+            _show_conc = st.toggle("Mostrar concluídas e canceladas", value=False, key="pend_show_all")
+            _df_pend = df_p if _show_conc else df_p[df_p.status.isin(["Aberta","Em andamento"])]
+            for _,row in _df_pend.iterrows():
                 ico = {"Alta":"🔴","Média":"🟡","Baixa":"🟢"}.get(row.prioridade,"⚪")
-                with st.expander(f"{ico} [{row.prioridade}] {row.sistema} — {str(row.descricao)[:60]}"):
+                _badge = " ✅" if row.status=="Concluída" else " ❌" if row.status=="Cancelada" else ""
+                with st.expander(f"{ico}{_badge} [{row.prioridade}] {row.sistema} — {str(row.descricao)[:60]}"):
                     c1,c2,c3 = st.columns(3)
                     c1.write(f"**Abertura:** {row.data_abertura}"); c2.write(f"**SAP:** {row.nota_sap or '—'}"); c3.write(f"**Status:** {row.status}")
                     st.write(f"**Descrição:** {row.descricao}")
@@ -1809,7 +1835,20 @@ elif "Troca" in pagina:
         if st.form_submit_button("💾 Registrar",type="primary",use_container_width=True):
             salvar_troca({"data":str(dt),"turno_saida":ts,"turno_entrada":te,"sistema":sis,"ocorrencia":oc,"acao_tomada":ac,"pendente":int(pend),"usuario":st.session_state.login})
             st.success("✅ Passagem registrada!")
-    df_tr = carregar_trocas(20)
+    st.markdown("#### 📋 Histórico de Passagens")
+    df_tr_all = carregar_trocas(500)
+    if not df_tr_all.empty:
+        _tf1, _tf2, _tf3 = st.columns(3)
+        _fil_sis_tr = _tf1.selectbox("Sistema", ["Todos"] + SISTEMAS, key="tr_sis_f")
+        _fil_ini_tr = _tf2.date_input("De",  value=date(date.today().year, date.today().month, 1), key="tr_ini_f")
+        _fil_fim_tr = _tf3.date_input("Até", value=date.today(), key="tr_fim_f")
+        df_tr = df_tr_all.copy()
+        if _fil_sis_tr != "Todos":
+            df_tr = df_tr[df_tr.sistema == _fil_sis_tr]
+        df_tr = df_tr[(df_tr.data >= str(_fil_ini_tr)) & (df_tr.data <= str(_fil_fim_tr))]
+        st.markdown(f"<div style='color:#475569;font-size:0.8rem;margin:4px 0'>{len(df_tr)} registro(s) no período · Total: {len(df_tr_all)}</div>", unsafe_allow_html=True)
+    else:
+        df_tr = df_tr_all
     for _,r in df_tr.iterrows():
         ico = "⚠️" if r.pendente else "✅"
         with st.expander(f"{ico} {r.data} | {r.turno_saida}→{r.turno_entrada} | {r.sistema}"):
@@ -1823,11 +1862,24 @@ elif "Relatório" in pagina:
         <span style='color:#334155;font-size:0.82rem'> · Envio mensal ao gestor</span>
     </div>""", unsafe_allow_html=True)
 
-    # Período
+    # Período — meses gerados dinamicamente (6 atrás + atual + 3 à frente)
+    _MESES_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                 "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
+    _hoje_r = date.today()
+    _meses_dict = {}
+    for _d in range(-6, 4):
+        _m = (_hoje_r.month + _d - 1) % 12 + 1
+        _a = _hoje_r.year + (_hoje_r.month + _d - 1) // 12
+        _meses_dict[f"{_MESES_PT[_m-1]}/{_a}"] = (_a, _m)
+    _mes_padrao = f"{_MESES_PT[_hoje_r.month-1]}/{_hoje_r.year}"
+    _idx_mes = list(_meses_dict.keys()).index(_mes_padrao) if _mes_padrao in _meses_dict else 6
+
     _r1, _r2, _r3 = st.columns(3)
-    mes   = _r1.selectbox("📅 Mês", ["Junho/2026","Julho/2026","Agosto/2026","Setembro/2026"])
-    d_ini = _r2.date_input("De", value=date(2026,6,1))
-    d_fim = _r3.date_input("Até", value=date(2026,6,30))
+    mes = _r1.selectbox("📅 Mês", list(_meses_dict.keys()), index=_idx_mes, key="rel_mes")
+    _ano_r, _mes_r = _meses_dict[mes]
+    _ultimo_r = calendar.monthrange(_ano_r, _mes_r)[1]
+    d_ini = _r2.date_input("De",  value=date(_ano_r, _mes_r, 1),         key="rel_ini")
+    d_fim = _r3.date_input("Até", value=date(_ano_r, _mes_r, _ultimo_r),  key="rel_fim")
 
     # Carregar dados
     df_sf6_r    = carregar_sf6(data_ini=d_ini, data_fim=d_fim)
