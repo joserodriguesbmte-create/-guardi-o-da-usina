@@ -1979,8 +1979,9 @@ elif "Relatório" in pagina:
     # Upload de fotos
     st.markdown("#### 📷 Registro Fotográfico (opcional)")
     st.markdown("<div style='color:#475569;font-size:0.82rem;margin-bottom:8px'>Adicione fotos de inspeções, anomalias ou registros do período. Serão incluídas no relatório.</div>", unsafe_allow_html=True)
+    _fk = st.session_state.get("foto_counter", 0)
     fotos_upload = st.file_uploader("Selecione até 6 fotos", type=["jpg","jpeg","png","webp"],
-                                    accept_multiple_files=True, key="rel_fotos")
+                                    accept_multiple_files=True, key=f"rel_fotos_{_fk}")
     fotos_dados = []
     if fotos_upload:
         _cols_f = st.columns(3)
@@ -2112,6 +2113,8 @@ elif "Relatório" in pagina:
                 ok, msg  = enviar_relatorio(cfg_email, html_r, assunto)
             if ok:
                 st.success(msg)
+                st.session_state["foto_counter"] = st.session_state.get("foto_counter", 0) + 1
+                st.rerun()
             else:
                 st.error(msg)
 
