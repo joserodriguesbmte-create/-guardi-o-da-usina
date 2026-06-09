@@ -14,7 +14,8 @@ from database import (init_db, salvar_sf6, carregar_sf6, salvar_temp, carregar_t
                       salvar_contador, carregar_contadores)
 from equipamentos import DISJUNTORES, TRANSFORMADORES, BATERIAS, corrigir_pressao_sf6, status_sf6
 from email_report import (salvar_config_email, carregar_config_email,
-                           gerar_html_relatorio, enviar_relatorio, fig_para_base64)
+                           gerar_html_relatorio, enviar_relatorio, fig_para_base64,
+                           foto_para_base64)
 from checklists import SISTEMAS, CHECKLISTS
 
 st.set_page_config(page_title="Guardião da Usina", page_icon="🛡️",
@@ -1978,16 +1979,19 @@ elif "Relatório" in pagina:
     # Upload de fotos
     st.markdown("#### 📷 Registro Fotográfico (opcional)")
     st.markdown("<div style='color:#475569;font-size:0.82rem;margin-bottom:8px'>Adicione fotos de inspeções, anomalias ou registros do período. Serão incluídas no relatório.</div>", unsafe_allow_html=True)
-    fotos_upload = st.file_uploader("Selecione fotos", type=["jpg","jpeg","png","webp"],
+    fotos_upload = st.file_uploader("Selecione até 6 fotos", type=["jpg","jpeg","png","webp"],
                                     accept_multiple_files=True, key="rel_fotos")
     fotos_dados = []
     if fotos_upload:
-        _cols_f = st.columns(min(len(fotos_upload), 3))
-        for i, arq in enumerate(fotos_upload):
+        _cols_f = st.columns(3)
+        for i, arq in enumerate(fotos_upload[:6]):
+            img_bytes = arq.read()
             with _cols_f[i % 3]:
-                st.image(arq, use_container_width=True)
-                leg = st.text_input(f"Legenda", key=f"leg_{i}", placeholder="Descreva a foto...")
-                fotos_dados.append({"base64": foto_para_base64(arq.read()), "legenda": leg})
+                st.image(img_bytes, use_container_width=True)
+                leg = st.text_input(f"Legenda {i+1}", key=f"leg_{i}", placeholder="Descreva a foto...")
+                fotos_dados.append({"base64": foto_para_base64(img_bytes), "legenda": leg})
+        if len(fotos_upload) > 6:
+            st.caption(f"⚠️ Somente as primeiras 6 fotos são incluídas no relatório.")
 
     st.divider()
 
