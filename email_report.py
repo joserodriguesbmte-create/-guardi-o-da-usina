@@ -29,8 +29,27 @@ def fig_para_base64(fig) -> str:
     except Exception:
         return ""
 
-def foto_para_base64(foto_bytes: bytes) -> str:
-    return base64.b64encode(foto_bytes).decode("utf-8")
+def foto_para_base64(foto_bytes: bytes, largura: int = 480, altura: int = 360) -> str:
+    """Normaliza foto para dimensões uniformes (4:3, crop central) e retorna base64."""
+    try:
+        from PIL import Image
+        import io as _io
+        img = Image.open(_io.BytesIO(foto_bytes)).convert("RGB")
+        w, h = img.size
+        ratio = largura / altura
+        # Crop centralizado para proporção 4:3
+        if w / h > ratio:
+            novo_w = int(h * ratio)
+            img = img.crop(((w - novo_w) // 2, 0, (w - novo_w) // 2 + novo_w, h))
+        else:
+            novo_h = int(w / ratio)
+            img = img.crop((0, (h - novo_h) // 2, w, (h - novo_h) // 2 + novo_h))
+        img = img.resize((largura, altura), Image.LANCZOS)
+        buf = _io.BytesIO()
+        img.save(buf, format="JPEG", quality=85, optimize=True)
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
+    except Exception:
+        return base64.b64encode(foto_bytes).decode("utf-8")
 
 def html_para_pdf(html: str) -> bytes:
     """Converte HTML para PDF usando xhtml2pdf."""
@@ -272,9 +291,10 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
                     f"<table width='100%' cellpadding='0' cellspacing='0' border='0' "
                     f"style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
                     f"overflow:hidden;'>"
-                    f"<tr><td style='padding:0;'>"
-                    f"<img src='{src}' width='100%' "
-                    f"style='display:block;border-radius:10px 10px 0 0;'>"
+                    f"<tr><td style='padding:0;height:180px;overflow:hidden;'>"
+                    f"<img src='{src}' width='100%' height='180' "
+                    f"style='display:block;border-radius:10px 10px 0 0;"
+                    f"object-fit:cover;width:100%;height:180px;'>"
                     f"</td></tr>"
                     f"<tr><td style='padding:6px 8px;background:#f8fafc;'>"
                     f"<div style='font-size:10px;color:#94a3b8;font-weight:700;"

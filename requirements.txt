@@ -3,3 +3,4 @@ pandas>=2.0.0
 plotly>=5.18.0
 psycopg2-binary>=2.9.9
 kaleido>=0.2.1
+Pillow>=10.0.0
