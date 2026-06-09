@@ -238,6 +238,21 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     else:
         pend_table = "<p style='color:#10b981;font-style:italic;'>Sem pendencias abertas.</p>"
 
+    # ── Helper para seções — definido antes de ser usado ─────────────────────
+    def secao(titulo, conteudo):
+        return f"""
+        <table width="100%" cellpadding="0" cellspacing="0" border="0"
+               style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;
+                      margin-bottom:16px;font-family:Arial,sans-serif;">
+          <tr><td style="padding:22px 26px;">
+            <div style="font-size:15px;font-weight:800;color:#0f3460;
+                        border-bottom:2px solid #e2e8f0;padding-bottom:10px;margin-bottom:16px;">
+              {titulo}
+            </div>
+            {conteudo}
+          </td></tr>
+        </table>"""
+
     # ── Fotos ─────────────────────────────────────────────────────────────────
     fotos_section = ""
     if fotos:
@@ -281,21 +296,6 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
         )
 
     num_obs = 7 if fotos else 6
-
-    # ── Helper para seções ────────────────────────────────────────────────────
-    def secao(titulo, conteudo):
-        return f"""
-        <table width="100%" cellpadding="0" cellspacing="0" border="0"
-               style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;
-                      margin-bottom:16px;font-family:Arial,sans-serif;">
-          <tr><td style="padding:22px 26px;">
-            <div style="font-size:15px;font-weight:800;color:#0f3460;
-                        border-bottom:2px solid #e2e8f0;padding-bottom:10px;margin-bottom:16px;">
-              {titulo}
-            </div>
-            {conteudo}
-          </td></tr>
-        </table>"""
 
     # ── MONTAGEM FINAL ────────────────────────────────────────────────────────
     html = f"""<!DOCTYPE html>
