@@ -2054,6 +2054,7 @@ elif "Relatório" in pagina:
     df_i_trafo  = carregar_inspecoes(sistema="Transformador", data_ini=d_ini, data_fim=d_fim)
     df_ops_r    = carregar_operacoes()
     df_secs     = carregar_equipamentos("Seccionadora")
+    df_cnt_r    = carregar_contadores(data_ini=d_ini, data_fim=d_fim)
 
     n_alarmes_sf6   = len(df_sf6_r[df_sf6_r.status_sf6 != "NORMAL"]) if not df_sf6_r.empty else 0
     pend_abertas    = len(df_p_r[df_p_r.status == "Aberta"])          if not df_p_r.empty else 0
@@ -2212,6 +2213,29 @@ elif "Relatório" in pagina:
             except Exception:
                 trafo_insp = {"data": _ult_tr.data, "status": _ult_tr.status}
 
+        # Inspeções complementares — Para-raios, Sala Elétrica, Cúbilo
+        _IC_MAP = [
+            ("Para-raios 230kV",    "PARA-RAIOS-230kV"),
+            ("Sala Elétrica da SE", "SALA-ELETRICA-SE"),
+            ("Cúbilo de 13.8kV",   "CUBILO-13.8kV-SE"),
+        ]
+        insp_complement = []
+        for _nome, _tag in _IC_MAP:
+            _df_tag = df_i_r[df_i_r.item == _tag] if not df_i_r.empty else pd.DataFrame()
+            if not _df_tag.empty:
+                _ult_ic = _df_tag.sort_values("data").iloc[-1]
+                try:
+                    _dados_ic = _j.loads(_ult_ic.observacao) if _ult_ic.observacao else {}
+                except Exception:
+                    _dados_ic = {}
+                insp_complement.append({"nome": _nome, "data": _ult_ic.data,
+                                         "status": _ult_ic.status, "dados": _dados_ic})
+            else:
+                insp_complement.append({"nome": _nome, "data": "—",
+                                         "status": "Sem registro", "dados": {}})
+
+        cnt_lista = df_cnt_r.to_dict("records") if not df_cnt_r.empty else []
+
         return {
             "operador": st.session_state.user,
             "nivel":    st.session_state.nivel,
@@ -2238,9 +2262,11 @@ elif "Relatório" in pagina:
                 "inspecionadas": insp_sec_count,
                 "nok":           nok_sec_lista,
             },
-            "trafo_tabela":  trafo_tab,
-            "trafo_insp":    trafo_insp,
-            "fotos":        fotos_dados,
+            "trafo_tabela":    trafo_tab,
+            "trafo_insp":      trafo_insp,
+            "insp_complement": insp_complement,
+            "contadores":      cnt_lista,
+            "fotos":           fotos_dados,
         }
 
     col_b1, col_b2, col_b3, col_b4 = st.columns(4)

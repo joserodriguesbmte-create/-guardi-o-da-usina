@@ -110,9 +110,11 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     operacoes     = dados.get("operacoes", [])
     sec_resumo    = dados.get("sec_resumo", {})
     trafo_tab     = dados.get("trafo_tabela", [])
-    trafo_insp    = dados.get("trafo_insp", {})
-    fotos         = dados.get("fotos", [])
-    gerado_em     = datetime.now().strftime("%d/%m/%Y as %H:%M")
+    trafo_insp      = dados.get("trafo_insp", {})
+    insp_complement = dados.get("insp_complement", [])
+    contadores      = dados.get("contadores", [])
+    fotos           = dados.get("fotos", [])
+    gerado_em       = datetime.now().strftime("%d/%m/%Y as %H:%M")
 
     def badge(s):
         s = str(s).upper()
@@ -290,6 +292,70 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     else:
         pend_table = "<p style='color:#10b981;font-style:italic;'>Sem pendencias abertas.</p>"
 
+    # ── Inspeções Complementares (Para-raios, Sala Elétrica, Cúbilo) ─────────
+    def _badge_ic(s):
+        s = str(s)
+        if s in ("OK", "NORMAL"):
+            return f"<span style='color:#10b981;font-weight:700'>{s}</span>"
+        if s == "NC" or s.startswith("NC:"):
+            return f"<span style='color:#ef4444;font-weight:700'>{s}</span>"
+        if s == "Sem registro":
+            return f"<span style='color:#94a3b8;font-style:italic;'>{s}</span>"
+        return f"<span style='color:#f59e0b;font-weight:700'>{s}</span>"
+
+    _ANOMALIA_VALS = {"Anomalia","NC","Alarme ativo","Sim","Divergência","Ausentes","Falha","Desligado"}
+    comp_rows = ""
+    for ic in insp_complement:
+        _dados_ic = ic.get("dados", {})
+        _anomalias_ic = ", ".join([
+            k.replace("_"," ").title()
+            for k, v in _dados_ic.items()
+            if str(v) in _ANOMALIA_VALS and k != "observacao"
+        ])
+        comp_rows += (
+            f"<tr style='border-bottom:1px solid #f1f5f9;'>"
+            f"<td style='padding:8px 10px;font-weight:700;color:#0f3460;'>{ic.get('nome','')}</td>"
+            f"<td style='padding:8px 10px;color:#475569;'>{ic.get('data','—')}</td>"
+            f"<td style='padding:8px 10px;'>{_badge_ic(ic.get('status','—'))}</td>"
+            f"<td style='padding:8px 10px;color:#ef4444;font-size:12px;'>{_anomalias_ic or '—'}</td>"
+            f"</tr>"
+        )
+    if not comp_rows:
+        comp_rows = "<tr><td colspan='4' style='padding:12px;text-align:center;color:#94a3b8;font-style:italic;'>Sem registros no periodo</td></tr>"
+
+    comp_table = (
+        f"<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse;font-size:13px;'>"
+        f"<tr><th style='{th_style}'>Sistema</th><th style='{th_style}'>Ultima Inspecao</th>"
+        f"<th style='{th_style}'>Status</th><th style='{th_style}'>Anomalias</th></tr>"
+        f"{comp_rows}</table>"
+    )
+
+    cnt_table = ""
+    if contadores:
+        cnt_rows = ""
+        for cnt in contadores:
+            cnt_rows += (
+                f"<tr style='border-bottom:1px solid #f1f5f9;'>"
+                f"<td style='padding:7px 10px;color:#475569;'>{cnt.get('data','')}</td>"
+                f"<td style='padding:7px 10px;font-weight:700;color:#0f3460;'>{cnt.get('disjuntor','')}</td>"
+                f"<td style='padding:7px 10px;color:#475569;text-align:center;'>{cnt.get('tripolar',0)}</td>"
+                f"<td style='padding:7px 10px;color:#ef4444;text-align:center;font-weight:700;'>{cnt.get('curto_circuito',0)}</td>"
+                f"<td style='padding:7px 10px;color:#475569;text-align:center;'>{cnt.get('polo_a',0)}</td>"
+                f"<td style='padding:7px 10px;color:#475569;text-align:center;'>{cnt.get('polo_b',0)}</td>"
+                f"<td style='padding:7px 10px;color:#475569;text-align:center;'>{cnt.get('polo_v',0)}</td>"
+                f"</tr>"
+            )
+        cnt_table = (
+            f"<br><p style='font-size:11px;font-weight:700;color:#0f3460;text-transform:uppercase;"
+            f"letter-spacing:0.5px;margin:14px 0 6px;'>Contadores de Operacoes — Disjuntores</p>"
+            f"<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse;font-size:13px;'>"
+            f"<tr><th style='{th_style}'>Data</th><th style='{th_style}'>Disjuntor</th>"
+            f"<th style='{th_style}'>Tripolar</th><th style='{th_style}'>Curto-Circ.</th>"
+            f"<th style='{th_style}'>Polo A</th><th style='{th_style}'>Polo B</th>"
+            f"<th style='{th_style}'>Polo V</th></tr>"
+            f"{cnt_rows}</table>"
+        )
+
     # ── Helper para seções — definido antes de ser usado ─────────────────────
     def secao(titulo, conteudo):
         return f"""
@@ -344,11 +410,11 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
             fotos_html += "</tr>"
 
         fotos_section = secao(
-            "📷 6. Registro Fotografico do Periodo",
+            "📷 7. Registro Fotografico do Periodo",
             f"<table width='100%' cellpadding='0' cellspacing='4' border='0'>{fotos_html}</table>"
         )
 
-    num_obs = 7 if fotos else 6
+    num_obs = 8 if fotos else 7
 
     # ── MONTAGEM FINAL ────────────────────────────────────────────────────────
     html = f"""<!DOCTYPE html>
@@ -401,6 +467,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
              f"<td style='padding:8px 10px;color:#475569;'>{o.get('num_operacoes_total','')}</td></tr>"
              for o in operacoes])
          + "</table>" if operacoes else "")
+      + cnt_table
     )}
   </td></tr>
 
@@ -449,12 +516,18 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     )}
   </td></tr>
 
-  <!-- SEÇÃO 5: PENDÊNCIAS -->
+  <!-- SEÇÃO 5: INSPEÇÕES COMPLEMENTARES -->
   <tr><td style="padding-bottom:16px;">
-    {secao("⚠️ 5. Pendencias em Aberto", pend_table)}
+    {secao("🔍 5. Inspecoes Complementares — Para-raios · Sala Eletrica · Cubilo 13,8kV",
+      comp_table)}
   </td></tr>
 
-  <!-- SEÇÃO 6: FOTOS (se houver) -->
+  <!-- SEÇÃO 6: PENDÊNCIAS -->
+  <tr><td style="padding-bottom:16px;">
+    {secao("⚠️ 6. Pendencias em Aberto", pend_table)}
+  </td></tr>
+
+  <!-- SEÇÃO 7: FOTOS (se houver) -->
   {'<tr><td style="padding-bottom:16px;">' + fotos_section + '</td></tr>' if fotos else ''}
 
   <!-- SEÇÃO OBS -->
