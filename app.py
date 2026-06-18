@@ -370,16 +370,24 @@ if "Painel" in pagina:
     df_djs_db   = _carregar_equipamentos("Disjuntor SF6")
     df_secs_db  = _carregar_equipamentos("Seccionadora")
 
-    df_sf6_hoje  = _carregar_sf6(data_ini=_data_insp, data_fim=_data_insp)
-    df_insp_hoje = _carregar_inspecoes(sistema="Seccionadora", data_ini=_data_insp, data_fim=_data_insp)
+    # Período do mês atual para controle de inspeções
+    _mes_ini = date(_data_insp.year, _data_insp.month, 1)
+    _mes_fim = _data_insp
+
+    df_sf6_mes  = _carregar_sf6(data_ini=_mes_ini, data_fim=_mes_fim)
+    df_insp_sec_mes = _carregar_inspecoes(sistema="Seccionadora", data_ini=_mes_ini, data_fim=_mes_fim)
 
     djs_todos          = df_djs_db["tag"].tolist() if not df_djs_db.empty else []
-    djs_inspecionados  = set(df_sf6_hoje["disjuntor"].unique()) if not df_sf6_hoje.empty else set()
+    djs_inspecionados  = set(df_sf6_mes["disjuntor"].unique()) if not df_sf6_mes.empty else set()
     djs_pendentes      = [t for t in djs_todos if t not in djs_inspecionados]
+    if not djs_pendentes:
+        djs_pendentes = list(djs_todos)
 
     secs_todos         = df_secs_db["tag"].tolist() if not df_secs_db.empty else []
-    secs_inspecionadas = set(df_insp_hoje["item"].unique()) if not df_insp_hoje.empty else set()
+    secs_inspecionadas = set(df_insp_sec_mes["item"].unique()) if not df_insp_sec_mes.empty else set()
     secs_pendentes     = [t for t in secs_todos if t not in secs_inspecionadas]
+    if not secs_pendentes:
+        secs_pendentes = list(secs_todos)
 
     pend_abertas = len(df_pend_all[df_pend_all.status == "Aberta"]) if not df_pend_all.empty else 0
 
@@ -401,10 +409,11 @@ if "Painel" in pagina:
 
     # ══ KPIs ════════════════════════════════════════════════════════════════
     # KPIs em grid HTML responsivo — funciona no mobile sem depender de st.columns
+    _djs_feitos  = len(djs_inspecionados)
+    _secs_feitas = len(secs_inspecionadas)
     _kpis = [
-        ("⚡", len(djs_todos),                      "DJ Total",   "#3b82f6"),
-        ("✅", len(djs_todos)-len(djs_pendentes),    "DJ Hoje",    "#10b981"),
-        ("🔌", len(secs_todos)-len(secs_pendentes),  "SEC Hoje",   "#06b6d4"),
+        ("⚡", f"{_djs_feitos}/{len(djs_todos)}",    "DJ Mês",     "#10b981" if _djs_feitos==len(djs_todos) else "#3b82f6"),
+        ("🔌", f"{_secs_feitas}/{len(secs_todos)}",  "SEC Mês",    "#10b981" if _secs_feitas==len(secs_todos) else "#06b6d4"),
         ("🚨", len(alertas_list),                    "Alertas",    "#ef4444" if alertas_list else "#10b981"),
         ("⚠️", pend_abertas,                         "Pendências", "#8b5cf6"),
     ]
@@ -451,8 +460,9 @@ if "Painel" in pagina:
                 st.markdown("<div style='margin:4px 0 10px;line-height:2'>" + "".join(_chips) + "</div>",
                             unsafe_allow_html=True)
 
-        if not djs_pendentes:
-            st.success("✅ Todos os disjuntores inspecionados hoje!")
+        _djs_todos_feitos = len(djs_inspecionados) >= len(djs_todos) and len(djs_todos) > 0
+        if _djs_todos_feitos:
+            st.success(f"✅ Todos os {len(djs_todos)} disjuntores inspecionados neste mês! Lista disponível para nova rodada.")
         else:
             _df_dj_pend = df_djs_db[df_djs_db["tag"].isin(djs_pendentes)]
             _opc_dj = {r.tag: f"{r.tag}  ·  {r.modelo or '—'}  ·  {(r.descricao or '')[:40]}"
@@ -531,6 +541,12 @@ if "Painel" in pagina:
                 st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
                 _obs_wf = st.text_input("Observação geral (opcional)", key="wf_dj_obs",
                                         placeholder="Condições de campo, instrumento usado...")
+                _foto_dj = st.file_uploader("📷 Foto (opcional)", type=["jpg","jpeg","png"],
+                                             key=f"foto_dj_{_dj_sel}")
+                _leg_dj = ""
+                if _foto_dj:
+                    _leg_dj = st.text_input("Legenda da foto", key=f"leg_dj_{_dj_sel}",
+                                             placeholder=f"Ex: Manômetro {_dj_sel}")
                 _salvar_sf6 = st.form_submit_button(
                     f"💾 Salvar {_dj_sel} e Avançar ({len(djs_pendentes)-1} restante(s))",
                     type="primary", use_container_width=True)
@@ -574,6 +590,12 @@ if "Painel" in pagina:
                                          "tripolar":int(_cnt_trip),"curto_circuito":int(_cnt_cc),
                                          "usuario":st.session_state.login})
                         _carregar_contadores.clear()
+                    if _foto_dj:
+                        _foto_dj.seek(0)
+                        salvar_foto({"data":str(_data_insp), "sistema":f"SF6 — {_dj_sel}",
+                                     "legenda":_leg_dj or _dj_sel,
+                                     "foto_base64":foto_para_base64(_foto_dj.read()),
+                                     "usuario":st.session_state.login})
                     _vs2 = "🟢 BOA" if _vis_nc==0 else "🟡 ATENÇÃO" if _vis_nc<=2 else "🔴 CRÍTICA"
                     st.success(f"✅ {_dj_sel} — {' · '.join(_resumo_pressoes)} | Visual: {_vs2}")
                     _carregar_sf6.clear()
@@ -682,8 +704,9 @@ if "Painel" in pagina:
         "Identificação e sinalização",
     ]
 
-    if not secs_pendentes:
-        st.success("✅ Todas as seccionadoras inspecionadas hoje!")
+    _secs_todas_feitas = len(secs_inspecionadas) >= len(secs_todos) and len(secs_todos) > 0
+    if _secs_todas_feitas:
+        st.success(f"✅ Todas as {len(secs_todos)} seccionadoras inspecionadas neste mês! Lista disponível para nova rodada.")
     else:
         _df_sec_pend = df_secs_db[df_secs_db["tag"].isin(secs_pendentes)]
         _opc_sec = {r.tag: f"{r.tag}  ·  {(r.descricao or '')[:55]}"
@@ -740,6 +763,12 @@ if "Painel" in pagina:
                 _resultados[_item] = _val
             _obs_sec = st.text_input("Observação geral", key="wf_sec_obs",
                                      placeholder="Condições observadas, intercorrências...")
+            _foto_sec = st.file_uploader("📷 Foto (opcional)", type=["jpg","jpeg","png"],
+                                          key=f"foto_sec_{_sec_sel}")
+            _leg_sec = ""
+            if _foto_sec:
+                _leg_sec = st.text_input("Legenda da foto", key=f"leg_sec_{_sec_sel}",
+                                          placeholder=f"Ex: {_sec_sel} contato")
             _salvar_sec = st.form_submit_button(
                 f"💾 Salvar {_sec_sel} e Avançar ({len(secs_pendentes)-1} restante(s))",
                 type="primary", use_container_width=True)
@@ -758,6 +787,12 @@ if "Painel" in pagina:
                 salvar_inspecao({"data":str(_data_insp),"turno":turno_dia,
                                  "sistema":"Seccionadora","item":_sec_sel,
                                  "status":_status_geral,"observacao":_obs_completo,
+                                 "usuario":st.session_state.login})
+                if _foto_sec:
+                    _foto_sec.seek(0)
+                    salvar_foto({"data":str(_data_insp), "sistema":f"Seccionadora — {_sec_sel}",
+                                 "legenda":_leg_sec or _sec_sel,
+                                 "foto_base64":foto_para_base64(_foto_sec.read()),
                                  "usuario":st.session_state.login})
                 _txt = "🟢 BOA" if _n_nc==0 else "🟡 ATENÇÃO" if _n_nc<=2 else "🔴 CRÍTICA"
                 st.success(f"✅ {_sec_sel} — {_txt} ({_n_ok}/{len(_ITENS_INSP)} OK)")
