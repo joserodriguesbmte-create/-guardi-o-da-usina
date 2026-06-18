@@ -244,7 +244,7 @@ with st.sidebar:
         "⚡  Disjuntores SF6",
         "🌡️  Temperaturas",
         "🧮  Calculadora Técnica",
-        "📋  Inspeção Diária",
+        "📋  Inspeção de Campo",
         "⚠️  Pendências",
         "🔄  Troca de Turno",
         "📊  Relatório Mensal",
@@ -259,7 +259,7 @@ with st.sidebar:
 # ── MENU MOBILE (dropdown no topo — sempre visível) ────────────────────────
 PAGINAS = [
     "🏠  Painel Geral","🗂️  Cadastro de Equipamentos","⚡  Disjuntores SF6",
-    "🌡️  Temperaturas","🧮  Calculadora Técnica","📋  Inspeção Diária",
+    "🌡️  Temperaturas","🧮  Calculadora Técnica","📋  Inspeção de Campo",
     "⚠️  Pendências","🔄  Troca de Turno","📊  Relatório Mensal","📧  Configurar E-mail",
 ]
 st.markdown("""<style>
@@ -295,7 +295,7 @@ pagina = pagina_mobile if "nav_mobile" in st.session_state else pagina
 if "Painel" in pagina:
     st.markdown("""<div style='background:linear-gradient(90deg,#0c2340,#0f3460,#0c2340);border-radius:14px;padding:18px 28px;margin-bottom:12px;border:1px solid #1e3a5f'>
         <div style='color:#f1f5f9;font-size:1.4rem;font-weight:900'>🛡️ Guardião da Usina — Painel Operacional</div>
-        <div style='color:#3b82f6;font-size:0.8rem;margin-top:2px'>Subestação 230kV · UHE Belo Monte | Workflow de Inspeção Diária</div>
+        <div style='color:#3b82f6;font-size:0.8rem;margin-top:2px'>Subestação 230kV · UHE Belo Monte | Workflow de Inspeção</div>
     </div>""", unsafe_allow_html=True)
 
     # ══ 1. TEMPERATURA AMBIENTE CENTRALIZADA ════════════════════════════════
@@ -1009,7 +1009,7 @@ if "Painel" in pagina:
     st.markdown("<div style='border-top:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
     st.markdown("""<div style='color:#8b5cf6;font-size:0.72rem;font-weight:700;
         text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
-        🏢 Inspeção Diária — Sala Elétrica da SE</div>""", unsafe_allow_html=True)
+        🏢 Inspeção — Sala Elétrica da SE</div>""", unsafe_allow_html=True)
 
     _SE_TAG = "SALA-ELETRICA-SE"
     _df_se_hoje = _carregar_inspecoes(sistema="Sala Elétrica da SE",
@@ -1070,7 +1070,7 @@ if "Painel" in pagina:
     st.markdown("<div style='border-top:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
     st.markdown("""<div style='color:#06b6d4;font-size:0.72rem;font-weight:700;
         text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
-        ⚡ Inspeção Diária — Cúbilo de 13.8kV da SE</div>""", unsafe_allow_html=True)
+        ⚡ Inspeção — Cúbilo de 13.8kV da SE</div>""", unsafe_allow_html=True)
 
     _CUB_TAG = "CUBILO-13.8kV-SE"
     _df_cub_hoje = _carregar_inspecoes(sistema="Cúbilo de 13.8kV da SE",
@@ -1328,7 +1328,7 @@ elif "SF6" in pagina:
     st.markdown("## ⚡ Disjuntores SF6 — Histórico e Operações")
     st.markdown("""<div style='background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;
         padding:10px 16px;margin-bottom:14px;color:#475569;font-size:0.82rem'>
-        📌 Leituras SF6 são registradas no <b style='color:#60a5fa'>Painel Geral</b> durante a inspeção diária.
+        📌 Leituras SF6 são registradas no <b style='color:#60a5fa'>Painel Geral</b> durante a inspeção de campo.
         Esta página exibe o histórico e a evolução ao longo do tempo.
     </div>""", unsafe_allow_html=True)
     tab2, tab3, tab4 = st.tabs(["📈 Evolução / Histórico", "🔢 Contagem de Operações", "📟 Contadores"])
