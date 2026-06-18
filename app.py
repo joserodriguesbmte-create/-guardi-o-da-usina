@@ -1843,45 +1843,73 @@ elif "Calculadora" in pagina:
 elif "Inspeção" in pagina:
     st.markdown("## 📋 Inspeções — Programação e Registro")
 
-    # Frequências definidas
-    FREQ = {
-        "Subestação 230kV":                              {"freq": "Mensal",  "dias": 30},
-        "Sala Elétrica da SE":                           {"freq": "Mensal",  "dias": 30},
-        "Cúbilo de 13.8kV da SE":                       {"freq": "Mensal",  "dias": 30},
-        "Transformador SE+01TRF (230/69kV 12,5 MVA)":    {"freq": "Mensal",  "dias": 30},
+    # Mapeamento: cada sistema inclui inspeções do Painel Geral
+    _SIS_MAP = {
+        "Subestação 230kV":     ["Subestação 230kV", "Disjuntor SF6", "Seccionadora", "PARA-RAIOS-230kV"],
+        "Sala Elétrica da SE":  ["Sala Elétrica da SE", "SALA-ELETRICA-SE"],
+        "Cúbilo de 13.8kV da SE": ["Cúbilo de 13.8kV da SE", "CUBILO-13.8kV-SE"],
+        "Transformador TR-SE-01 (Toshiba 10/12.5 MVA)": ["Transformador TR-SE-01 (Toshiba 10/12.5 MVA)", "Transformador"],
     }
-    FREQ_SF6 = {"freq": "Semanal", "dias": 7}
+
+    # Frequência configurável (salva no banco)
+    import json as _jf
+    _freq_cfg_raw = carregar_config("freq_inspecoes", None)
+    _freq_cfg = _jf.loads(_freq_cfg_raw) if _freq_cfg_raw else {}
+    _FREQ_PADRAO = {"SF6 Gás": 7}
+    for s in SISTEMAS:
+        _FREQ_PADRAO[s] = 30
+
+    with st.expander("⚙️ Configurar frequência das inspeções (dias)"):
+        _fc = st.columns(len(SISTEMAS) + 1)
+        _freq_sf6 = _fc[0].number_input("SF6 Gás", min_value=1, max_value=365,
+                                         value=_freq_cfg.get("SF6 Gás", 7), key="freq_sf6")
+        _freq_new = {"SF6 Gás": _freq_sf6}
+        for i, s in enumerate(SISTEMAS):
+            _freq_new[s] = _fc[i+1].number_input(s[:18], min_value=1, max_value=365,
+                                                  value=_freq_cfg.get(s, 30), key=f"freq_{i}")
+        if st.button("💾 Salvar frequências", use_container_width=True):
+            salvar_config("freq_inspecoes", _jf.dumps(_freq_new))
+            st.success("✅ Frequências salvas!")
+            st.rerun()
+
+    FREQ = {s: _freq_new.get(s, 30) for s in SISTEMAS}
+    FREQ_SF6_DIAS = _freq_new.get("SF6 Gás", 7)
 
     # Calcular status de vencimento
     df_insp_all = carregar_inspecoes()
     st.markdown("### 📅 Status das Inspeções")
     cw = st.columns(len(SISTEMAS) + 1)
 
-    # SF6 Semanal
+    # SF6
     df_sf6_v = carregar_sf6()
     ultima_sf6 = pd.to_datetime(df_sf6_v["data"].max()) if not df_sf6_v.empty else None
     dias_sf6   = (date.today() - ultima_sf6.date()).days if ultima_sf6 else 999
-    cor_sf6    = "#10b981" if dias_sf6<=7 else "#f59e0b" if dias_sf6<=10 else "#ef4444"
-    prox_sf6   = f"Vence em {7-dias_sf6}d" if dias_sf6<=7 else f"ATRASADO {dias_sf6-7}d"
+    cor_sf6    = "#10b981" if dias_sf6<=FREQ_SF6_DIAS else "#f59e0b" if dias_sf6<=FREQ_SF6_DIAS+3 else "#ef4444"
+    prox_sf6   = f"Vence em {FREQ_SF6_DIAS-dias_sf6}d" if dias_sf6<FREQ_SF6_DIAS else f"ATRASADO {dias_sf6-FREQ_SF6_DIAS}d" if dias_sf6>FREQ_SF6_DIAS else "Hoje"
     cw[0].markdown(f"""<div class='kpi' style='border-top:3px solid {cor_sf6}'>
         <div style='font-size:1.1rem'>⚡</div>
         <div style='color:#f1f5f9;font-weight:700;font-size:0.85rem'>SF6 Gás</div>
-        <div style='color:#475569;font-size:0.72rem'>Semanal</div>
+        <div style='color:#475569;font-size:0.72rem'>A cada {FREQ_SF6_DIAS}d</div>
         <div style='color:{cor_sf6};font-weight:900;font-size:0.9rem;margin-top:4px'>{prox_sf6}</div>
         <div style='color:#334155;font-size:0.7rem'>Última: {ultima_sf6.strftime("%d/%m") if ultima_sf6 else "—"}</div>
     </div>""", unsafe_allow_html=True)
 
     for i, sis in enumerate(SISTEMAS):
-        df_s = df_insp_all[df_insp_all.sistema==sis] if not df_insp_all.empty else pd.DataFrame()
+        # Buscar última inspeção considerando TODOS os sistemas mapeados
+        _sistemas_rel = _SIS_MAP.get(sis, [sis])
+        if not df_insp_all.empty:
+            df_s = df_insp_all[df_insp_all.sistema.isin(_sistemas_rel)]
+        else:
+            df_s = pd.DataFrame()
         ultima = pd.to_datetime(df_s["data"].max()) if not df_s.empty else None
         dias   = (date.today() - ultima.date()).days if ultima else 999
-        lim    = FREQ[sis]["dias"]
+        lim    = FREQ[sis]
         cor    = "#10b981" if dias<=lim else "#f59e0b" if dias<=lim+7 else "#ef4444"
-        prox   = f"Vence em {lim-dias}d" if dias<lim else "VENCIDA" if dias>lim else "Hoje"
+        prox   = f"Vence em {lim-dias}d" if dias<lim else f"ATRASADO {dias-lim}d" if dias>lim else "Hoje"
         cw[i+1].markdown(f"""<div class='kpi' style='border-top:3px solid {cor}'>
             <div style='font-size:1.1rem'>📋</div>
             <div style='color:#f1f5f9;font-weight:700;font-size:0.82rem'>{sis[:20]}</div>
-            <div style='color:#475569;font-size:0.72rem'>Mensal</div>
+            <div style='color:#475569;font-size:0.72rem'>A cada {lim}d</div>
             <div style='color:{cor};font-weight:900;font-size:0.9rem;margin-top:4px'>{prox}</div>
             <div style='color:#334155;font-size:0.7rem'>Última: {ultima.strftime("%d/%m") if ultima else "—"}</div>
         </div>""", unsafe_allow_html=True)
