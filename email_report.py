@@ -5,6 +5,15 @@ from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime
 
+_ASSETS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+
+def _logo_b64(nome: str) -> str:
+    path = os.path.join(_ASSETS_DIR, nome)
+    if os.path.exists(path):
+        with open(path, "rb") as f:
+            return base64.b64encode(f.read()).decode("utf-8")
+    return ""
+
 CFG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "email_config.json")
 
 _CFG_PADRAO = {
@@ -416,6 +425,72 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
 
     num_obs = 8 if fotos else 7
 
+    # ── LOGOS INSTITUCIONAIS ─────────────────────────────────────────────────
+    logo_guardioes_b64 = _logo_b64("logo_guardioes.png")
+    logo_norte_b64 = _logo_b64("logo_norte_energia.png")
+
+    logo_guardioes_img = (f'<img src="data:image/png;base64,{logo_guardioes_b64}" '
+                          f'width="320" style="display:block;margin:0 auto;">'
+                          if logo_guardioes_b64 else "")
+    logo_norte_img = (f'<img src="data:image/png;base64,{logo_norte_b64}" '
+                      f'width="140" style="display:block;margin:0 auto;">'
+                      if logo_norte_b64 else "")
+
+    # Página 1 — Capa institucional
+    capa_institucional = f"""
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+           style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;">
+      <tr><td style="padding:40px 30px;text-align:center;">
+        {logo_guardioes_img}
+        <div style="margin:24px 0 8px;font-size:11px;color:#94a3b8;text-transform:uppercase;
+                    letter-spacing:2px;">Relatorio Mensal</div>
+        <div style="font-size:24px;font-weight:900;color:#0c2340;margin-bottom:6px;">
+          Subestacao 230kV
+        </div>
+        <div style="font-size:14px;color:#475569;margin-bottom:24px;">
+          Referencia: <strong>{mes}</strong>
+        </div>
+        <table cellpadding="0" cellspacing="0" border="0" style="margin:0 auto;">
+          <tr>
+            <td style="padding:8px 20px;background:#f1f5f9;border-radius:8px;text-align:center;">
+              <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;">Responsavel</div>
+              <div style="font-size:14px;font-weight:700;color:#0f3460;margin-top:2px;">{operador}</div>
+              <div style="font-size:11px;color:#64748b;">Nivel {nivel}</div>
+            </td>
+          </tr>
+        </table>
+        <div style="margin-top:30px;border-top:1px solid #e2e8f0;padding-top:20px;">
+          {logo_norte_img}
+          <div style="font-size:12px;color:#64748b;margin-top:8px;">
+            Norte Energia S.A. — Usina Hidreletrica Belo Monte
+          </div>
+        </div>
+      </td></tr>
+    </table>"""
+
+    # Página 2 — Objetivo do Programa
+    pagina_objetivo = f"""
+    <table width="100%" cellpadding="0" cellspacing="0" border="0"
+           style="background:#ffffff;border:1px solid #e2e8f0;border-radius:12px;">
+      <tr><td style="padding:28px 30px;">
+        <div style="font-size:17px;font-weight:800;color:#0f3460;
+                    border-bottom:3px solid #00a5a5;padding-bottom:10px;margin-bottom:16px;">
+          Objetivo do Programa
+        </div>
+        <p style="font-size:13px;color:#475569;line-height:1.8;margin:0 0 14px;">
+          Fortalecer a excelencia operacional atraves da responsabilidade compartilhada,
+          integracao entre turnos, acompanhamento continuo das instalacoes e melhoria
+          continua dos sistemas da usina.
+        </p>
+        <p style="font-size:13px;color:#475569;line-height:1.8;margin:0;">
+          O programa busca desenvolver maior senso de pertencimento sobre os ativos
+          operacionais, promovendo conservacao das instalacoes, padronizacao operacional,
+          acompanhamento das pendencias, fortalecimento da cultura 5S e atuacao integrada
+          entre toda a equipe de operacao.
+        </p>
+      </td></tr>
+    </table>"""
+
     # ── MONTAGEM FINAL ────────────────────────────────────────────────────────
     html = f"""<!DOCTYPE html>
 <html lang="pt-BR"><head>
@@ -428,7 +503,13 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
 <tr><td align="center" style="padding:20px 10px;">
 <table width="680" cellpadding="0" cellspacing="0" border="0" style="max-width:680px;width:100%;">
 
-  <!-- CAPA -->
+  <!-- PÁGINA 1: CAPA INSTITUCIONAL -->
+  <tr><td style="padding-bottom:16px;">{capa_institucional}</td></tr>
+
+  <!-- PÁGINA 2: OBJETIVO DO PROGRAMA -->
+  <tr><td style="padding-bottom:16px;">{pagina_objetivo}</td></tr>
+
+  <!-- CAPA OPERACIONAL -->
   <tr><td style="padding-bottom:16px;">{capa}</td></tr>
 
   <!-- SEÇÃO 1: RESUMO -->
