@@ -2193,7 +2193,7 @@ elif "Relatório" in pagina:
                     _itens = _j.loads(_r.observacao.split(" | ")[0]) if _r.observacao else {}
                 except Exception:
                     _itens = {}
-                sf6_visual.append({"disjuntor": _r.item, "status": _r.status,
+                sf6_visual.append({"disjuntor": _r["item"], "status": _r.status,
                                    "data": _r.data, "itens": _itens})
 
         # Operações no período
