@@ -467,32 +467,6 @@ if "Painel" in pagina:
             _np_wf    = int(_eq_dj.get("num_polos") or DISJUNTORES.get(_dj_sel,{}).get("num_polos",1)) if _eq_dj else 1
             _polos_wf = ["Polo A","Polo B","Polo V"] if _np_wf == 3 else ["Câmara Única"]
 
-            _dados_wf = {}
-            _cols_polo = st.columns(len(_polos_wf))
-            for _i, _polo in enumerate(_polos_wf):
-                with _cols_polo[_i]:
-                    _p_med = st.number_input(f"📊 {_polo} (bar)", value=_p_nom_wf,
-                                             min_value=0.0, max_value=10.0,
-                                             step=0.01, format="%.3f", key=f"wf_p_{_polo}")
-                    _p_cor = corrigir_pressao_sf6(_p_med, t_amb)
-                    _delta = _p_cor - _p_nom_wf
-                    if   _p_cor < _p_bl_wf:         _sc="#ef4444"; _st="🔴 BLOQUEIO"
-                    elif _p_cor < _p_al_wf:         _sc="#f59e0b"; _st="🟡 ALARME"
-                    elif _p_cor < _p_al_wf + 0.3:  _sc="#f97316"; _st="🟠 PRÉ-ALARME"
-                    elif _p_cor > _p_nom_wf + 0.5: _sc="#8b5cf6"; _st="🟣 SOBREPRESSÃO"
-                    else:                            _sc="#10b981"; _st="🟢 NORMAL"
-                    st.markdown(f"""<div style='background:#0a1628;border:2px solid {_sc};
-                        border-radius:8px;padding:8px;text-align:center;margin-top:4px'>
-                        <div style='font-size:1.3rem;font-weight:900;color:{_sc}'>{_p_cor:.3f}</div>
-                        <div style='font-size:0.6rem;color:#475569'>bar a 20°C</div>
-                        <div style='font-size:0.72rem;font-weight:700;color:{_sc};margin-top:2px'>{_st}</div>
-                        <div style='font-size:0.65rem;color:#334155'>Δ {'+' if _delta>=0 else ''}{_delta:.3f}</div>
-                    </div>""", unsafe_allow_html=True)
-                    _dados_wf[_polo] = {"p_med":_p_med,"p_cor":_p_cor,"status":_st.split(" ")[-1]}
-
-            st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
-
-            # ── INSPEÇÃO VISUAL + OPERAÇÕES (form — sem reload a cada clique) ─
             _ITENS_DJ = [
                 "Sem vazamentos visíveis",
                 "Indicador de pressão funcionando",
@@ -502,6 +476,20 @@ if "Painel" in pagina:
             ]
 
             with st.form(f"form_sf6_{_dj_sel}", clear_on_submit=True):
+                # ── PRESSÕES ─────────────────────────────────────────────
+                st.markdown("<div style='color:#3b82f6;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>📊 Pressão SF6</div>", unsafe_allow_html=True)
+                st.caption(f"Nominal: {_p_nom_wf} bar · Alarme: {_p_al_wf} bar · Bloqueio: {_p_bl_wf} bar · Correção a 20°C automática")
+                _cols_polo = st.columns(len(_polos_wf))
+                _pressoes_form = {}
+                for _i, _polo in enumerate(_polos_wf):
+                    with _cols_polo[_i]:
+                        _pressoes_form[_polo] = st.number_input(f"{_polo} (bar)", value=_p_nom_wf,
+                                                 min_value=0.0, max_value=10.0,
+                                                 step=0.01, format="%.3f", key=f"wf_p_{_polo}")
+
+                st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
+
+                # ── INSPEÇÃO VISUAL ──────────────────────────────────────
                 st.markdown("<div style='color:#60a5fa;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>🔍 Inspeção Visual</div>", unsafe_allow_html=True)
                 _res_visual = {}
                 for _iv in _ITENS_DJ:
@@ -510,6 +498,8 @@ if "Painel" in pagina:
                     _res_visual[_iv] = _vv
 
                 st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
+
+                # ── OPERAÇÕES ────────────────────────────────────────────
                 st.markdown("<div style='color:#8b5cf6;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>🔢 Operações no Turno</div>", unsafe_allow_html=True)
                 _houve_op = st.radio("Houve operações neste turno?", ["Não","Sim"],
                                      index=0, horizontal=True, key=f"op_houve_{_dj_sel}")
@@ -523,6 +513,8 @@ if "Painel" in pagina:
                 st.caption("Preencha tipo e quantidade apenas se houver operações.")
 
                 st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
+
+                # ── CONTADORES ───────────────────────────────────────────
                 st.markdown("<div style='color:#06b6d4;font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>📟 Contadores de Operações</div>", unsafe_allow_html=True)
                 st.caption("Informe 0 se não verificado nesta inspeção.")
                 _cc1, _cc2 = st.columns(2)
@@ -539,8 +531,9 @@ if "Painel" in pagina:
                 st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:10px 0 8px'></div>", unsafe_allow_html=True)
                 _obs_wf = st.text_input("Observação geral (opcional)", key="wf_dj_obs",
                                         placeholder="Condições de campo, instrumento usado...")
-                _salvar_sf6 = st.form_submit_button("💾 Salvar e Avançar para o próximo",
-                                                     type="primary", use_container_width=True)
+                _salvar_sf6 = st.form_submit_button(
+                    f"💾 Salvar {_dj_sel} e Avançar ({len(djs_pendentes)-1} restante(s))",
+                    type="primary", use_container_width=True)
 
             if _salvar_sf6:
                 import json as _json
@@ -552,12 +545,18 @@ if "Painel" in pagina:
                     _hora_wf = datetime.now().time()
                     _obs_completo = _json.dumps(_res_visual, ensure_ascii=False)
                     if _obs_wf: _obs_completo += f" | {_obs_wf}"
-                    for _polo, _d in _dados_wf.items():
+                    _resumo_pressoes = []
+                    for _polo, _p_med in _pressoes_form.items():
+                        _p_cor = corrigir_pressao_sf6(_p_med, t_amb)
+                        if _p_cor < _p_bl_wf: _st_sf6 = "BLOQUEIO"
+                        elif _p_cor < _p_al_wf: _st_sf6 = "ALARME"
+                        else: _st_sf6 = "NORMAL"
                         salvar_sf6({"data":str(_data_insp),"hora":str(_hora_wf),
                                     "turno":turno_dia,"disjuntor":_dj_sel,"polo":_polo,
-                                    "pressao_medida":_d["p_med"],"temperatura":t_amb,
-                                    "pressao_corrigida":_d["p_cor"],"status_sf6":_d["status"],
+                                    "pressao_medida":_p_med,"temperatura":t_amb,
+                                    "pressao_corrigida":_p_cor,"status_sf6":_st_sf6,
                                     "observacao":_obs_completo,"usuario":st.session_state.login})
+                        _resumo_pressoes.append(f"{_polo}: {_p_cor:.3f} bar ({_st_sf6})")
                     _st_vis = "NC" if _vis_nc > 0 else "OK"
                     salvar_inspecao({"data":str(_data_insp),"turno":turno_dia,
                                      "sistema":"Disjuntor SF6","item":_dj_sel,
@@ -576,7 +575,7 @@ if "Painel" in pagina:
                                          "usuario":st.session_state.login})
                         _carregar_contadores.clear()
                     _vs2 = "🟢 BOA" if _vis_nc==0 else "🟡 ATENÇÃO" if _vis_nc<=2 else "🔴 CRÍTICA"
-                    st.success(f"✅ {_dj_sel} — Visual: {_vs2} | {'Operação registrada' if _houve_op=='Sim' else 'Sem operações'}")
+                    st.success(f"✅ {_dj_sel} — {' · '.join(_resumo_pressoes)} | Visual: {_vs2}")
                     _carregar_sf6.clear()
                     _carregar_inspecoes.clear()
                     st.rerun()
@@ -741,8 +740,9 @@ if "Painel" in pagina:
                 _resultados[_item] = _val
             _obs_sec = st.text_input("Observação geral", key="wf_sec_obs",
                                      placeholder="Condições observadas, intercorrências...")
-            _salvar_sec = st.form_submit_button("💾 Registrar e Avançar para a próxima",
-                                                type="primary", use_container_width=True)
+            _salvar_sec = st.form_submit_button(
+                f"💾 Salvar {_sec_sel} e Avançar ({len(secs_pendentes)-1} restante(s))",
+                type="primary", use_container_width=True)
 
         if _salvar_sec:
             import json as _json
