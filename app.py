@@ -1972,7 +1972,9 @@ elif "Inspeção" in pagina:
         if df_i.empty: st.info("Sem registros.")
         else:
             def cs(v): return "color:#10b981;font-weight:bold" if v=="✅ OK" else "color:#ef4444;font-weight:bold" if v=="❌ NOK" else "color:#f59e0b;font-weight:bold" if "Atenção" in str(v) else ""
-            st.dataframe(df_i[["data","turno","sistema","item","status","observacao","usuario"]].style.applymap(cs,subset=["status"]),use_container_width=True,hide_index=True)
+            _cols_disp = [c for c in ["data","turno","sistema","item","status","observacao","usuario"] if c in df_i.columns]
+            _styler = df_i[_cols_disp].style.map(cs, subset=["status"]) if "status" in _cols_disp else df_i[_cols_disp].style
+            st.dataframe(_styler, use_container_width=True, hide_index=True)
 
 # ═══════════════════════════════════════════════════════════════ PENDÊNCIAS
 elif "Pendências" in pagina:
