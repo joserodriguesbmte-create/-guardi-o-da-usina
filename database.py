@@ -111,10 +111,17 @@ def init_db():
             curto_circuito INTEGER DEFAULT 0,
             usuario TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""",
+
+        """CREATE TABLE IF NOT EXISTS fotos_inspecao (
+            id SERIAL PRIMARY KEY,
+            data TEXT, sistema TEXT, legenda TEXT,
+            foto_base64 TEXT,
+            usuario TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""",
     ]
     for s in stmts:
         cur.execute(s)
-    c.commit()  # commit tabelas antes do migration
+    c.commit()
     # Migração segura: adiciona num_polos se não existir
     try:
         cur.execute("ALTER TABLE equipamentos ADD COLUMN num_polos INTEGER DEFAULT 1")
@@ -299,6 +306,26 @@ def carregar_contadores(disjuntor=None, data_ini=None, data_fim=None):
     if data_fim: q += " AND data<=%s"; p.append(str(data_fim))
     q += " ORDER BY data DESC, hora DESC"
     df = pd.read_sql_query(q, c, params=p); c.close(); return df
+
+# ── Fotos de inspeção ────────────────────────────────────────────────────
+def salvar_foto(d):
+    c = conn(); cur = c.cursor()
+    cur.execute("""INSERT INTO fotos_inspecao
+        (data, sistema, legenda, foto_base64, usuario)
+        VALUES(%(data)s, %(sistema)s, %(legenda)s, %(foto_base64)s, %(usuario)s)""", d)
+    c.commit(); cur.close(); c.close()
+
+def carregar_fotos(data_ini=None, data_fim=None):
+    c = conn(); q = "SELECT * FROM fotos_inspecao WHERE 1=1"; p = []
+    if data_ini: q += " AND data>=%s"; p.append(str(data_ini))
+    if data_fim: q += " AND data<=%s"; p.append(str(data_fim))
+    q += " ORDER BY data DESC, created_at DESC"
+    df = pd.read_sql_query(q, c, params=p); c.close(); return df
+
+def excluir_foto(id_):
+    c = conn(); cur = c.cursor()
+    cur.execute("DELETE FROM fotos_inspecao WHERE id=%s", (id_,))
+    c.commit(); cur.close(); c.close()
 
 # ── Configuração persistente do app ───────────────────────────────────────
 def salvar_config(chave: str, valor: str):

@@ -11,7 +11,8 @@ from database import (init_db, salvar_sf6, carregar_sf6, salvar_temp, carregar_t
                       salvar_equipamento, atualizar_equipamento, desativar_equipamento,
                       carregar_equipamentos, buscar_equipamento_por_tag,
                       salvar_config, carregar_config,
-                      salvar_contador, carregar_contadores)
+                      salvar_contador, carregar_contadores,
+                      salvar_foto, carregar_fotos, excluir_foto)
 from equipamentos import DISJUNTORES, TRANSFORMADORES, BATERIAS, corrigir_pressao_sf6, status_sf6
 from email_report import (salvar_config_email, carregar_config_email,
                            gerar_html_relatorio, enviar_relatorio, fig_para_base64,
@@ -2139,36 +2140,81 @@ elif "Relatório" in pagina:
 
     st.divider()
 
-    # Upload de fotos — grid 3×2 organizado
+    # ── Fotos persistentes — salvas no banco ─────────────────────────────
     st.markdown("#### 📷 Registro Fotográfico do Período")
     st.markdown("""<div style='background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;
         padding:10px 16px;margin-bottom:10px;color:#475569;font-size:0.82rem'>
         📌 Carregue até <b style='color:#60a5fa'>6 fotos</b> (JPG/PNG) de inspeções, anomalias ou
-        registros do período. Adicione uma <b style='color:#60a5fa'>legenda</b> para cada foto —
-        elas serão exibidas no relatório em grade organizada 3×2.
+        registros do período. As fotos ficam <b style='color:#10b981'>salvas no banco</b> e
+        serão incluídas automaticamente no relatório mensal.
     </div>""", unsafe_allow_html=True)
-    _fk = st.session_state.get("foto_counter", 0)
-    fotos_upload = st.file_uploader("Selecione as fotos", type=["jpg","jpeg","png","webp"],
-                                    accept_multiple_files=True, key=f"rel_fotos_{_fk}")
+
+    # Fotos já salvas no banco para o período
+    df_fotos_salvas = carregar_fotos(data_ini=str(dt_ini), data_fim=str(dt_fim))
+    _n_salvas = len(df_fotos_salvas)
+    _max_fotos = 6
+    _vagas = max(0, _max_fotos - _n_salvas)
+
+    # Exibir fotos salvas
+    if _n_salvas > 0:
+        st.markdown(f"<div style='color:#10b981;font-size:0.8rem;margin:4px 0 8px'>"
+                    f"📷 {_n_salvas} foto(s) salva(s) no período</div>", unsafe_allow_html=True)
+        _cols_fs = st.columns(3)
+        for i, (_, _fr) in enumerate(df_fotos_salvas.iterrows()):
+            with _cols_fs[i % 3]:
+                import base64 as _b64m
+                try:
+                    _img_show = _b64m.b64decode(_fr.foto_base64)
+                    st.image(_img_show, use_container_width=True)
+                except Exception:
+                    st.warning("Foto corrompida")
+                st.markdown(f"<div style='font-size:0.75rem;color:#94a3b8;'>"
+                            f"📅 {_fr.data} · {_fr.legenda or '—'}</div>", unsafe_allow_html=True)
+                if st.button("🗑️ Remover", key=f"rm_foto_{_fr.id}", use_container_width=True):
+                    excluir_foto(_fr.id)
+                    st.rerun()
+
+    # Upload de novas fotos (se houver vagas)
+    if _vagas > 0:
+        _fk = st.session_state.get("foto_counter", 0)
+        fotos_upload = st.file_uploader(
+            f"Adicionar fotos ({_vagas} vaga(s) restante(s))",
+            type=["jpg","jpeg","png","webp"],
+            accept_multiple_files=True, key=f"rel_fotos_{_fk}")
+        if fotos_upload:
+            _cols_fn = st.columns(3)
+            for i, arq in enumerate(fotos_upload[:_vagas]):
+                img_bytes = arq.read()
+                with _cols_fn[i % 3]:
+                    st.image(img_bytes, use_container_width=True)
+                    leg = st.text_input("Legenda", key=f"leg_new_{i}",
+                                        placeholder=f"Descreva a foto...",
+                                        label_visibility="collapsed")
+            if st.button("💾 Salvar fotos no banco", type="primary", use_container_width=True):
+                _saved = 0
+                for i, arq in enumerate(fotos_upload[:_vagas]):
+                    arq.seek(0)
+                    img_bytes = arq.read()
+                    leg = st.session_state.get(f"leg_new_{i}", "")
+                    b64 = foto_para_base64(img_bytes)
+                    salvar_foto({
+                        "data": str(date.today()),
+                        "sistema": "Relatório Mensal",
+                        "legenda": leg,
+                        "foto_base64": b64,
+                        "usuario": st.session_state.user
+                    })
+                    _saved += 1
+                st.success(f"✅ {_saved} foto(s) salva(s) com sucesso!")
+                st.session_state["foto_counter"] = _fk + 1
+                st.rerun()
+    elif _n_salvas >= _max_fotos:
+        st.info(f"📷 Limite de {_max_fotos} fotos atingido. Remova uma para adicionar outra.")
+
+    # Montar fotos_dados a partir do banco (para o relatório)
     fotos_dados = []
-    if fotos_upload:
-        _total_f = min(len(fotos_upload), 6)
-        st.markdown(f"<div style='color:#60a5fa;font-size:0.8rem;margin:4px 0 8px'>"
-                    f"📷 {_total_f} foto(s) carregada(s)"
-                    + (" — apenas as 6 primeiras serão usadas" if len(fotos_upload) > 6 else "")
-                    + "</div>", unsafe_allow_html=True)
-        _cols_f = st.columns(3)
-        for i, arq in enumerate(fotos_upload[:6]):
-            img_bytes = arq.read()
-            with _cols_f[i % 3]:
-                st.markdown(f"<div style='color:#94a3b8;font-size:0.72rem;font-weight:700;"
-                             f"text-transform:uppercase;margin-bottom:3px'>📷 Foto {i+1}</div>",
-                             unsafe_allow_html=True)
-                st.image(img_bytes, use_container_width=True)
-                leg = st.text_input("Legenda", key=f"leg_{i}",
-                                    placeholder=f"Descreva a foto {i+1}...",
-                                    label_visibility="collapsed")
-                fotos_dados.append({"base64": foto_para_base64(img_bytes), "legenda": leg})
+    for _, _fr in df_fotos_salvas.head(_max_fotos).iterrows():
+        fotos_dados.append({"base64": _fr.foto_base64, "legenda": _fr.legenda or ""})
 
     st.divider()
 
