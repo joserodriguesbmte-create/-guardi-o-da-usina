@@ -66,10 +66,12 @@ def carregar_config_email() -> dict:
 
 def fig_para_base64(fig) -> str:
     try:
-        img_bytes = fig.to_image(format="png", width=800, height=300, engine="kaleido")
-        return base64.b64encode(img_bytes).decode("utf-8")
+        img_bytes = fig.to_image(format="png", width=800, height=300)
+        if img_bytes:
+            return base64.b64encode(img_bytes).decode("utf-8")
     except Exception:
-        return ""
+        pass
+    return ""
 
 def foto_para_base64(foto_bytes: bytes, largura: int = 480, altura: int = 360) -> str:
     """Normaliza foto para dimensões uniformes (4:3, crop central) e retorna base64."""
