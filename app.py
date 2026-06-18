@@ -2150,7 +2150,7 @@ elif "Relatório" in pagina:
     </div>""", unsafe_allow_html=True)
 
     # Fotos já salvas no banco para o período
-    df_fotos_salvas = carregar_fotos(data_ini=str(dt_ini), data_fim=str(dt_fim))
+    df_fotos_salvas = carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim))
     _n_salvas = len(df_fotos_salvas)
     _max_fotos = 6
     _vagas = max(0, _max_fotos - _n_salvas)
