@@ -65,6 +65,7 @@ def carregar_config_email() -> dict:
     return dict(_CFG_PADRAO)
 
 def fig_para_base64(fig) -> str:
+    # Tentar kaleido primeiro
     try:
         import copy
         fig_email = copy.deepcopy(fig)
@@ -75,6 +76,36 @@ def fig_para_base64(fig) -> str:
         img_bytes = fig_email.to_image(format="png", width=700, height=280, scale=1.5)
         if img_bytes:
             return base64.b64encode(img_bytes).decode("utf-8")
+    except Exception:
+        pass
+    # Fallback: matplotlib (funciona sem kaleido)
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        buf = io.BytesIO()
+        traces = fig.data if hasattr(fig, 'data') else []
+        _fig, ax = plt.subplots(figsize=(8, 3), dpi=120)
+        ax.set_facecolor("#f8fafc")
+        _fig.patch.set_facecolor("#ffffff")
+        cores = ["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ef4444","#06b6d4","#f97316"]
+        for i, t in enumerate(traces):
+            if hasattr(t, 'x') and hasattr(t, 'y') and t.x is not None:
+                ax.plot(list(t.x), [float(v) for v in t.y],
+                        marker='o', markersize=4, linewidth=1.5,
+                        color=cores[i % len(cores)],
+                        label=t.name or f"Série {i+1}")
+        ax.axhline(y=6.0, color="#475569", linestyle=":", linewidth=1, alpha=0.7)
+        ax.axhline(y=5.2, color="#f59e0b", linestyle="--", linewidth=1, alpha=0.7)
+        ax.axhline(y=5.0, color="#ef4444", linestyle="--", linewidth=1, alpha=0.7)
+        ax.set_ylabel("bar", fontsize=9, color="#334155")
+        ax.tick_params(labelsize=8, colors="#64748b")
+        ax.legend(fontsize=7, loc="upper left", framealpha=0.9)
+        ax.grid(True, alpha=0.3)
+        plt.tight_layout()
+        _fig.savefig(buf, format="png", bbox_inches="tight")
+        plt.close(_fig)
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
     except Exception:
         pass
     return ""
