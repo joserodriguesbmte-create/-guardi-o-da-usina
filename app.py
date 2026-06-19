@@ -12,7 +12,7 @@ from database import (init_db, salvar_sf6, carregar_sf6, salvar_temp, carregar_t
                       carregar_equipamentos, buscar_equipamento_por_tag,
                       salvar_config, carregar_config,
                       salvar_contador, carregar_contadores,
-                      salvar_foto, carregar_fotos, excluir_foto)
+                      salvar_foto, carregar_fotos, carregar_foto_base64, excluir_foto)
 from equipamentos import DISJUNTORES, TRANSFORMADORES, BATERIAS, corrigir_pressao_sf6, status_sf6
 from email_report import (salvar_config_email, carregar_config_email,
                            gerar_html_relatorio, enviar_relatorio, fig_para_base64,
@@ -2214,27 +2214,29 @@ elif "Relatório" in pagina:
         serão incluídas automaticamente no relatório mensal.
     </div>""", unsafe_allow_html=True)
 
-    # Fotos já salvas no banco para o período
-    df_fotos_salvas = carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim))
+    # Fotos já salvas no banco para o período (sem base64 para carregar rápido)
+    df_fotos_salvas = carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim), sem_base64=True)
     _n_salvas = len(df_fotos_salvas)
     _max_fotos = 6
     _vagas = max(0, _max_fotos - _n_salvas)
 
-    # Exibir fotos salvas
+    # Exibir fotos salvas (só metadados — sem carregar imagens pesadas)
     if _n_salvas > 0:
         st.markdown(f"<div style='color:#10b981;font-size:0.8rem;margin:4px 0 8px'>"
                     f"📷 {_n_salvas} foto(s) salva(s) no período</div>", unsafe_allow_html=True)
         _cols_fs = st.columns(3)
         for i, (_, _fr) in enumerate(df_fotos_salvas.iterrows()):
             with _cols_fs[i % 3]:
-                import base64 as _b64m
-                try:
-                    _img_show = _b64m.b64decode(_fr.foto_base64)
-                    st.image(_img_show, use_container_width=True)
-                except Exception:
-                    st.warning("Foto corrompida")
-                st.markdown(f"<div style='font-size:0.75rem;color:#94a3b8;'>"
-                            f"📅 {_fr.data} · {_fr.legenda or '—'}</div>", unsafe_allow_html=True)
+                st.markdown(f"""<div style='background:#0f1e3a;border:1px solid #1e3a5f;
+                    border-radius:8px;padding:10px;text-align:center'>
+                    <div style='font-size:1.5rem'>📷</div>
+                    <div style='font-size:0.75rem;color:#94a3b8;margin-top:4px'>
+                    📅 {_fr.data}</div>
+                    <div style='font-size:0.8rem;color:#e2e8f0;margin-top:2px'>
+                    {_fr.legenda or '—'}</div>
+                    <div style='font-size:0.65rem;color:#475569;margin-top:2px'>
+                    {_fr.sistema or ''}</div>
+                </div>""", unsafe_allow_html=True)
                 if st.button("🗑️ Remover", key=f"rm_foto_{_fr.id}", use_container_width=True):
                     excluir_foto(_fr.id)
                     st.rerun()
@@ -2276,10 +2278,7 @@ elif "Relatório" in pagina:
     elif _n_salvas >= _max_fotos:
         st.info(f"📷 Limite de {_max_fotos} fotos atingido. Remova uma para adicionar outra.")
 
-    # Montar fotos_dados a partir do banco (para o relatório)
-    fotos_dados = []
-    for _, _fr in df_fotos_salvas.head(_max_fotos).iterrows():
-        fotos_dados.append({"base64": _fr.foto_base64, "legenda": _fr.legenda or ""})
+    # fotos_dados montado dentro de montar_dados_relatorio() para não carregar base64 a cada render
 
     st.divider()
 
@@ -2287,6 +2286,14 @@ elif "Relatório" in pagina:
     dest_str  = ", ".join(cfg_email.get("destinatarios", []))
 
     col_b1, col_b2, col_b3 = st.columns(3)
+
+    def _montar_fotos_dados():
+        _df_f = carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim))
+        _fotos = []
+        for _, _fr in _df_f.head(6).iterrows():
+            if _fr.foto_base64:
+                _fotos.append({"base64": _fr.foto_base64, "legenda": _fr.legenda or ""})
+        return _fotos
 
     def montar_dados_relatorio():
         import json as _j
@@ -2377,7 +2384,7 @@ elif "Relatório" in pagina:
             "trafo_insp":      trafo_insp,
             "insp_complement": insp_complement,
             "contadores":      cnt_lista,
-            "fotos":           fotos_dados,
+            "fotos":           _montar_fotos_dados(),
         }
 
     col_b1, col_b2, col_b3, col_b4 = st.columns(4)

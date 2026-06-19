@@ -315,12 +315,19 @@ def salvar_foto(d):
         VALUES(%(data)s, %(sistema)s, %(legenda)s, %(foto_base64)s, %(usuario)s)""", d)
     c.commit(); cur.close(); c.close()
 
-def carregar_fotos(data_ini=None, data_fim=None):
-    c = conn(); q = "SELECT * FROM fotos_inspecao WHERE 1=1"; p = []
+def carregar_fotos(data_ini=None, data_fim=None, sem_base64=False):
+    cols = "id, data, sistema, legenda, usuario, created_at" if sem_base64 else "*"
+    c = conn(); q = f"SELECT {cols} FROM fotos_inspecao WHERE 1=1"; p = []
     if data_ini: q += " AND data>=%s"; p.append(str(data_ini))
     if data_fim: q += " AND data<=%s"; p.append(str(data_fim))
     q += " ORDER BY data DESC, created_at DESC"
     df = pd.read_sql_query(q, c, params=p); c.close(); return df
+
+def carregar_foto_base64(id_):
+    c = conn(); cur = c.cursor()
+    cur.execute("SELECT foto_base64 FROM fotos_inspecao WHERE id=%s", (id_,))
+    row = cur.fetchone(); cur.close(); c.close()
+    return row[0] if row else ""
 
 def excluir_foto(id_):
     c = conn(); cur = c.cursor()
