@@ -334,6 +334,13 @@ def excluir_foto(id_):
     cur.execute("DELETE FROM fotos_inspecao WHERE id=%s", (id_,))
     c.commit(); cur.close(); c.close()
 
+def excluir_fotos_periodo(data_ini, data_fim):
+    c = conn(); cur = c.cursor()
+    cur.execute("DELETE FROM fotos_inspecao WHERE data>=%s AND data<=%s", (str(data_ini), str(data_fim)))
+    n = cur.rowcount
+    c.commit(); cur.close(); c.close()
+    return n
+
 # ── Configuração persistente do app ───────────────────────────────────────
 def salvar_config(chave: str, valor: str):
     c = conn(); cur = c.cursor()

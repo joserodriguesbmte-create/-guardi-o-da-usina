@@ -12,7 +12,8 @@ from database import (init_db, salvar_sf6, carregar_sf6, salvar_temp, carregar_t
                       carregar_equipamentos, buscar_equipamento_por_tag,
                       salvar_config, carregar_config,
                       salvar_contador, carregar_contadores,
-                      salvar_foto, carregar_fotos, carregar_foto_base64, excluir_foto)
+                      salvar_foto, carregar_fotos, carregar_foto_base64, excluir_foto,
+                      excluir_fotos_periodo)
 from equipamentos import DISJUNTORES, TRANSFORMADORES, BATERIAS, corrigir_pressao_sf6, status_sf6
 from email_report import (salvar_config_email, carregar_config_email,
                            gerar_html_relatorio, enviar_relatorio, fig_para_base64,
@@ -2277,6 +2278,22 @@ elif "Relatório" in pagina:
                 st.rerun()
     elif _n_salvas >= _max_fotos:
         st.info(f"📷 Limite de {_max_fotos} fotos atingido. Remova uma para adicionar outra.")
+
+    # Botão para limpar todas as fotos do período (após envio do relatório)
+    if _n_salvas > 0:
+        if st.button(f"🗑️ Excluir todas as {_n_salvas} fotos do período", use_container_width=True):
+            st.session_state["_confirmar_limpar_fotos"] = True
+        if st.session_state.get("_confirmar_limpar_fotos"):
+            st.warning(f"⚠️ Tem certeza? Isso vai excluir **{_n_salvas} foto(s)** de {d_ini} a {d_fim}.")
+            _cf1, _cf2 = st.columns(2)
+            if _cf1.button("✅ Sim, excluir todas", type="primary", use_container_width=True):
+                n = excluir_fotos_periodo(d_ini, d_fim)
+                st.session_state["_confirmar_limpar_fotos"] = False
+                st.success(f"✅ {n} foto(s) excluída(s)!")
+                st.rerun()
+            if _cf2.button("❌ Cancelar", use_container_width=True):
+                st.session_state["_confirmar_limpar_fotos"] = False
+                st.rerun()
 
     # fotos_dados montado dentro de montar_dados_relatorio() para não carregar base64 a cada render
 
