@@ -121,6 +121,122 @@ def fig_para_base64(fig) -> str:
         pass
     return ""
 
+def gauges_sf6_base64(sf6_tabela: list) -> str:
+    """Gera imagem com gauges tipo velocímetro para cada disjuntor SF6."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as patches
+        import numpy as np
+
+        # Agrupar por disjuntor (última leitura de cada polo)
+        djs = {}
+        for r in sf6_tabela:
+            tag = r.get("disjuntor", "")
+            polo = r.get("polo", "")
+            p_cor = float(r.get("pressao_corrigida", 0))
+            if tag not in djs:
+                djs[tag] = []
+            djs[tag].append({"polo": polo, "p": p_cor})
+
+        if not djs:
+            return ""
+
+        n = len(djs)
+        cols = min(n, 3)
+        rows = (n + cols - 1) // cols
+        _fig, axes = plt.subplots(rows, cols, figsize=(4.2 * cols, 3.8 * rows), dpi=120)
+        _fig.patch.set_facecolor("#ffffff")
+
+        if n == 1:
+            axes = np.array([axes])
+        axes = axes.flatten() if hasattr(axes, 'flatten') else [axes]
+
+        for idx, (tag, polos) in enumerate(djs.items()):
+            ax = axes[idx]
+            ax.set_xlim(-1.3, 1.3)
+            ax.set_ylim(-0.4, 1.4)
+            ax.set_aspect("equal")
+            ax.axis("off")
+
+            # Zonas do arco (180 graus: 4.0 a 7.0 bar)
+            p_min, p_max = 4.0, 7.0
+            angulos_zona = [
+                (4.0, 5.0, "#ef4444"),  # BLOQUEIO
+                (5.0, 5.2, "#f59e0b"),  # ALARME
+                (5.2, 6.5, "#10b981"),  # NORMAL
+                (6.5, 7.0, "#8b5cf6"),  # SOBREPRESSÃO
+            ]
+            for z_min, z_max, cor in angulos_zona:
+                a1 = 180 - (z_min - p_min) / (p_max - p_min) * 180
+                a2 = 180 - (z_max - p_min) / (p_max - p_min) * 180
+                arco = patches.Arc((0, 0), 2.2, 2.2, angle=0,
+                                   theta1=min(a1, a2), theta2=max(a1, a2),
+                                   linewidth=18, color=cor, alpha=0.7)
+                ax.add_patch(arco)
+
+            # Média das pressões dos polos
+            p_media = sum(p["p"] for p in polos) / len(polos)
+
+            # Ponteiro
+            ang_rad = np.radians(180 - (p_media - p_min) / (p_max - p_min) * 180)
+            ang_rad = max(np.radians(0), min(np.radians(180), ang_rad))
+            px = 0.85 * np.cos(ang_rad)
+            py = 0.85 * np.sin(ang_rad)
+            ax.annotate("", xy=(px, py), xytext=(0, 0),
+                        arrowprops=dict(arrowstyle="-|>", color="#0f3460", lw=2.5))
+            ax.plot(0, 0, "o", color="#0f3460", markersize=8, zorder=5)
+
+            # Status e cor
+            if p_media < 5.0:
+                st_txt, st_cor = "BLOQUEIO", "#ef4444"
+            elif p_media < 5.2:
+                st_txt, st_cor = "ALARME", "#f59e0b"
+            elif p_media > 6.5:
+                st_txt, st_cor = "SOBREPRESSAO", "#8b5cf6"
+            else:
+                st_txt, st_cor = "NORMAL", "#10b981"
+
+            # Valor central
+            ax.text(0, -0.15, f"{p_media:.3f} bar", ha="center", va="center",
+                    fontsize=16, fontweight="bold", color=st_cor)
+            ax.text(0, -0.35, st_txt, ha="center", va="center",
+                    fontsize=10, fontweight="bold", color=st_cor)
+
+            # Tag do disjuntor
+            ax.text(0, 1.3, tag, ha="center", va="center",
+                    fontsize=12, fontweight="bold", color="#0f3460")
+
+            # Polos individuais
+            if len(polos) > 1:
+                polo_txt = " | ".join([f"{p['polo']}: {p['p']:.3f}" for p in polos])
+                ax.text(0, -0.55, polo_txt, ha="center", va="center",
+                        fontsize=7, color="#64748b")
+
+            # Marcas de escala
+            for val in [4.0, 5.0, 5.2, 6.0, 7.0]:
+                a = np.radians(180 - (val - p_min) / (p_max - p_min) * 180)
+                x1, y1 = 1.25 * np.cos(a), 1.25 * np.sin(a)
+                x2, y2 = 1.15 * np.cos(a), 1.15 * np.sin(a)
+                ax.plot([x1, x2], [y1, y2], color="#475569", linewidth=1.5)
+                ax.text(1.38 * np.cos(a), 1.38 * np.sin(a), f"{val}",
+                        ha="center", va="center", fontsize=7, color="#475569")
+
+        # Ocultar eixos extras
+        for idx in range(n, len(axes)):
+            axes[idx].axis("off")
+
+        plt.suptitle("Pressao SF6 — Disjuntores 230kV (Corrigida a 20°C)",
+                     fontsize=13, fontweight="bold", color="#0f3460", y=0.98)
+        plt.tight_layout(rect=[0, 0, 1, 0.95])
+        buf = io.BytesIO()
+        _fig.savefig(buf, format="png", bbox_inches="tight", facecolor="#ffffff")
+        plt.close(_fig)
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
+    except Exception:
+        return ""
+
 def foto_para_base64(foto_bytes: bytes, largura: int = 480, altura: int = 360) -> str:
     """Normaliza foto para dimensões uniformes (4:3, crop central) e retorna base64."""
     try:
@@ -281,9 +397,14 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
         f"<th style='{th_style}'>Status</th></tr>{sf6_rows}</table>"
     )
 
-    img_sf6_html = (f"<br><img src='data:image/png;base64,{img_sf6}' "
+    # Gauges SF6 (velocímetros)
+    _gauges_b64 = gauges_sf6_base64(sf6_tabela)
+    img_sf6_html = (f"<br><img src='data:image/png;base64,{_gauges_b64}' "
                     f"width='100%' style='border-radius:8px;display:block;margin-top:8px;'>"
-                    if img_sf6 else "<p style='color:#94a3b8;font-style:italic;'>Grafico indisponivel.</p>")
+                    if _gauges_b64 else
+                    (f"<br><img src='data:image/png;base64,{img_sf6}' "
+                     f"width='100%' style='border-radius:8px;display:block;margin-top:8px;'>"
+                     if img_sf6 else ""))
 
     # ── Seccionadoras ─────────────────────────────────────────────────────────
     total_sec = sec_resumo.get("total", 0)
