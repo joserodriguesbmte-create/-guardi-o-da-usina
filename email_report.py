@@ -85,24 +85,35 @@ def fig_para_base64(fig) -> str:
         import matplotlib.pyplot as plt
         buf = io.BytesIO()
         traces = fig.data if hasattr(fig, 'data') else []
-        _fig, ax = plt.subplots(figsize=(8, 3), dpi=120)
+        _fig, ax = plt.subplots(figsize=(10, 4.5), dpi=130)
         ax.set_facecolor("#f8fafc")
         _fig.patch.set_facecolor("#ffffff")
         cores = ["#3b82f6","#10b981","#f59e0b","#8b5cf6","#ef4444","#06b6d4","#f97316"]
+        marcadores = ["o","s","^","D","v","<",">"]
         for i, t in enumerate(traces):
             if hasattr(t, 'x') and hasattr(t, 'y') and t.x is not None:
-                ax.plot(list(t.x), [float(v) for v in t.y],
-                        marker='o', markersize=4, linewidth=1.5,
+                x_vals = list(t.x)
+                y_vals = [float(v) for v in t.y]
+                ax.plot(x_vals, y_vals,
+                        marker=marcadores[i % len(marcadores)], markersize=6, linewidth=2,
                         color=cores[i % len(cores)],
-                        label=t.name or f"Série {i+1}")
-        ax.axhline(y=6.0, color="#475569", linestyle=":", linewidth=1, alpha=0.7)
-        ax.axhline(y=5.2, color="#f59e0b", linestyle="--", linewidth=1, alpha=0.7)
-        ax.axhline(y=5.0, color="#ef4444", linestyle="--", linewidth=1, alpha=0.7)
-        ax.set_ylabel("bar", fontsize=9, color="#334155")
-        ax.tick_params(labelsize=8, colors="#64748b")
-        ax.legend(fontsize=7, loc="upper left", framealpha=0.9)
+                        label=t.name or f"Serie {i+1}")
+                for xi, yi in zip(x_vals, y_vals):
+                    ax.annotate(f"{yi:.2f}", (xi, yi), textcoords="offset points",
+                                xytext=(0, 8), fontsize=7, color=cores[i % len(cores)],
+                                ha="center", fontweight="bold")
+        ax.axhline(y=6.0, color="#475569", linestyle=":", linewidth=1, alpha=0.7, label="Nominal 6,0")
+        ax.axhline(y=5.2, color="#f59e0b", linestyle="--", linewidth=1.2, alpha=0.8, label="Alarme 5,2")
+        ax.axhline(y=5.0, color="#ef4444", linestyle="--", linewidth=1.2, alpha=0.8, label="Bloqueio 5,0")
+        ax.set_ylabel("Pressao (bar)", fontsize=11, color="#334155", fontweight="bold")
+        ax.set_xlabel("Data", fontsize=10, color="#334155")
+        ax.tick_params(labelsize=9, colors="#64748b")
+        ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.15),
+                  ncol=4, framealpha=0.9, edgecolor="#e2e8f0")
         ax.grid(True, alpha=0.3)
-        plt.tight_layout()
+        ax.set_title("Evolucao SF6 — Pressao Corrigida a 20°C", fontsize=12,
+                      color="#0f3460", fontweight="bold", pad=10)
+        plt.subplots_adjust(bottom=0.25)
         _fig.savefig(buf, format="png", bbox_inches="tight")
         plt.close(_fig)
         return base64.b64encode(buf.getvalue()).decode("utf-8")
@@ -538,6 +549,12 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Relatorio Guardiao — {mes}</title>
+<style>
+@media print {{
+  tr, td, div, table {{ page-break-inside: avoid !important; }}
+  .page-break {{ page-break-before: always !important; }}
+}}
+</style>
 </head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1f5f9;">
