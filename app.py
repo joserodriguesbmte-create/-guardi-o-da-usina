@@ -2448,8 +2448,12 @@ elif "Relatório" in pagina:
                 # Para e-mail: HTML com CID (Gmail/Outlook renderizam as fotos)
                 html_r   = gerar_html_relatorio(dados_r, usar_cid=bool(_fotos_e))
                 assunto  = f"🛡️ Relatório Guardião da Usina — {mes} | {st.session_state.user}"
+                # Anexar HTML limpo para o engenheiro gerar PDF (Chrome → Ctrl+P)
+                html_anexo = gerar_html_relatorio(dados_r, usar_cid=False)
+                _anexos = [(f"Relatorio_Guardiao_{mes.replace('/','_')}.html", html_anexo.encode("utf-8"))]
                 ok, msg  = enviar_relatorio(cfg_email, html_r, assunto,
-                                            fotos=_fotos_e if _fotos_e else None)
+                                            fotos=_fotos_e if _fotos_e else None,
+                                            anexos=_anexos)
             if ok:
                 st.success(msg)
                 st.session_state["foto_counter"] = st.session_state.get("foto_counter", 0) + 1
