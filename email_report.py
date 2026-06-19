@@ -72,7 +72,7 @@ def fig_para_base64(fig) -> str:
             paper_bgcolor="#ffffff", plot_bgcolor="#f8fafc",
             font_color="#334155",
             legend=dict(bgcolor="#ffffff"))
-        img_bytes = fig_email.to_image(format="png", width=800, height=300, scale=2)
+        img_bytes = fig_email.to_image(format="png", width=700, height=280, scale=1.5)
         if img_bytes:
             return base64.b64encode(img_bytes).decode("utf-8")
     except Exception:
