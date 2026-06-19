@@ -2198,11 +2198,13 @@ elif "Relatório" in pagina:
 
     st.divider()
 
-    # Texto do guardião
+    # Texto do guardião (keys para persistir entre reruns)
     obs_r   = st.text_area("📝 Observações do Guardião", height=100,
-                            placeholder="Descreva as principais atividades, ocorrências e condições dos sistemas...")
+                            placeholder="Descreva as principais atividades, ocorrências e condições dos sistemas...",
+                            key="rel_obs_guardiao")
     acoes_r = st.text_area("🏆 Ações de Destaque", height=80,
-                            placeholder="1. Identificou desvio em...\n2. Abriu nota SAP...")
+                            placeholder="1. Identificou desvio em...\n2. Abriu nota SAP...",
+                            key="rel_acoes_destaque")
 
     st.divider()
 
