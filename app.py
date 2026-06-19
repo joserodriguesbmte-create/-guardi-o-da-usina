@@ -183,7 +183,7 @@ if "user" not in st.session_state:
 if not st.session_state.user:
     # PINs por operador — adicione novos operadores aqui conforme necessário
     PINS = {
-        "José Aparecido": "1234",
+        "José Aparecido": "200695",
     }
     NIVEL = {"José Aparecido": "SR"}
 
@@ -212,8 +212,8 @@ if not st.session_state.user:
     st.markdown("<div class='login-sub'>Norte Energia · UHE Belo Monte · SE 230kV</div>", unsafe_allow_html=True)
 
     operador = st.selectbox("👤 Seu nome", list(PINS.keys()), key="login_nome")
-    pin      = st.text_input("🔑 PIN", type="password", max_chars=4,
-                              placeholder="Digite seu PIN de 4 dígitos", key="login_pin")
+    pin      = st.text_input("🔑 PIN", type="password", max_chars=6,
+                              placeholder="Digite seu PIN", key="login_pin")
 
     if st.button("🛡️  Entrar", use_container_width=True, type="primary", key="login_btn"):
         if pin == PINS.get(operador, ""):
