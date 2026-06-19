@@ -76,9 +76,11 @@ def fig_para_base64(fig) -> str:
 def foto_para_base64(foto_bytes: bytes, largura: int = 480, altura: int = 360) -> str:
     """Normaliza foto para dimensões uniformes (4:3, crop central) e retorna base64."""
     try:
-        from PIL import Image
+        from PIL import Image, ImageOps
         import io as _io
-        img = Image.open(_io.BytesIO(foto_bytes)).convert("RGB")
+        img = Image.open(_io.BytesIO(foto_bytes))
+        img = ImageOps.exif_transpose(img)
+        img = img.convert("RGB")
         w, h = img.size
         ratio = largura / altura
         # Crop centralizado para proporção 4:3

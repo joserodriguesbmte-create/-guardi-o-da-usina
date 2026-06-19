@@ -7,3 +7,4 @@ __pycache__/
 email_config.json
 *.log
 .streamlit/secrets.toml
+offline/
