@@ -1,4 +1,4 @@
-# Equipamentos reais da Subestação 230kV - UHE Belo Monte / Norte Energia
+# Equipamentos reais da Subestação 230kV - UHE Pimental / Norte Energia
 # num_polos: 1 = câmara única (1 medida SF6), 3 = polos separados (3 medidas SF6)
 
 DISJUNTORES = {

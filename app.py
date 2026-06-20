@@ -210,7 +210,7 @@ if not st.session_state.user:
     st.markdown("<div class='login-box'>", unsafe_allow_html=True)
     st.markdown("<div class='login-logo'>🛡️</div>", unsafe_allow_html=True)
     st.markdown("<div class='login-title'>Guardião da Usina</div>", unsafe_allow_html=True)
-    st.markdown("<div class='login-sub'>Norte Energia · UHE Belo Monte · SE 230kV</div>", unsafe_allow_html=True)
+    st.markdown("<div class='login-sub'>Norte Energia · UHE Pimental · SE 230kV</div>", unsafe_allow_html=True)
 
     operador = st.selectbox("👤 Seu nome", list(PINS.keys()), key="login_nome")
     pin      = st.text_input("🔑 PIN", type="password", max_chars=6,
@@ -233,7 +233,7 @@ with st.sidebar:
     st.markdown(f"""<div style='padding:16px 0 8px;text-align:center'>
         <div style='font-size:2.8rem'>🛡️</div>
         <div style='color:#f1f5f9;font-size:1rem;font-weight:800'>Guardião da Usina</div>
-        <div style='color:#334155;font-size:0.7rem'>UHE Belo Monte | SE 230kV</div>
+        <div style='color:#334155;font-size:0.7rem'>UHE Pimental | SE 230kV</div>
     </div>""", unsafe_allow_html=True)
     st.divider()
     st.markdown(f"**👤 {st.session_state.user}**")
@@ -296,7 +296,7 @@ pagina = pagina_mobile if "nav_mobile" in st.session_state else pagina
 if "Painel" in pagina:
     st.markdown("""<div style='background:linear-gradient(90deg,#0c2340,#0f3460,#0c2340);border-radius:14px;padding:18px 28px;margin-bottom:12px;border:1px solid #1e3a5f'>
         <div style='color:#f1f5f9;font-size:1.4rem;font-weight:900'>🛡️ Guardião da Usina — Painel Operacional</div>
-        <div style='color:#3b82f6;font-size:0.8rem;margin-top:2px'>Subestação 230kV · UHE Belo Monte | Workflow de Inspeção</div>
+        <div style='color:#3b82f6;font-size:0.8rem;margin-top:2px'>Subestação 230kV · UHE Pimental | Workflow de Inspeção</div>
     </div>""", unsafe_allow_html=True)
 
     # ══ 1. TEMPERATURA AMBIENTE CENTRALIZADA ════════════════════════════════
@@ -2088,7 +2088,7 @@ elif "Troca" in pagina:
 elif "Relatório" in pagina:
     st.markdown("## 📊 Relatório Mensal — Guardião da Usina")
     st.markdown("""<div class='card card-blue' style='padding:12px 18px'>
-        <b style='color:#f1f5f9'>📋 Programa Guardiões — UHE Belo Monte</b>
+        <b style='color:#f1f5f9'>📋 Programa Guardiões — UHE Pimental</b>
         <span style='color:#334155;font-size:0.82rem'> · Envio mensal ao gestor</span>
     </div>""", unsafe_allow_html=True)
 
@@ -2127,6 +2127,11 @@ elif "Relatório" in pagina:
     pend_abertas    = len(df_p_r[df_p_r.status == "Aberta"])          if not df_p_r.empty else 0
     pend_concluidas = len(df_p_r[df_p_r.status == "Concluída"])       if not df_p_r.empty else 0
     nok_sec_lista   = df_i_sec[df_i_sec.status == "NOK"].to_dict("records") if not df_i_sec.empty else []
+    # Lista de todas as seccionadoras inspecionadas (última por item)
+    todas_sec_lista = []
+    if not df_i_sec.empty:
+        for _, _rs in df_i_sec.sort_values("data").groupby("item").last().reset_index().iterrows():
+            todas_sec_lista.append({"item": _rs["item"], "data": _rs.data, "status": _rs.status})
     insp_sec_count  = len(df_i_sec["item"].unique()) if not df_i_sec.empty else 0
     total_sec_count = len(df_secs) if not df_secs.empty else 27
     df_ops_periodo  = df_ops_r[(df_ops_r.data >= str(d_ini)) & (df_ops_r.data <= str(d_fim))] if not df_ops_r.empty else pd.DataFrame()
@@ -2398,6 +2403,7 @@ elif "Relatório" in pagina:
                 "total":         total_sec_count,
                 "inspecionadas": insp_sec_count,
                 "nok":           nok_sec_lista,
+                "todas":         todas_sec_lista,
             },
             "trafo_tabela":    trafo_tab,
             "trafo_insp":      trafo_insp,
@@ -2423,11 +2429,10 @@ elif "Relatório" in pagina:
     if col_b3.button("📄 Baixar PDF", use_container_width=True):
         try:
             from xhtml2pdf import pisa
-            import io
             with st.spinner("Gerando PDF..."):
                 from email_report import html_para_pdf
-                html_r = gerar_html_relatorio(montar_dados_relatorio())
-                pdf_bytes = html_para_pdf(html_r)
+                _dados_pdf = montar_dados_relatorio()
+                pdf_bytes = html_para_pdf(_dados_pdf)
             st.download_button("📄 Salvar .pdf", pdf_bytes,
                               f"Relatorio_{mes.replace('/','_')}.pdf",
                               "application/pdf", use_container_width=True)
@@ -2454,8 +2459,7 @@ elif "Relatório" in pagina:
                 _anexos = []
                 try:
                     from email_report import html_para_pdf
-                    html_pdf = gerar_html_relatorio(dados_r, usar_cid=False)
-                    pdf_bytes = html_para_pdf(html_pdf)
+                    pdf_bytes = html_para_pdf(dados_r)
                     if pdf_bytes:
                         _anexos.append((f"Relatorio_Guardiao_{mes.replace('/','_')}.pdf", pdf_bytes))
                 except Exception:
@@ -2512,7 +2516,7 @@ elif "E-mail" in pagina:
                                    placeholder="gestor@norteenergia.com.br\nengenharia@empresa.com.br")
 
         assunto_pad = st.text_input("📝 Assunto padrão",
-                                    value=cfg.get("assunto_padrao","Relatório Mensal — Guardião da Usina | UHE Belo Monte"))
+                                    value=cfg.get("assunto_padrao","Relatório Mensal — Guardião da Usina | UHE Pimental"))
 
         col_s1, col_s2 = st.columns(2)
         salvo = col_s1.form_submit_button("💾 Salvar Configuração", type="primary", use_container_width=True)
@@ -2534,7 +2538,7 @@ elif "E-mail" in pagina:
             if testar:
                 html_teste = f"""<h2>🛡️ Teste — Guardião da Usina</h2>
                 <p>E-mail de teste enviado com sucesso pelo sistema <b>Guardião da Usina</b>.</p>
-                <p>Sistema: Norte Energia — UHE Belo Monte</p>
+                <p>Sistema: Norte Energia — UHE Pimental</p>
                 <p>Usuário: {st.session_state.user}</p>"""
                 with st.spinner("Enviando e-mail de teste..."):
                     ok, msg = enviar_relatorio(nova_cfg, html_teste, "🧪 Teste — Guardião da Usina")

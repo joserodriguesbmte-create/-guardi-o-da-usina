@@ -20,7 +20,7 @@ _CFG_PADRAO = {
     "smtp_server": "smtp.gmail.com", "smtp_port": 587,
     "email_remetente": "", "senha_app": "",
     "destinatarios": [],
-    "assunto_padrao": "Relatorio Mensal - Guardiao da Usina | UHE Belo Monte"
+    "assunto_padrao": "Relatorio Mensal - Guardiao da Usina | UHE Pimental"
 }
 
 def _db_salvar(chave: str, valor: str):
@@ -261,9 +261,237 @@ def foto_para_base64(foto_bytes: bytes, largura: int = 480, altura: int = 360) -
     except Exception:
         return base64.b64encode(foto_bytes).decode("utf-8")
 
-def html_para_pdf(html: str) -> bytes:
-    """Converte HTML para PDF usando xhtml2pdf."""
+def gerar_html_pdf(dados: dict) -> str:
+    """Gera HTML simplificado compatível com xhtml2pdf para PDF."""
+    operador = dados.get("operador", "—")
+    nivel = dados.get("nivel", "—")
+    mes = dados.get("mes", "—")
+    resumo = dados.get("resumo", {})
+    obs = dados.get("observacoes", "")
+    acoes = dados.get("acoes", "")
+    pendencias = dados.get("pendencias", [])
+    sf6_tabela = dados.get("sf6_tabela", [])
+    sf6_visual = dados.get("sf6_visual", [])
+    sec_resumo = dados.get("sec_resumo", {})
+    trafo_tab = dados.get("trafo_tabela", [])
+    trafo_insp = dados.get("trafo_insp", {})
+    insp_complement = dados.get("insp_complement", [])
+    contadores = dados.get("contadores", [])
+    fotos = dados.get("fotos", [])
+    gerado_em = datetime.now().strftime("%d/%m/%Y as %H:%M")
+
+    # Gauges SF6
+    _gauges_b64 = gauges_sf6_base64(sf6_tabela) if sf6_tabela else ""
+    _gauges_img = (f'<img src="data:image/png;base64,{_gauges_b64}" width="600">'
+                   if _gauges_b64 else "")
+
+    # Logos
+    _lg = _logo_b64("logo_guardioes.png")
+    _ln = _logo_b64("logo_norte_energia.png")
+    _logo_g_img = f'<img src="data:image/png;base64,{_lg}" width="250">' if _lg else ""
+    _logo_n_img = f'<img src="data:image/png;base64,{_ln}" width="100">' if _ln else ""
+
+    def _status_cor(s):
+        s = str(s).upper()
+        if "NORMAL" in s or s == "OK": return "#10b981"
+        if "ALARME" in s: return "#f59e0b"
+        if "BLOQUEIO" in s or "NOK" in s or "NC" in s: return "#ef4444"
+        return "#475569"
+
+    # ── SF6 tabela
+    sf6_rows = ""
+    for r in sf6_tabela:
+        cor = _status_cor(r.get("status_sf6", ""))
+        sf6_rows += (f"<tr><td>{r.get('disjuntor','')}</td><td>{r.get('polo','')}</td>"
+                     f"<td>{r.get('pressao_medida','')}</td><td>{r.get('temperatura','')}C</td>"
+                     f"<td><b>{r.get('pressao_corrigida','')}</b></td>"
+                     f"<td>{r.get('data','')} {str(r.get('hora',''))[:5]}</td>"
+                     f"<td style='color:{cor}'><b>{r.get('status_sf6','')}</b></td></tr>")
+
+    # ── SF6 visual
+    vis_rows = ""
+    for v in sf6_visual:
+        cor = _status_cor(v.get("status", ""))
+        _nc_itens = ", ".join([k for k, val in v.get("itens", {}).items() if val == "NC"]) or "—"
+        vis_rows += (f"<tr><td><b>{v['disjuntor']}</b></td><td>{v['data']}</td>"
+                     f"<td style='color:{cor}'><b>{v['status']}</b></td><td>{_nc_itens}</td></tr>")
+
+    # ── Contadores
+    cnt_rows = ""
+    for c in contadores:
+        cnt_rows += (f"<tr><td>{c.get('data','')}</td><td><b>{c.get('disjuntor','')}</b></td>"
+                     f"<td>{c.get('tripolar',0)}</td><td>{c.get('curto_circuito',0)}</td>"
+                     f"<td>{c.get('polo_a',0)}</td><td>{c.get('polo_b',0)}</td><td>{c.get('polo_v',0)}</td></tr>")
+
+    # ── Seccionadoras — resumo + NC
+    nok_sec = sec_resumo.get("nok", [])
+    sec_nok_rows = ""
+    for n in nok_sec:
+        _obs_raw = n.get("observacao", "")
+        try:
+            import json as _j2
+            _oj = _j2.loads(_obs_raw.split(" | ")[0]) if _obs_raw and _obs_raw.startswith("{") else None
+            _obs_disp = ", ".join([k for k, v in _oj.items() if v == "NC"]) if _oj else _obs_raw[:60]
+        except Exception:
+            _obs_disp = str(_obs_raw)[:60]
+        sec_nok_rows += f"<tr><td>{n.get('data','')}</td><td><b>{n.get('item','')}</b></td><td>{_obs_disp}</td></tr>"
+
+    # ── Trafo
+    trafo_rows = ""
+    for r in trafo_tab:
+        cor = _status_cor(r.get("status", ""))
+        trafo_rows += (f"<tr><td>{r.get('data','')} {str(r.get('hora',''))[:5]}</td>"
+                       f"<td>{r.get('ponto','')}</td><td><b>{r.get('temperatura','')}C</b></td>"
+                       f"<td>{r.get('limite_max','')}C</td>"
+                       f"<td style='color:{cor}'><b>{r.get('status','')}</b></td></tr>")
+
+    # ── Inspeções complementares
+    comp_rows = ""
+    for ic in insp_complement:
+        cor = _status_cor(ic.get("status", ""))
+        comp_rows += (f"<tr><td><b>{ic.get('nome','')}</b></td><td>{ic.get('data','—')}</td>"
+                      f"<td style='color:{cor}'><b>{ic.get('status','—')}</b></td></tr>")
+
+    # ── Pendências
+    pend_rows = ""
+    for p in pendencias:
+        _pri = p.get('prioridade', '')
+        _pri_cor = "#ef4444" if _pri == "Alta" else "#f59e0b" if _pri in ("Media","Média") else "#475569"
+        pend_rows += (f"<tr><td style='width:70px'>{p.get('data_abertura','')}</td>"
+                      f"<td style='word-wrap:break-word'>{str(p.get('descricao',''))}</td>"
+                      f"<td style='color:{_pri_cor};width:50px'><b>{_pri}</b></td>"
+                      f"<td style='width:70px'>{p.get('nota_sap','—')}</td>"
+                      f"<td style='width:50px'>{p.get('status','')}</td></tr>")
+
+    # ── Fotos (página própria, tabela 3 colunas, fotos menores)
+    fotos_html = ""
+    if fotos:
+        fotos_html = '<div style="page-break-before:always"></div><h2>7. Registro Fotografico</h2><table><tr>'
+        for i, f in enumerate(fotos[:6]):
+            fotos_html += (f'<td style="text-align:center;padding:4px;border:none;width:33%;vertical-align:top">'
+                          f'<img src="data:image/jpeg;base64,{f["base64"]}" width="160"><br>'
+                          f'<small><b>Foto {i+1}</b>: {f.get("legenda","—")}</small></td>')
+            if (i + 1) % 3 == 0 and i < len(fotos) - 1:
+                fotos_html += "</tr><tr>"
+        fotos_html += "</tr></table>"
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+@page {{ size: A4; margin: 1.5cm; }}
+body {{ font-family: Arial, sans-serif; font-size: 12px; color: #334155; }}
+h1 {{ color: #0c2340; font-size: 18px; text-align: center; }}
+h2 {{ color: #0f3460; font-size: 14px; border-bottom: 2px solid #0f3460; padding-bottom: 4px; margin-top: 20px; }}
+h3 {{ color: #0f3460; font-size: 13px; margin-top: 16px; }}
+table {{ width: 100%; border-collapse: collapse; margin: 8px 0; }}
+th {{ background: #e2e8f0; padding: 6px 8px; text-align: left; font-size: 11px; border: 1px solid #cbd5e1; }}
+td {{ padding: 5px 8px; font-size: 11px; border: 1px solid #e2e8f0; }}
+</style></head><body>
+
+<!-- CAPA -->
+<table><tr><td style="text-align:center;padding:50px 20px;border:none">
+{_logo_g_img}
+<h1>Relatorio Mensal — Guardiao da Usina</h1>
+<p>Norte Energia S.A. — Usina Hidreletrica Pimental — Subestacao 230kV</p>
+<p>Referencia: <b>{mes}</b></p>
+<p>Responsavel: <b>{operador}</b> — Nivel {nivel}</p>
+<br>{_logo_n_img}
+</td></tr></table>
+
+<div style="page-break-after: always;"></div>
+
+<!-- OBJETIVO -->
+<h2>Objetivo do Programa</h2>
+<p>Fortalecer a excelencia operacional atraves da responsabilidade compartilhada,
+integracao entre turnos, acompanhamento continuo das instalacoes e melhoria
+continua dos sistemas da usina.</p>
+
+<!-- KPIs -->
+<h2>1. Resumo Executivo</h2>
+<table>
+<tr>
+<td style="text-align:center;width:33%"><b style="font-size:20px;color:#3b82f6">{resumo.get('leituras_sf6',0)}</b><br><small>Leituras SF6</small></td>
+<td style="text-align:center;width:33%"><b style="font-size:20px;color:#ef4444">{resumo.get('alarmes_sf6',0)}</b><br><small>Alarmes SF6</small></td>
+<td style="text-align:center;width:33%"><b style="font-size:20px;color:#f59e0b">{resumo.get('temp_registradas',0)}</b><br><small>Reg. Temperatura</small></td>
+</tr><tr>
+<td style="text-align:center"><b style="font-size:20px;color:#10b981">{resumo.get('inspecoes',0)}</b><br><small>Inspecoes</small></td>
+<td style="text-align:center"><b style="font-size:20px;color:#8b5cf6">{resumo.get('pendencias_abertas',0)}</b><br><small>Pend. Abertas</small></td>
+<td style="text-align:center"><b style="font-size:20px;color:#06b6d4">{resumo.get('pendencias_concluidas',0)}</b><br><small>Pend. Concluidas</small></td>
+</tr></table>
+
+<!-- SF6 -->
+<h2>2. Monitoramento SF6 — Disjuntores 230kV</h2>
+<p><small>Siemens 3AP1 FG · Nominal: 6,0 bar · Alarme: 5,2 bar · Bloqueio: 5,0 bar · Corrigida 20C</small></p>
+<table>
+<tr><th>Disjuntor</th><th>Polo</th><th>P.Medida</th><th>Temp.</th><th>P.Corrigida</th><th>Data/Hora</th><th>Status</th></tr>
+{sf6_rows if sf6_rows else '<tr><td colspan="7" style="text-align:center;color:#94a3b8">Sem leituras no periodo</td></tr>'}
+</table>
+
+{_gauges_img}
+
+{"<h3>Inspecao Visual por Disjuntor</h3><table><tr><th>Disjuntor</th><th>Data</th><th>Status</th><th>Itens NC</th></tr>" + vis_rows + "</table>" if vis_rows else ""}
+
+{"<h3>Contadores de Operacoes</h3><table><tr><th>Data</th><th>Disjuntor</th><th>Tripolar</th><th>Curto-Circ.</th><th>Polo A</th><th>Polo B</th><th>Polo V</th></tr>" + cnt_rows + "</table>" if cnt_rows else ""}
+
+<!-- SECCIONADORAS -->
+<div style="page-break-inside:avoid">
+<h2>3. Inspecoes de Seccionadoras</h2>
+<p>Inspecionadas: <b>{sec_resumo.get('inspecionadas',0)}/{sec_resumo.get('total',0)}</b>
+({int(sec_resumo.get('inspecionadas',0)/sec_resumo.get('total',1)*100)}%) · NOK: <b>{len(nok_sec)}</b></p>
+{('<table><tr><th>Data</th><th>Seccionadora</th><th>Itens NC</th></tr>' + sec_nok_rows + '</table>') if sec_nok_rows else '<p style="color:#10b981">Todas as seccionadoras OK no periodo.</p>'}
+</div>
+
+<!-- TRANSFORMADOR -->
+<div style="page-break-inside:avoid">
+<h2>4. Transformador TR-SE-01 Toshiba 10/12,5 MVA</h2>
+{"<table><tr><th>Data/Hora</th><th>Ponto</th><th>Temperatura</th><th>Limite</th><th>Status</th></tr>" + trafo_rows + "</table>" if trafo_rows else "<p>Sem registros de temperatura no periodo.</p>"}
+</div>
+
+<!-- INSPEÇÕES COMPLEMENTARES -->
+<div style="page-break-inside:avoid">
+<h2>5. Inspecoes Complementares</h2>
+<table><tr><th>Sistema</th><th>Ultima Inspecao</th><th>Status</th></tr>
+{comp_rows if comp_rows else '<tr><td colspan="3">Sem registros</td></tr>'}
+</table>
+</div>
+
+<!-- PENDÊNCIAS -->
+<div style="page-break-inside:avoid">
+<h2>6. Pendencias em Aberto</h2>
+{"<table><tr><th>Data</th><th>Descricao</th><th>Prioridade</th><th>Nota SAP</th><th>Status</th></tr>" + pend_rows + "</table>" if pend_rows else '<p style="color:#10b981">Sem pendencias abertas.</p>'}
+</div>
+
+<!-- FOTOS -->
+{fotos_html}
+
+<!-- OBSERVAÇÕES -->
+<div style="page-break-inside:avoid">
+<h2>{"8" if fotos else "7"}. Observacoes e Acoes de Destaque</h2>
+<p><b>Observacoes:</b></p>
+<p style="border-left:3px solid #3b82f6;padding:8px;background:#f8fafc">{obs or 'Sem observacoes adicionais.'}</p>
+{"<p><b>Acoes de Destaque:</b></p><p style='border-left:3px solid #10b981;padding:8px;background:#f8fafc'>" + acoes + "</p>" if acoes else ""}
+</div>
+
+<!-- ASSINATURA -->
+<div style="margin-top:30px">
+<table style="border:none"><tr>
+<td style="border:none;width:50%"><hr style="border-top:1px solid #cbd5e1">
+<b>{operador}</b><br><small>Guardiao — Nivel {nivel}</small></td>
+<td style="border:none;width:50%"><hr style="border-top:1px solid #cbd5e1">
+<b>Data</b><br><small>{datetime.now().strftime("%d/%m/%Y")}</small></td>
+</tr></table>
+</div>
+
+<p style="text-align:center;color:#94a3b8;font-size:10px;margin-top:20px">
+Guardiao da Usina · Norte Energia — UHE Pimental · Gerado em {gerado_em}</p>
+
+</body></html>"""
+    return html
+
+def html_para_pdf(dados: dict) -> bytes:
+    """Gera PDF a partir dos dados do relatório."""
     from xhtml2pdf import pisa
+    html = gerar_html_pdf(dados)
     buf = io.BytesIO()
     pisa.CreatePDF(io.StringIO(html), dest=buf)
     return buf.getvalue()
@@ -319,7 +547,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
                 🛡️ Relatorio Mensal — Guardiao da Usina
               </div>
               <div style="font-size:13px;color:#60a5fa;">
-                Norte Energia S.A. · UHE Belo Monte · Subestacao 230kV
+                Norte Energia S.A. · UHE Pimental · Subestacao 230kV
               </div>
             </td>
             <td align="right" style="vertical-align:top;font-size:11px;color:#64748b;">
@@ -647,7 +875,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
         <div style="margin-top:30px;border-top:1px solid #e2e8f0;padding-top:20px;">
           {logo_norte_img}
           <div style="font-size:12px;color:#64748b;margin-top:8px;">
-            Norte Energia S.A. — Usina Hidreletrica Belo Monte
+            Norte Energia S.A. — Usina Hidreletrica Pimental
           </div>
         </div>
       </td></tr>
@@ -831,7 +1059,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
   <!-- RODAPÉ -->
   <tr><td style="text-align:center;padding:16px;color:#94a3b8;font-size:11px;
                  border-top:1px solid #e2e8f0;">
-    🛡️ Guardiao da Usina · Norte Energia — UHE Belo Monte<br>
+    🛡️ Guardiao da Usina · Norte Energia — UHE Pimental<br>
     Relatorio gerado automaticamente em {gerado_em}
   </td></tr>
 
