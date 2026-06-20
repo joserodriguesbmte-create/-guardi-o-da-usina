@@ -415,9 +415,21 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
 
     nok_rows = ""
     for n in nok_sec:
+        _obs_raw = n.get('observacao', '—')
+        _obs_display = '—'
+        try:
+            import json as _jsec
+            _obs_json = _jsec.loads(_obs_raw.split(" | ")[0]) if _obs_raw and _obs_raw.startswith("{") else None
+            if _obs_json:
+                _itens_nc = [k for k, v in _obs_json.items() if v == "NC"]
+                _obs_display = ", ".join(_itens_nc) if _itens_nc else "—"
+            else:
+                _obs_display = _obs_raw[:80] if _obs_raw else "—"
+        except Exception:
+            _obs_display = str(_obs_raw)[:80] if _obs_raw else "—"
         nok_rows += (f"<tr><td style='padding:7px 10px;color:#475569;'>{n.get('data','')}</td>"
                      f"<td style='padding:7px 10px;font-weight:700;color:#0f3460;'>{n.get('item','')}</td>"
-                     f"<td style='padding:7px 10px;color:#475569;'>{n.get('observacao','—')}</td></tr>")
+                     f"<td style='padding:7px 10px;color:#ef4444;'>{_obs_display}</td></tr>")
 
     sec_nok_table = ""
     if nok_rows:

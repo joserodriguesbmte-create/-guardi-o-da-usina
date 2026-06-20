@@ -2450,8 +2450,19 @@ elif "Relatório" in pagina:
                 # Para e-mail: HTML com CID (Gmail/Outlook renderizam as fotos)
                 html_r   = gerar_html_relatorio(dados_r, usar_cid=bool(_fotos_e))
                 assunto  = f"🛡️ Relatório Guardião da Usina — {mes} | {st.session_state.user}"
+                # Gerar PDF para anexar
+                _anexos = []
+                try:
+                    from email_report import html_para_pdf
+                    html_pdf = gerar_html_relatorio(dados_r, usar_cid=False)
+                    pdf_bytes = html_para_pdf(html_pdf)
+                    if pdf_bytes:
+                        _anexos.append((f"Relatorio_Guardiao_{mes.replace('/','_')}.pdf", pdf_bytes))
+                except Exception:
+                    pass
                 ok, msg  = enviar_relatorio(cfg_email, html_r, assunto,
-                                            fotos=_fotos_e if _fotos_e else None)
+                                            fotos=_fotos_e if _fotos_e else None,
+                                            anexos=_anexos if _anexos else None)
             if ok:
                 st.success(msg)
                 st.session_state["foto_counter"] = st.session_state.get("foto_counter", 0) + 1
