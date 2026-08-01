@@ -693,6 +693,78 @@ if "Painel" in pagina:
 
         st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:12px 0'></div>", unsafe_allow_html=True)
 
+        # ── HISTÓRICO DO DIA ─────────────────────────────────────────────────
+        st.markdown("""<div style='color:#94a3b8;font-size:0.72rem;font-weight:700;
+            text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
+            📋 Atividades de Hoje</div>""", unsafe_allow_html=True)
+
+        _hist_itens = []
+
+        # SF6 hoje — última leitura por disjuntor
+        _sf6_hoje = df_sf6_all[df_sf6_all["data"] == str(_data_insp)] if not df_sf6_all.empty else pd.DataFrame()
+        if not _sf6_hoje.empty:
+            _sf6_ult = _sf6_hoje.sort_values("hora").groupby("disjuntor").last().reset_index()
+            for _, _r in _sf6_ult.iterrows():
+                _st_cor = "#10b981" if _r.status_sf6 == "NORMAL" else "#ef4444"
+                _hist_itens.append(("⚡", "#1e3a5f",
+                    f"<b style='color:#f1f5f9'>{_r.disjuntor}</b>"
+                    f"<span style='color:{_st_cor}'> · {float(_r.pressao_corrigida):.3f} bar</span>"
+                    f"<span style='color:#475569'> · {str(_r.hora)[:5]}</span>"))
+
+        # Inspeções de campo hoje (trafo, para-raios, sala elétrica, cúbilo, seccionadoras)
+        _insp_hoje = _carregar_inspecoes(data_ini=_data_insp, data_fim=_data_insp)
+        if not _insp_hoje.empty:
+            _ICONES_SIS = {
+                "Transformador": "🌡️", "Subestação 230kV": "⚡",
+                "Sala Elétrica da SE": "🏭", "Cúbilo de 13.8kV da SE": "🔲",
+            }
+            _sec_hoje = _insp_hoje[_insp_hoje.sistema == "Seccionadora"]
+            _outros_hoje = _insp_hoje[_insp_hoje.sistema != "Seccionadora"]
+
+            if not _sec_hoje.empty:
+                _n_sec = len(_sec_hoje["item"].unique())
+                _cor_sec = "#10b981" if _n_sec >= len(secs_todos) else "#06b6d4"
+                _hist_itens.append(("🔌", "#0c2340",
+                    f"<b style='color:{_cor_sec}'>{_n_sec}/{len(secs_todos)} seccionadoras</b>"
+                    f"<span style='color:#475569'> inspecionadas</span>"))
+
+            for _, _ri in _outros_hoje.drop_duplicates("sistema").iterrows():
+                _ic_s = _ICONES_SIS.get(_ri.sistema, "🔍")
+                _st_c = "#10b981" if _ri.status in ("OK","NORMAL") else "#ef4444" if _ri.status in ("NOK","CRITICO") else "#f59e0b"
+                _hist_itens.append((_ic_s, "#0c2340",
+                    f"<b style='color:#e2e8f0'>{_ri.sistema.replace(' TR-SE-01 (Toshiba 10/12.5 MVA)','')[:28]}</b>"
+                    f"<span style='color:{_st_c}'> · {_ri.status}</span>"
+                    f"<span style='color:#475569'> · {_ri.usuario}</span>"))
+
+        # Pendências abertas hoje
+        _pend_hoje = df_pend_all[df_pend_all["data_abertura"] == str(_data_insp)] if not df_pend_all.empty else pd.DataFrame()
+        if not _pend_hoje.empty:
+            for _, _rp in _pend_hoje.iterrows():
+                _pri_c = "#ef4444" if _rp.prioridade=="Alta" else "#f59e0b" if _rp.prioridade in ("Média","Media") else "#10b981"
+                _hist_itens.append(("⚠️", "#1a0a00",
+                    f"<b style='color:{_pri_c}'>[{_rp.prioridade}]</b>"
+                    f"<span style='color:#e2e8f0'> {str(_rp.descricao)[:35]}{'…' if len(str(_rp.descricao))>35 else ''}</span>"))
+
+        if _hist_itens:
+            _hist_html = "".join([
+                f"<div style='background:{bg};border-left:3px solid #1e3a5f;"
+                f"border-radius:6px;padding:6px 10px;margin:3px 0;"
+                f"display:flex;align-items:center;gap:8px'>"
+                f"<span style='font-size:0.85rem'>{ic}</span>"
+                f"<span style='font-size:0.78rem;line-height:1.3'>{txt}</span></div>"
+                for ic, bg, txt in _hist_itens
+            ])
+            st.markdown(f"<div style='max-height:260px;overflow-y:auto'>{_hist_html}</div>",
+                        unsafe_allow_html=True)
+        else:
+            st.markdown("""<div style='background:#0a1628;border:1px dashed #1e3a5f;
+                border-radius:8px;padding:10px 14px;text-align:center'>
+                <div style='color:#334155;font-size:0.8rem'>Nenhuma atividade registrada hoje</div>
+                <div style='color:#1e3a5f;font-size:0.7rem;margin-top:2px'>Primeiro turno do dia</div>
+            </div>""", unsafe_allow_html=True)
+
+        st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:12px 0'></div>", unsafe_allow_html=True)
+
         # ── 4. EVOLUÇÃO SF6 ──────────────────────────────────────────────────
         st.markdown("""<div style='color:#60a5fa;font-size:0.72rem;font-weight:700;
             text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
