@@ -48,6 +48,18 @@ def _buscar_equipamento_por_tag(tag):
 def _carregar_contadores(disjuntor=None, data_ini=None, data_fim=None):
     return carregar_contadores(disjuntor, data_ini, data_fim)
 
+@st.cache_data(ttl=60, show_spinner=False)
+def _carregar_temps(equipamento=None, data_ini=None, data_fim=None):
+    return carregar_temps(equipamento, data_ini, data_fim)
+
+@st.cache_data(ttl=120, show_spinner=False)
+def _carregar_operacoes(disjuntor=None):
+    return carregar_operacoes(disjuntor)
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _carregar_fotos(data_ini=None, data_fim=None, sem_base64=False):
+    return carregar_fotos(data_ini=data_ini, data_fim=data_fim, sem_base64=sem_base64)
+
 @st.cache_resource(show_spinner=False)
 def _init_db():
     init_db()
@@ -950,6 +962,7 @@ if "Painel" in pagina:
                 st.success(f"✅ {_TRAFO_NOME} — {_emoji} {_tr_saude_txt}" +
                            (f" | ⚠️ {', '.join(_alertas_tr[:3])}" if _alertas_tr else ""))
                 _carregar_inspecoes.clear()
+                _carregar_temps.clear()
                 st.rerun()
 
     # ── 5. PARA-RAIOS — largura total ────────────────────────────────────────
@@ -1462,9 +1475,10 @@ elif "SF6" in pagina:
             if st.form_submit_button("💾 Registrar Operação", type="primary", use_container_width=True):
                 salvar_operacao({"data":str(data_op),"disjuntor":dj_op,"tipo_operacao":tipo_op,
                                 "motivo":motivo,"num_operacoes_total":int(num_op),"usuario":st.session_state.login})
+                _carregar_operacoes.clear()
                 st.success("✅ Operação registrada!")
 
-        df_op = carregar_operacoes()
+        df_op = _carregar_operacoes()
         if not df_op.empty:
             fig_op = px.bar(df_op.groupby("disjuntor").size().reset_index(name="total"),
                            x="disjuntor", y="total", title="Total de Operações Registradas por Disjuntor",
@@ -1628,13 +1642,14 @@ elif "Temperatura" in pagina:
                              "temperatura": _d["val"], "umidade": 0.0,
                              "limite_max": _d["limite"], "status": _d["status"],
                              "observacao": _obs_tr, "usuario": st.session_state.login})
+            _carregar_temps.clear()
             st.success("✅ OTI e WTI salvos!")
 
     with tab2:
         _c1, _c2 = st.columns(2)
         _di = _c1.date_input("De", value=date(2026, 6, 1), key="tr_ini")
         _df2 = _c2.date_input("Até", value=date.today(), key="tr_fim")
-        _df_t = carregar_temps(EQUIP_TR, _di, _df2)
+        _df_t = _carregar_temps(EQUIP_TR, _di, _df2)
         if _df_t.empty:
             st.info("Sem registros. Use a aba Registrar Leitura para começar.")
         else:
@@ -1912,12 +1927,12 @@ elif "Inspeção" in pagina:
     FREQ_SF6_DIAS = _freq_new.get("SF6 Gás", 7)
 
     # Calcular status de vencimento
-    df_insp_all = carregar_inspecoes()
+    df_insp_all = _carregar_inspecoes()
     st.markdown("### 📅 Status das Inspeções")
     cw = st.columns(len(SISTEMAS) + 1)
 
     # SF6
-    df_sf6_v = carregar_sf6()
+    df_sf6_v = _carregar_sf6()
     ultima_sf6 = pd.to_datetime(df_sf6_v["data"].max()) if not df_sf6_v.empty else None
     dias_sf6   = (date.today() - ultima_sf6.date()).days if ultima_sf6 else 999
     cor_sf6    = "#10b981" if dias_sf6<=FREQ_SF6_DIAS else "#f59e0b" if dias_sf6<=FREQ_SF6_DIAS+3 else "#ef4444"
@@ -2114,17 +2129,17 @@ elif "Relatório" in pagina:
     d_ini = _r2.date_input("De",  value=date(_ano_r, _mes_r, 1),         key="rel_ini")
     d_fim = _r3.date_input("Até", value=date(_ano_r, _mes_r, _ultimo_r),  key="rel_fim")
 
-    # Carregar dados
-    df_sf6_r    = carregar_sf6(data_ini=d_ini, data_fim=d_fim)
-    df_t_r      = carregar_temps(data_ini=d_ini, data_fim=d_fim)
-    df_p_r      = carregar_pendencias()
-    df_i_r      = carregar_inspecoes(data_ini=d_ini, data_fim=d_fim)
-    df_i_sec    = carregar_inspecoes(sistema="Seccionadora",  data_ini=d_ini, data_fim=d_fim)
-    df_i_sf6vis = carregar_inspecoes(sistema="Disjuntor SF6", data_ini=d_ini, data_fim=d_fim)
-    df_i_trafo  = carregar_inspecoes(sistema="Transformador", data_ini=d_ini, data_fim=d_fim)
-    df_ops_r    = carregar_operacoes()
-    df_secs     = carregar_equipamentos("Seccionadora")
-    df_cnt_r    = carregar_contadores(data_ini=d_ini, data_fim=d_fim)
+    # Carregar dados (versões com cache — evita reconexão ao banco a cada render)
+    df_sf6_r    = _carregar_sf6(data_ini=d_ini, data_fim=d_fim)
+    df_t_r      = _carregar_temps(data_ini=d_ini, data_fim=d_fim)
+    df_p_r      = _carregar_pendencias()
+    df_i_r      = _carregar_inspecoes(data_ini=d_ini, data_fim=d_fim)
+    df_i_sec    = _carregar_inspecoes(sistema="Seccionadora",  data_ini=d_ini, data_fim=d_fim)
+    df_i_sf6vis = _carregar_inspecoes(sistema="Disjuntor SF6", data_ini=d_ini, data_fim=d_fim)
+    df_i_trafo  = _carregar_inspecoes(sistema="Transformador", data_ini=d_ini, data_fim=d_fim)
+    df_ops_r    = _carregar_operacoes()
+    df_secs     = _carregar_equipamentos("Seccionadora")
+    df_cnt_r    = _carregar_contadores(data_ini=d_ini, data_fim=d_fim)
 
     n_alarmes_sf6   = len(df_sf6_r[df_sf6_r.status_sf6 != "NORMAL"]) if not df_sf6_r.empty else 0
     pend_abertas    = len(df_p_r[df_p_r.status == "Aberta"])          if not df_p_r.empty else 0
@@ -2225,8 +2240,8 @@ elif "Relatório" in pagina:
         serão incluídas automaticamente no relatório mensal.
     </div>""", unsafe_allow_html=True)
 
-    # Fotos já salvas no banco para o período (com base64 — máx 6 fotos, peso aceitável)
-    df_fotos_salvas = carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim), sem_base64=False)
+    # Fotos já salvas no banco para o período (cache 30s — máx 6 fotos)
+    df_fotos_salvas = _carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim), sem_base64=False)
     _n_salvas = len(df_fotos_salvas)
     _max_fotos = 6
     _vagas = max(0, _max_fotos - _n_salvas)
@@ -2251,6 +2266,7 @@ elif "Relatório" in pagina:
                             unsafe_allow_html=True)
                 if st.button("🗑️ Remover", key=f"rm_foto_{_fr.id}", use_container_width=True):
                     excluir_foto(_fr.id)
+                    _carregar_fotos.clear()
                     st.rerun()
 
     # Upload de novas fotos (se houver vagas)
@@ -2285,6 +2301,7 @@ elif "Relatório" in pagina:
                     })
                     _saved += 1
                 st.success(f"✅ {_saved} foto(s) salva(s) com sucesso!")
+                _carregar_fotos.clear()
                 st.session_state["foto_counter"] = _fk + 1
                 st.rerun()
     elif _n_salvas >= _max_fotos:
@@ -2299,6 +2316,7 @@ elif "Relatório" in pagina:
             _cf1, _cf2 = st.columns(2)
             if _cf1.button("✅ Sim, excluir todas", type="primary", use_container_width=True):
                 n = excluir_fotos_periodo(d_ini, d_fim)
+                _carregar_fotos.clear()
                 st.session_state["_confirmar_limpar_fotos"] = False
                 st.success(f"✅ {n} foto(s) excluída(s)!")
                 st.rerun()
