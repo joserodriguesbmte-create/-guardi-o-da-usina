@@ -7,7 +7,6 @@ import calendar
 from database import (init_db, salvar_sf6, carregar_sf6, salvar_temp, carregar_temps,
                       salvar_operacao, carregar_operacoes, salvar_inspecao, carregar_inspecoes,
                       salvar_pendencia, carregar_pendencias, atualizar_pendencia,
-                      salvar_troca, carregar_trocas, salvar_melhoria, carregar_melhorias,
                       salvar_equipamento, atualizar_equipamento, desativar_equipamento,
                       carregar_equipamentos, buscar_equipamento_por_tag,
                       salvar_config, carregar_config,
@@ -259,7 +258,6 @@ with st.sidebar:
         "🧮  Calculadora Técnica",
         "📋  Inspeção de Campo",
         "⚠️  Pendências",
-        "🔄  Troca de Turno",
         "📊  Relatório Mensal",
         "📧  Configurar E-mail",
     ], label_visibility="collapsed", key="nav_sidebar")
@@ -273,7 +271,7 @@ with st.sidebar:
 PAGINAS = [
     "🏠  Painel Geral","🗂️  Cadastro de Equipamentos","⚡  Disjuntores SF6",
     "🌡️  Temperaturas","🧮  Calculadora Técnica","📋  Inspeção de Campo",
-    "⚠️  Pendências","🔄  Troca de Turno","📊  Relatório Mensal","📧  Configurar E-mail",
+    "⚠️  Pendências","📊  Relatório Mensal","📧  Configurar E-mail",
 ]
 st.markdown("""<style>
 .nav-mobile{display:none;}
@@ -2066,38 +2064,6 @@ elif "Pendências" in pagina:
                     dc = st.date_input("Data conclusão",value=date.today(),key=f"dc{row.id}")
                     no = st.text_input("Obs.",key=f"no{row.id}")
                     if st.button("Atualizar",key=f"up{row.id}"): atualizar_pendencia(row.id,ns,str(dc),no); st.rerun()
-
-# ═══════════════════════════════════════════════════════════════ TROCA ════
-elif "Troca" in pagina:
-    st.markdown("## 🔄 Troca de Turno")
-    with st.form("ft",clear_on_submit=True):
-        c1,c2,c3,c4 = st.columns(4)
-        dt = c1.date_input("Data",value=date.today()); ts = c2.selectbox("Turno Saída",["Manhã","Tarde","Noite"])
-        te = c3.selectbox("Turno Entrada",["Manhã","Tarde","Noite"]); sis = c4.selectbox("Sistema",SISTEMAS)
-        oc = st.text_area("Ocorrência / Informação",height=80)
-        ac = st.text_area("Ação Tomada",height=60)
-        pend = st.checkbox("⚠️ Requer acompanhamento no próximo turno")
-        if st.form_submit_button("💾 Registrar",type="primary",use_container_width=True):
-            salvar_troca({"data":str(dt),"turno_saida":ts,"turno_entrada":te,"sistema":sis,"ocorrencia":oc,"acao_tomada":ac,"pendente":int(pend),"usuario":st.session_state.login})
-            st.success("✅ Passagem registrada!")
-    st.markdown("#### 📋 Histórico de Passagens")
-    df_tr_all = carregar_trocas(500)
-    if not df_tr_all.empty:
-        _tf1, _tf2, _tf3 = st.columns(3)
-        _fil_sis_tr = _tf1.selectbox("Sistema", ["Todos"] + SISTEMAS, key="tr_sis_f")
-        _fil_ini_tr = _tf2.date_input("De",  value=date(date.today().year, date.today().month, 1), key="tr_ini_f")
-        _fil_fim_tr = _tf3.date_input("Até", value=date.today(), key="tr_fim_f")
-        df_tr = df_tr_all.copy()
-        if _fil_sis_tr != "Todos":
-            df_tr = df_tr[df_tr.sistema == _fil_sis_tr]
-        df_tr = df_tr[(df_tr.data >= str(_fil_ini_tr)) & (df_tr.data <= str(_fil_fim_tr))]
-        st.markdown(f"<div style='color:#475569;font-size:0.8rem;margin:4px 0'>{len(df_tr)} registro(s) no período · Total: {len(df_tr_all)}</div>", unsafe_allow_html=True)
-    else:
-        df_tr = df_tr_all
-    for _,r in df_tr.iterrows():
-        ico = "⚠️" if r.pendente else "✅"
-        with st.expander(f"{ico} {r.data} | {r.turno_saida}→{r.turno_entrada} | {r.sistema}"):
-            st.write(f"**Ocorrência:** {r.ocorrencia}"); st.write(f"**Ação:** {r.acao_tomada or '—'}")
 
 # ═══════════════════════════════════════════════════════════════ RELATÓRIO
 elif "Relatório" in pagina:
