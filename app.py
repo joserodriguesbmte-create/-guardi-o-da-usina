@@ -2101,8 +2101,11 @@ elif "Relatório" in pagina:
         _m = (_hoje_r.month + _d - 1) % 12 + 1
         _a = _hoje_r.year + (_hoje_r.month + _d - 1) // 12
         _meses_dict[f"{_MESES_PT[_m-1]}/{_a}"] = (_a, _m)
-    _mes_padrao = f"{_MESES_PT[_hoje_r.month-1]}/{_hoje_r.year}"
-    _idx_mes = list(_meses_dict.keys()).index(_mes_padrao) if _mes_padrao in _meses_dict else 6
+    # Padrão = mês anterior (relatório fechado ao virar o mês)
+    _prev_m = _hoje_r.month - 1 if _hoje_r.month > 1 else 12
+    _prev_a = _hoje_r.year if _hoje_r.month > 1 else _hoje_r.year - 1
+    _mes_padrao = f"{_MESES_PT[_prev_m-1]}/{_prev_a}"
+    _idx_mes = list(_meses_dict.keys()).index(_mes_padrao) if _mes_padrao in _meses_dict else 5
 
     _r1, _r2, _r3 = st.columns(3)
     mes = _r1.selectbox("📅 Mês", list(_meses_dict.keys()), index=_idx_mes, key="rel_mes")
@@ -2222,29 +2225,30 @@ elif "Relatório" in pagina:
         serão incluídas automaticamente no relatório mensal.
     </div>""", unsafe_allow_html=True)
 
-    # Fotos já salvas no banco para o período (sem base64 para carregar rápido)
-    df_fotos_salvas = carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim), sem_base64=True)
+    # Fotos já salvas no banco para o período (com base64 — máx 6 fotos, peso aceitável)
+    df_fotos_salvas = carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim), sem_base64=False)
     _n_salvas = len(df_fotos_salvas)
     _max_fotos = 6
     _vagas = max(0, _max_fotos - _n_salvas)
 
-    # Exibir fotos salvas (só metadados — sem carregar imagens pesadas)
+    # Exibir fotos salvas com imagem real em 2 colunas
     if _n_salvas > 0:
+        import base64 as _b64
         st.markdown(f"<div style='color:#10b981;font-size:0.8rem;margin:4px 0 8px'>"
                     f"📷 {_n_salvas} foto(s) salva(s) no período</div>", unsafe_allow_html=True)
-        _cols_fs = st.columns(3)
+        _cols_fs = st.columns(2)
         for i, (_, _fr) in enumerate(df_fotos_salvas.iterrows()):
-            with _cols_fs[i % 3]:
-                st.markdown(f"""<div style='background:#0f1e3a;border:1px solid #1e3a5f;
-                    border-radius:8px;padding:10px;text-align:center'>
-                    <div style='font-size:1.5rem'>📷</div>
-                    <div style='font-size:0.75rem;color:#94a3b8;margin-top:4px'>
-                    📅 {_fr.data}</div>
-                    <div style='font-size:0.8rem;color:#e2e8f0;margin-top:2px'>
-                    {_fr.legenda or '—'}</div>
-                    <div style='font-size:0.65rem;color:#475569;margin-top:2px'>
-                    {_fr.sistema or ''}</div>
-                </div>""", unsafe_allow_html=True)
+            with _cols_fs[i % 2]:
+                try:
+                    _img_bytes = _b64.b64decode(_fr.foto_base64)
+                    st.image(_img_bytes, use_container_width=True)
+                except Exception:
+                    st.markdown("📷", unsafe_allow_html=False)
+                st.markdown(f"<div style='font-size:0.78rem;color:#e2e8f0;margin:2px 0'>"
+                            f"<b>{_fr.legenda or '—'}</b></div>"
+                            f"<div style='font-size:0.68rem;color:#64748b;margin-bottom:6px'>"
+                            f"📅 {_fr.data} · {_fr.sistema or ''}</div>",
+                            unsafe_allow_html=True)
                 if st.button("🗑️ Remover", key=f"rm_foto_{_fr.id}", use_container_width=True):
                     excluir_foto(_fr.id)
                     st.rerun()
@@ -2273,7 +2277,7 @@ elif "Relatório" in pagina:
                     leg = st.session_state.get(f"leg_new_{i}", "")
                     b64 = foto_para_base64(img_bytes)
                     salvar_foto({
-                        "data": str(date.today()),
+                        "data": str(d_fim),
                         "sistema": "Relatório Mensal",
                         "legenda": leg,
                         "foto_base64": b64,

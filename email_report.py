@@ -363,15 +363,15 @@ def gerar_html_pdf(dados: dict) -> str:
                       f"<td style='width:70px'>{p.get('nota_sap','—')}</td>"
                       f"<td style='width:50px'>{p.get('status','')}</td></tr>")
 
-    # ── Fotos (página própria, tabela 3 colunas, fotos menores)
+    # ── Fotos (página própria, tabela 2 colunas, fotos maiores)
     fotos_html = ""
     if fotos:
         fotos_html = '<div style="page-break-before:always"></div><h2>7. Registro Fotografico</h2><table><tr>'
         for i, f in enumerate(fotos[:6]):
-            fotos_html += (f'<td style="text-align:center;padding:4px;border:none;width:33%;vertical-align:top">'
-                          f'<img src="data:image/jpeg;base64,{f["base64"]}" width="160"><br>'
+            fotos_html += (f'<td style="text-align:center;padding:6px;border:none;width:50%;vertical-align:top">'
+                          f'<img src="data:image/jpeg;base64,{f["base64"]}" width="260"><br>'
                           f'<small><b>Foto {i+1}</b>: {f.get("legenda","—")}</small></td>')
-            if (i + 1) % 3 == 0 and i < len(fotos) - 1:
+            if (i + 1) % 2 == 0 and i < len(fotos) - 1:
                 fotos_html += "</tr><tr>"
         fotos_html += "</tr></table>"
 
@@ -796,11 +796,11 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     # ── Fotos ─────────────────────────────────────────────────────────────────
     fotos_section = ""
     if fotos:
-        # Grid 3 colunas × 2 linhas (máx. 6 fotos) — numeradas com legenda
+        # Grid 2 colunas × 3 linhas (máx. 6 fotos) — numeradas com legenda
         fotos_html = ""
         _idx = 0
-        for i in range(0, len(fotos), 3):
-            lote = fotos[i:i+3]
+        for i in range(0, len(fotos), 2):
+            lote = fotos[i:i+2]
             fotos_html += "<tr>"
             for f in lote:
                 b64     = f.get("base64", "")
@@ -808,14 +808,14 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
                 num     = _idx + 1
                 src     = f"cid:foto_{_idx}" if usar_cid else f"data:image/jpeg;base64,{b64}"
                 fotos_html += (
-                    f"<td width='33%' style='padding:8px;vertical-align:top;'>"
+                    f"<td width='50%' style='padding:8px;vertical-align:top;'>"
                     f"<table width='100%' cellpadding='0' cellspacing='0' border='0' "
                     f"style='background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;"
                     f"overflow:hidden;'>"
-                    f"<tr><td style='padding:0;height:180px;overflow:hidden;'>"
-                    f"<img src='{src}' width='100%' height='180' "
+                    f"<tr><td style='padding:0;height:240px;overflow:hidden;'>"
+                    f"<img src='{src}' width='100%' height='240' "
                     f"style='display:block;border-radius:10px 10px 0 0;"
-                    f"object-fit:cover;width:100%;height:180px;'>"
+                    f"object-fit:cover;width:100%;height:240px;'>"
                     f"</td></tr>"
                     f"<tr><td style='padding:6px 8px;background:#f8fafc;'>"
                     f"<div style='font-size:10px;color:#94a3b8;font-weight:700;"
@@ -826,9 +826,9 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
                     f"</table>"
                     f"</td>")
                 _idx += 1
-            # Preencher células vazias na última linha
-            for _ in range(3 - len(lote)):
-                fotos_html += "<td width='33%'></td>"
+            # Preencher célula vazia se lote ímpar
+            for _ in range(2 - len(lote)):
+                fotos_html += "<td width='50%'></td>"
             fotos_html += "</tr>"
 
         fotos_section = secao(
