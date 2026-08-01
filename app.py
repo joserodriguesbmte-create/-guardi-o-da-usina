@@ -2473,6 +2473,7 @@ elif "Relatório" in pagina:
                                             anexos=_anexos if _anexos else None)
             if ok:
                 st.success(msg)
+                excluir_fotos_periodo(d_ini, d_fim)
                 st.session_state["foto_counter"] = st.session_state.get("foto_counter", 0) + 1
                 st.rerun()
             else:
