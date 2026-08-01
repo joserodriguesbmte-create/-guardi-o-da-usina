@@ -418,6 +418,49 @@ if "Painel" in pagina:
             elif _p_c < _p_al + 0.3:   alertas_list.append({"tag":_r.disjuntor,"polo":_r.polo,"p":_p_c,"nivel":"PRÉ-ALARME","cor":"#f97316","bg":"#431407","margem":_p_c-_p_al})
     alertas_list.sort(key=lambda x: x["margem"])
 
+    # ══ BANNER DE ALERTA — aparece no topo se há SF6 crítico ════════════════
+    if alertas_list:
+        _bloqueios = [a for a in alertas_list if a["nivel"] == "BLOQUEIO"]
+        _alarmes   = [a for a in alertas_list if a["nivel"] == "ALARME"]
+        _pre       = [a for a in alertas_list if a["nivel"] == "PRÉ-ALARME"]
+
+        if _bloqueios:
+            _titulo_banner = "🚨 BLOQUEIO SF6 — AÇÃO IMEDIATA NECESSÁRIA"
+            _cor_banner    = "#ef4444"
+            _bg_banner     = "#3b0000"
+            _borda_banner  = "#ef4444"
+        elif _alarmes:
+            _titulo_banner = "⚠️ ALARME SF6 — MONITORAR COM ATENÇÃO"
+            _cor_banner    = "#f59e0b"
+            _bg_banner     = "#2d1800"
+            _borda_banner  = "#f59e0b"
+        else:
+            _titulo_banner = "🔔 PRÉ-ALARME SF6 — PRESSÃO SE APROXIMANDO DO LIMITE"
+            _cor_banner    = "#f97316"
+            _bg_banner     = "#1f1000"
+            _borda_banner  = "#f97316"
+
+        _linhas = ""
+        for _a in alertas_list:
+            _ic = "🔴" if _a["nivel"]=="BLOQUEIO" else "🟠" if _a["nivel"]=="ALARME" else "🟡"
+            _linhas += (f"<div style='display:flex;justify-content:space-between;align-items:center;"
+                        f"background:rgba(0,0,0,0.3);border-radius:6px;padding:6px 12px;margin:4px 0'>"
+                        f"<span style='color:#f1f5f9;font-weight:700;font-size:0.9rem'>"
+                        f"{_ic} {_a['tag']} · Polo {_a['polo']}</span>"
+                        f"<span style='color:{_a['cor']};font-weight:900;font-size:1rem'>"
+                        f"{_a['p']:.3f} bar</span>"
+                        f"<span style='background:{_a['cor']};color:#000;font-size:0.7rem;"
+                        f"font-weight:900;border-radius:4px;padding:2px 8px'>{_a['nivel']}</span>"
+                        f"</div>")
+
+        st.markdown(f"""
+        <div style='background:{_bg_banner};border:2px solid {_borda_banner};
+            border-radius:12px;padding:14px 18px;margin-bottom:16px'>
+            <div style='color:{_cor_banner};font-size:1rem;font-weight:900;
+                letter-spacing:0.5px;margin-bottom:10px'>{_titulo_banner}</div>
+            {_linhas}
+        </div>""", unsafe_allow_html=True)
+
     # ══ KPIs ════════════════════════════════════════════════════════════════
     # KPIs em grid HTML responsivo — funciona no mobile sem depender de st.columns
     _djs_feitos  = len(djs_inspecionados)
