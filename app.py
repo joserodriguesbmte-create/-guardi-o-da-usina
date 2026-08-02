@@ -2324,12 +2324,18 @@ elif "Relatório" in pagina:
         if _acoes_db:
             st.session_state["rel_acoes_destaque"] = _acoes_db
 
+    def _auto_salvar_obs():
+        salvar_config("rel_obs_guardiao", st.session_state.get("rel_obs_guardiao", ""))
+
+    def _auto_salvar_acoes():
+        salvar_config("rel_acoes_destaque", st.session_state.get("rel_acoes_destaque", ""))
+
     obs_r   = st.text_area("📝 Observações do Guardião", height=100,
                             placeholder="Descreva as principais atividades, ocorrências e condições dos sistemas...",
-                            key="rel_obs_guardiao")
+                            key="rel_obs_guardiao", on_change=_auto_salvar_obs)
     acoes_r = st.text_area("🏆 Ações de Destaque", height=80,
                             placeholder="1. Identificou desvio em...\n2. Abriu nota SAP...",
-                            key="rel_acoes_destaque")
+                            key="rel_acoes_destaque", on_change=_auto_salvar_acoes)
 
     st.divider()
 
@@ -2515,8 +2521,8 @@ elif "Relatório" in pagina:
                 "pendencias_abertas":    pend_abertas,
                 "pendencias_concluidas": pend_concluidas,
             },
-            "observacoes":   obs_r,
-            "acoes":         acoes_r,
+            "observacoes":   st.session_state.get("rel_obs_guardiao", ""),
+            "acoes":         st.session_state.get("rel_acoes_destaque", ""),
             "img_sf6":       fig_para_base64(fig_sf6_r)  if fig_sf6_r  else "",
             "img_temp":      fig_para_base64(fig_temp_r) if fig_temp_r else "",
             "pendencias":    df_p_r[df_p_r.status!="Concluída"].to_dict("records") if not df_p_r.empty else [],
@@ -2576,10 +2582,12 @@ elif "Relatório" in pagina:
         else:
             with st.spinner("Gerando relatório e enviando..."):
                 # Persistir observações no banco para próximas sessões
-                if obs_r:
-                    salvar_config("rel_obs_guardiao", obs_r)
-                if acoes_r:
-                    salvar_config("rel_acoes_destaque", acoes_r)
+                _obs_atual   = st.session_state.get("rel_obs_guardiao", "")
+                _acoes_atual = st.session_state.get("rel_acoes_destaque", "")
+                if _obs_atual:
+                    salvar_config("rel_obs_guardiao", _obs_atual)
+                if _acoes_atual:
+                    salvar_config("rel_acoes_destaque", _acoes_atual)
                 dados_r  = montar_dados_relatorio()
                 _fotos_e = dados_r.get("fotos", [])
                 # Para e-mail: HTML com CID (Gmail/Outlook renderizam as fotos)
