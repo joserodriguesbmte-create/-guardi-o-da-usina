@@ -59,6 +59,10 @@ def _carregar_operacoes(disjuntor=None):
 def _carregar_fotos(data_ini=None, data_fim=None, sem_base64=False):
     return carregar_fotos(data_ini=data_ini, data_fim=data_fim, sem_base64=sem_base64)
 
+@st.cache_data(ttl=60, show_spinner=False)
+def _carregar_inspecoes_hoje(data):
+    return carregar_inspecoes(data_ini=data, data_fim=data)
+
 @st.cache_resource(show_spinner=False)
 def _init_db():
     init_db()
@@ -524,7 +528,7 @@ if "Painel" in pagina:
             _dj_sel = st.selectbox("⚡ Disjuntor pendente", list(_opc_dj.keys()),
                                    format_func=lambda t: _opc_dj[t], key="wf_dj_sel")
 
-            _eq_dj = buscar_equipamento_por_tag(_dj_sel)
+            _eq_dj = _buscar_equipamento_por_tag(_dj_sel)
             _p_nom_wf = float(_eq_dj.get("pressao_nominal", 6.0)) if _eq_dj else 6.0
             _p_al_wf  = float(_eq_dj.get("pressao_alarme",  5.5)) if _eq_dj else 5.5
             _p_bl_wf  = float(_eq_dj.get("pressao_bloqueio",5.0)) if _eq_dj else 5.0
@@ -653,7 +657,6 @@ if "Painel" in pagina:
                     _vs2 = "🟢 BOA" if _vis_nc==0 else "🟡 ATENÇÃO" if _vis_nc<=2 else "🔴 CRÍTICA"
                     st.success(f"✅ {_dj_sel} — {' · '.join(_resumo_pressoes)} | Visual: {_vs2}")
                     _carregar_sf6.clear()
-                    _carregar_inspecoes.clear()
                     st.rerun()
 
     # ── COLUNA DIREITA: ALERTAS + EVOLUÇÃO SF6 ──────────────────────────────
@@ -712,7 +715,7 @@ if "Painel" in pagina:
                     f"<span style='color:#475569'> · {str(_r.hora)[:5]}</span>"))
 
         # Inspeções de campo hoje (trafo, para-raios, sala elétrica, cúbilo, seccionadoras)
-        _insp_hoje = _carregar_inspecoes(data_ini=_data_insp, data_fim=_data_insp)
+        _insp_hoje = _carregar_inspecoes_hoje(_data_insp)
         if not _insp_hoje.empty:
             _ICONES_SIS = {
                 "Transformador": "🌡️", "Subestação 230kV": "⚡",
@@ -922,6 +925,7 @@ if "Painel" in pagina:
                                  "usuario":st.session_state.login})
                 _txt = "🟢 BOA" if _n_nc==0 else "🟡 ATENÇÃO" if _n_nc<=2 else "🔴 CRÍTICA"
                 st.success(f"✅ {_sec_sel} — {_txt} ({_n_ok}/{len(_ITENS_INSP)} OK)")
+                _carregar_inspecoes_hoje.clear()
                 _carregar_inspecoes.clear()
                 st.rerun()
 
@@ -937,8 +941,8 @@ if "Painel" in pagina:
     _lim_oti    = _t_amb_tr + 65.0
 
     # Verifica se trafo foi inspecionado hoje
-    _df_trafo_hoje = _carregar_inspecoes(sistema="Transformador",
-                                         data_ini=_data_insp, data_fim=_data_insp)
+    _df_hoje_all  = _carregar_inspecoes_hoje(_data_insp)
+    _df_trafo_hoje = _df_hoje_all[_df_hoje_all.sistema == "Transformador"] if not _df_hoje_all.empty else _df_hoje_all
     _trafo_insp = not _df_trafo_hoje.empty
 
     _tr_pct = 1.0 if _trafo_insp else 0.0
@@ -1074,7 +1078,7 @@ if "Painel" in pagina:
                 _emoji = "🟢" if _tr_saude_txt=="NORMAL" else "🟡" if _tr_saude_txt=="ATENCAO" else "🔴"
                 st.success(f"✅ {_TRAFO_NOME} — {_emoji} {_tr_saude_txt}" +
                            (f" | ⚠️ {', '.join(_alertas_tr[:3])}" if _alertas_tr else ""))
-                _carregar_inspecoes.clear()
+                _carregar_inspecoes_hoje.clear()
                 _carregar_temps.clear()
                 st.rerun()
 
@@ -1085,8 +1089,7 @@ if "Painel" in pagina:
         ⚡ Inspeção de Para-raios — 230kV</div>""", unsafe_allow_html=True)
 
     _PR_TAG = "PARA-RAIOS-230kV"
-    _df_pr_hoje = _carregar_inspecoes(sistema="Subestação 230kV",
-                                      data_ini=_data_insp, data_fim=_data_insp)
+    _df_pr_hoje = _df_hoje_all[_df_hoje_all.sistema == "Subestação 230kV"] if not _df_hoje_all.empty else _df_hoje_all
     _pr_insp = not _df_pr_hoje[_df_pr_hoje.item == _PR_TAG].empty if not _df_pr_hoje.empty else False
     st.progress(1.0 if _pr_insp else 0.0,
                 text="Para-raios inspecionados" if _pr_insp else "Para-raios pendente")
@@ -1129,7 +1132,7 @@ if "Painel" in pagina:
                                  "usuario":st.session_state.login})
                 _txt_pr = "🟢 NORMAL" if not _nc_pr else f"🔴 {_nc_pr} ANOMALIA(S)"
                 st.success(f"✅ Para-raios — {_txt_pr}")
-                _carregar_inspecoes.clear()
+                _carregar_inspecoes_hoje.clear()
                 st.rerun()
 
     # ── 6. SALA ELÉTRICA DA SE — largura total ───────────────────────────────
@@ -1139,8 +1142,7 @@ if "Painel" in pagina:
         🏢 Inspeção — Sala Elétrica da SE</div>""", unsafe_allow_html=True)
 
     _SE_TAG = "SALA-ELETRICA-SE"
-    _df_se_hoje = _carregar_inspecoes(sistema="Sala Elétrica da SE",
-                                      data_ini=_data_insp, data_fim=_data_insp)
+    _df_se_hoje = _df_hoje_all[_df_hoje_all.sistema == "Sala Elétrica da SE"] if not _df_hoje_all.empty else _df_hoje_all
     _se_insp = not _df_se_hoje[_df_se_hoje.item == _SE_TAG].empty if not _df_se_hoje.empty else False
     st.progress(1.0 if _se_insp else 0.0,
                 text="Sala Elétrica inspecionada" if _se_insp else "Sala Elétrica pendente")
@@ -1190,7 +1192,7 @@ if "Painel" in pagina:
                                  "usuario":st.session_state.login})
                 _txt_se = "🟢 NORMAL" if not _nc_se else f"🟡 {_nc_se} ponto(s) de atenção"
                 st.success(f"✅ Sala Elétrica — {_txt_se}")
-                _carregar_inspecoes.clear()
+                _carregar_inspecoes_hoje.clear()
                 st.rerun()
 
     # ── 7. CÚBILO DE 13.8kV — largura total ──────────────────────────────────
@@ -1200,8 +1202,7 @@ if "Painel" in pagina:
         ⚡ Inspeção — Cúbilo de 13.8kV da SE</div>""", unsafe_allow_html=True)
 
     _CUB_TAG = "CUBILO-13.8kV-SE"
-    _df_cub_hoje = _carregar_inspecoes(sistema="Cúbilo de 13.8kV da SE",
-                                       data_ini=_data_insp, data_fim=_data_insp)
+    _df_cub_hoje = _df_hoje_all[_df_hoje_all.sistema == "Cúbilo de 13.8kV da SE"] if not _df_hoje_all.empty else _df_hoje_all
     _cub_insp = not _df_cub_hoje[_df_cub_hoje.item == _CUB_TAG].empty if not _df_cub_hoje.empty else False
     st.progress(1.0 if _cub_insp else 0.0,
                 text="Cúbilo inspecionado" if _cub_insp else "Cúbilo pendente")
@@ -1246,7 +1247,7 @@ if "Painel" in pagina:
                                  "usuario":st.session_state.login})
                 _txt_cub = "🟢 NORMAL" if not _nc_cub else f"🔴 {_nc_cub} ponto(s) de atenção"
                 st.success(f"✅ Cúbilo 13.8kV — {_txt_cub}")
-                _carregar_inspecoes.clear()
+                _carregar_inspecoes_hoje.clear()
                 st.rerun()
 
 # ══════════════════════════════════════════════════════ CADASTRO EQUIPAMENTOS
@@ -1671,9 +1672,13 @@ elif "SF6" in pagina:
         if not df_cnt_hist.empty:
             st.markdown("#### Histórico de Contadores")
             _cols_cnt = ["data","turno","disjuntor","polo_a","polo_b","polo_v","tripolar","curto_circuito","usuario"]
-            st.dataframe(df_cnt_hist[_cols_cnt].rename(columns={
+            _df_cnt_show = df_cnt_hist[_cols_cnt].rename(columns={
                 "polo_a":"P1LA","polo_b":"P1LB","polo_v":"P1LV","tripolar":"P1LT","curto_circuito":"P2"
-            }), use_container_width=True, hide_index=True)
+            })
+            st.dataframe(_df_cnt_show, use_container_width=True, hide_index=True)
+            _csv_cnt = _df_cnt_show.to_csv(index=False).encode("utf-8-sig")
+            st.download_button("⬇️ Exportar CSV", _csv_cnt,
+                               f"contadores_{dj_cnt}.csv", "text/csv")
 
 # ═══════════════════════════════════════════════════════════════ TEMP ═════
 elif "Temperatura" in pagina:
@@ -1780,13 +1785,15 @@ elif "Temperatura" in pagina:
 
             def _cor_st(v):
                 return "color:#ef4444;font-weight:bold" if v == "ALARME" else "color:#10b981;font-weight:bold"
+            _df_t_show = _df_t[["data","hora","turno","ponto","temperatura","limite_max","status"]
+                               ].sort_values(["data","hora"], ascending=False).reset_index(drop=True)
             st.dataframe(
-                _df_t[["data","hora","turno","ponto","temperatura","limite_max","status"]
-                      ].sort_values(["data","hora"], ascending=False
-                      ).reset_index(drop=True
-                      ).style.map(_cor_st, subset=["status"]),
+                _df_t_show.style.map(_cor_st, subset=["status"]),
                 use_container_width=True, hide_index=True
             )
+            _csv_t = _df_t_show.to_csv(index=False).encode("utf-8-sig")
+            st.download_button("⬇️ Exportar CSV", _csv_t,
+                               f"temperaturas_{_di}_{_df2}.csv", "text/csv")
 
 # ══════════════════════════════════════════════════════════ CALCULADORA ════
 elif "Calculadora" in pagina:
@@ -2139,6 +2146,10 @@ elif "Inspeção" in pagina:
             _cols_disp = [c for c in ["data","turno","sistema","item","status","observacao","usuario"] if c in df_i.columns]
             _styler = df_i[_cols_disp].style.map(cs, subset=["status"]) if "status" in _cols_disp else df_i[_cols_disp].style
             st.dataframe(_styler, use_container_width=True, hide_index=True)
+            _csv_i = df_i[_cols_disp].to_csv(index=False).encode("utf-8-sig")
+            _nome_sis = fs.replace(" ", "_").replace("/", "-")
+            st.download_button("⬇️ Exportar CSV", _csv_i,
+                               f"inspecoes_{_nome_sis}_{fi}_{ff}.csv", "text/csv")
 
 # ═══════════════════════════════════════════════════════════════ PENDÊNCIAS
 elif "Pendências" in pagina:
