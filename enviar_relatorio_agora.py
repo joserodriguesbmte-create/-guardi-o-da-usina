@@ -5,7 +5,7 @@ Execute: py -3.12 enviar_relatorio_agora.py
 import os, json
 os.environ["DATABASE_URL"] = "postgresql://postgres.stgibmuefxrnistysckt:Guardiao2026.@aws-1-sa-east-1.pooler.supabase.com:6543/postgres"
 
-from datetime import date
+from datetime import date, timedelta
 import pandas as pd
 from database import (carregar_sf6, carregar_temps, carregar_pendencias,
                       carregar_inspecoes, carregar_equipamentos,
@@ -16,7 +16,7 @@ from email_report import (gerar_html_relatorio, enviar_relatorio,
 
 # ── Período ──────────────────────────────────────────────────────────────────
 d_ini = date(2026, 7, 1)
-d_fim = date(2026, 7, 31)
+d_fim = date.today()   # inclui inspeções feitas após o fim do mês
 mes   = "Julho/2026"
 
 print("Carregando dados do banco...")
@@ -110,16 +110,25 @@ total_sec_count = len(df_secs) if not df_secs.empty else 27
 
 cnt_lista = df_cnt_r.to_dict("records") if not df_cnt_r.empty else []
 
-# ── Fotos: busca mês atual + mês anterior (fotos da aba Relatório ficam com d_fim do período) ──
+# ── Fotos: busca desde d_ini até hoje, com correção de orientação EXIF ───────
 print("Carregando fotos do período...")
-from datetime import timedelta
-_foto_ini = (d_ini.replace(day=1) - timedelta(days=1)).replace(day=1)  # 1º do mês anterior
-df_fotos = carregar_fotos(data_ini=str(_foto_ini), data_fim=str(d_fim))
+from PIL import Image, ImageOps
+import io as _io, base64 as _b64mod
+df_fotos = carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim))
 fotos_dados = []
 for _, _fr in df_fotos.head(10).iterrows():
     if _fr.foto_base64:
-        fotos_dados.append({"base64": _fr.foto_base64, "legenda": _fr.legenda or ""})
-print(f"  Fotos encontradas (jul+ago): {len(fotos_dados)}")
+        try:
+            _raw = _b64mod.b64decode(_fr.foto_base64)
+            _img = Image.open(_io.BytesIO(_raw))
+            _img = ImageOps.exif_transpose(_img).convert("RGB")
+            _buf = _io.BytesIO()
+            _img.save(_buf, format="JPEG", quality=85)
+            _b64_ok = _b64mod.b64encode(_buf.getvalue()).decode()
+        except Exception:
+            _b64_ok = _fr.foto_base64
+        fotos_dados.append({"base64": _b64_ok, "legenda": _fr.legenda or ""})
+print(f"  Fotos encontradas: {len(fotos_dados)}")
 
 # ── Montar dados completos ────────────────────────────────────────────────────
 dados = {

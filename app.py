@@ -2228,9 +2228,9 @@ elif "Relatório" in pagina:
     _r1, _r2, _r3 = st.columns(3)
     mes = _r1.selectbox("📅 Mês", list(_meses_dict.keys()), index=_idx_mes, key="rel_mes")
     _ano_r, _mes_r = _meses_dict[mes]
-    _ultimo_r = calendar.monthrange(_ano_r, _mes_r)[1]
-    d_ini = _r2.date_input("De",  value=date(_ano_r, _mes_r, 1),         key="rel_ini")
-    d_fim = _r3.date_input("Até", value=date(_ano_r, _mes_r, _ultimo_r),  key="rel_fim")
+    # d_fim padrão = hoje, para incluir inspeções feitas após o fim do mês selecionado
+    d_ini = _r2.date_input("De",  value=date(_ano_r, _mes_r, 1), key="rel_ini")
+    d_fim = _r3.date_input("Até", value=_hoje_r,                 key="rel_fim")
 
     # Carregar dados (versões com cache — evita reconexão ao banco a cada render)
     df_sf6_r    = _carregar_sf6(data_ini=d_ini, data_fim=d_fim)
@@ -2453,11 +2453,22 @@ elif "Relatório" in pagina:
     col_b1, col_b2, col_b3 = st.columns(3)
 
     def _montar_fotos_dados():
+        from PIL import Image, ImageOps
+        import io as _io, base64 as _b64
         _df_f = carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim))
         _fotos = []
         for _, _fr in _df_f.head(10).iterrows():
             if _fr.foto_base64:
-                _fotos.append({"base64": _fr.foto_base64, "legenda": _fr.legenda or ""})
+                try:
+                    _raw = _b64.b64decode(_fr.foto_base64)
+                    _img = Image.open(_io.BytesIO(_raw))
+                    _img = ImageOps.exif_transpose(_img).convert("RGB")
+                    _buf = _io.BytesIO()
+                    _img.save(_buf, format="JPEG", quality=85)
+                    _b64_ok = _b64.b64encode(_buf.getvalue()).decode()
+                except Exception:
+                    _b64_ok = _fr.foto_base64
+                _fotos.append({"base64": _b64_ok, "legenda": _fr.legenda or ""})
         return _fotos
 
     def montar_dados_relatorio():
