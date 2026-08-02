@@ -15,9 +15,9 @@ from email_report import (gerar_html_relatorio, enviar_relatorio,
                           carregar_config_email, fig_para_base64, html_para_pdf)
 
 # ── Período ──────────────────────────────────────────────────────────────────
-d_ini = date(2026, 8, 1)
-d_fim = date(2026, 8, 31)
-mes   = "Agosto/2026"
+d_ini = date(2026, 7, 1)
+d_fim = date(2026, 7, 31)
+mes   = "Julho/2026"
 
 print("Carregando dados do banco...")
 
@@ -174,7 +174,7 @@ print("Enviando por e-mail...")
 cfg = carregar_config_email()
 # TESTE — envia apenas para Jose Santos
 cfg["destinatarios"] = ["josesantos@norteenergiasa.com.br"]
-assunto = f"[TESTE] Relatório Guardião da Usina — {mes}"
+assunto = f"[TESTE] Relatorio Guardiao da Usina — {mes}"
 ok, msg = enviar_relatorio(cfg, html, assunto,
                            fotos=fotos_dados if fotos_dados else None,
                            anexos=anexos if anexos else None)

@@ -465,6 +465,17 @@ if "Painel" in pagina:
             {_linhas}
         </div>""", unsafe_allow_html=True)
 
+    # Badge de último relatório enviado
+    _ult_rel_mes = carregar_config("relatorio_enviado_mes", None)
+    _ult_rel_em  = carregar_config("relatorio_enviado_em",  None)
+    if _ult_rel_mes and _ult_rel_em:
+        st.markdown(
+            f"<div style='background:#052e16;border:1px solid #16a34a;border-radius:8px;"
+            f"padding:8px 14px;margin-bottom:10px;font-size:0.82rem;color:#86efac'>"
+            f"✅ Último relatório enviado: <b>{_ult_rel_mes}</b> em <b>{_ult_rel_em}</b>"
+            f"</div>",
+            unsafe_allow_html=True)
+
     # ══ KPIs ════════════════════════════════════════════════════════════════
     # KPIs em grid HTML responsivo — funciona no mobile sem depender de st.columns
     _djs_feitos  = len(djs_inspecionados)
@@ -2606,9 +2617,25 @@ elif "Relatório" in pagina:
                                             fotos=_fotos_e if _fotos_e else None,
                                             anexos=_anexos if _anexos else None)
             if ok:
-                st.success(msg)
+                # Registrar envio no banco — persiste para histórico e script de teste
+                salvar_config("relatorio_enviado_mes", mes)
+                salvar_config("relatorio_enviado_em",  str(date.today()))
+                # Fotos só somem após envio manual pelo app
                 excluir_fotos_periodo(d_ini, d_fim)
+                _carregar_fotos.clear()
+                # Liberar nova rodada de inspeções (limpar caches do Painel)
+                _carregar_sf6.clear()
+                _carregar_inspecoes.clear()
+                _carregar_inspecoes_hoje.clear()
                 st.session_state["foto_counter"] = st.session_state.get("foto_counter", 0) + 1
+                # Calcular próximo mês para a mensagem
+                _prox_m = d_fim.month % 12 + 1
+                _prox_a = d_fim.year + (1 if d_fim.month == 12 else 0)
+                _MESES_PT2 = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                              "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
+                _prox_nome = _MESES_PT2[_prox_m - 1]
+                st.success(f"Relatório de **{mes}** enviado com sucesso! "
+                           f"Nova rodada de inspeções liberada para **{_prox_nome}**.")
                 st.rerun()
             else:
                 st.error(msg)
