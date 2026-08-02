@@ -237,6 +237,99 @@ def gauges_sf6_base64(sf6_tabela: list) -> str:
     except Exception:
         return ""
 
+def evolucao_sf6_base64(sf6_lista: list) -> str:
+    """Gera gráfico de linha com evolução histórica completa da pressão SF6 (mínimo por disjuntor)."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+        import matplotlib.dates as mdates
+        from datetime import datetime as _dt
+
+        if not sf6_lista:
+            return ""
+
+        # Agrupa por disjuntor + data, guardando a menor pressão entre os polos
+        por_dj = {}
+        for r in sf6_lista:
+            dj = str(r.get("disjuntor", ""))
+            try:
+                data = _dt.strptime(str(r.get("data", ""))[:10], "%Y-%m-%d")
+                p = float(r.get("pressao_corrigida", 0) or 0)
+                if p > 0:
+                    chave = (dj, data)
+                    por_dj[chave] = min(por_dj.get(chave, 99), p)
+            except Exception:
+                pass
+
+        if not por_dj:
+            return ""
+
+        grupos = {}
+        for (dj, data), p in por_dj.items():
+            grupos.setdefault(dj, {"datas": [], "pressoes": []})
+            grupos[dj]["datas"].append(data)
+            grupos[dj]["pressoes"].append(p)
+
+        fig, ax = plt.subplots(figsize=(11, 5), dpi=110)
+        fig.patch.set_facecolor("#ffffff")
+        ax.set_facecolor("#fafafa")
+
+        # Zonas coloridas de fundo
+        ax.axhspan(4.8, 5.0, alpha=0.12, color="#ef4444", zorder=0)
+        ax.axhspan(5.0, 5.2, alpha=0.12, color="#f59e0b", zorder=0)
+        ax.axhspan(5.2, 7.2, alpha=0.06, color="#10b981", zorder=0)
+
+        cores = ["#1d4ed8","#16a34a","#d97706","#7c3aed","#dc2626","#0891b2","#c026d3","#b45309"]
+        xmax = None
+        for i, (dj, g) in enumerate(sorted(grupos.items())):
+            if g["datas"]:
+                pares = sorted(zip(g["datas"], g["pressoes"]))
+                dts, prs = zip(*pares)
+                ax.plot(dts, prs, marker="o", markersize=6, linewidth=2.2,
+                        color=cores[i % len(cores)], label=dj, zorder=3)
+                ax.annotate(f"{prs[-1]:.2f}", xy=(dts[-1], prs[-1]),
+                            xytext=(5, 3), textcoords="offset points",
+                            fontsize=8, color=cores[i % len(cores)], fontweight="bold")
+                if xmax is None or dts[-1] > xmax:
+                    xmax = dts[-1]
+
+        # Linhas de referência com rótulos no eixo direito
+        ax.axhline(y=5.2, color="#d97706", linestyle="--", linewidth=1.5, alpha=0.9, zorder=2)
+        ax.axhline(y=5.0, color="#dc2626", linestyle="--", linewidth=1.5, alpha=0.9, zorder=2)
+        ax.axhline(y=6.0, color="#94a3b8", linestyle=":",  linewidth=1.2, alpha=0.7, zorder=2)
+        if xmax:
+            ax.text(xmax, 5.24, "  Alarme 5,2 bar",   fontsize=8.5, color="#d97706",
+                    va="bottom", ha="left", fontweight="bold")
+            ax.text(xmax, 5.04, "  Bloqueio 5,0 bar", fontsize=8.5, color="#dc2626",
+                    va="bottom", ha="left", fontweight="bold")
+            ax.text(xmax, 6.04, "  Nominal 6,0 bar",  fontsize=8.5, color="#6b7280",
+                    va="bottom", ha="left")
+
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b/%y"))
+        ax.xaxis.set_major_locator(mdates.MonthLocator())
+        plt.xticks(rotation=30, ha="right", fontsize=9)
+        ax.set_ylabel("Pressão a 20 °C (bar)", fontsize=10, color="#374151")
+        ax.set_ylim(4.8, 7.2)
+        ax.tick_params(colors="#374151", labelsize=9)
+        for spine in ["top", "right"]:
+            ax.spines[spine].set_visible(False)
+        ax.spines["left"].set_color("#cbd5e1")
+        ax.spines["bottom"].set_color("#cbd5e1")
+        ax.grid(axis="y", color="#e5e7eb", linewidth=0.8)
+        ax.legend(fontsize=9, loc="upper left", framealpha=0.95, ncol=3,
+                  title="Disjuntor (polo com menor pressão)", title_fontsize=8)
+        plt.title("Evolução Histórica — Pressão SF6 dos Disjuntores 230kV",
+                  fontsize=11, fontweight="bold", color="#0f3460", pad=10)
+        plt.tight_layout()
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", bbox_inches="tight", facecolor="#ffffff", dpi=110)
+        plt.close(fig)
+        return base64.b64encode(buf.getvalue()).decode("utf-8")
+    except Exception:
+        return ""
+
+
 def foto_para_base64(foto_bytes: bytes, largura: int = 480, altura: int = 360) -> str:
     """Normaliza foto para dimensões uniformes (4:3, crop central) e retorna base64."""
     try:
@@ -272,6 +365,7 @@ def gerar_html_pdf(dados: dict) -> str:
     pendencias = dados.get("pendencias", [])
     sf6_tabela = dados.get("sf6_tabela", [])
     sf6_visual = dados.get("sf6_visual", [])
+    sf6_historico = dados.get("sf6_historico", [])
     sec_resumo = dados.get("sec_resumo", {})
     trafo_tab = dados.get("trafo_tabela", [])
     trafo_insp = dados.get("trafo_insp", {})
@@ -280,10 +374,14 @@ def gerar_html_pdf(dados: dict) -> str:
     fotos = dados.get("fotos", [])
     gerado_em = datetime.now().strftime("%d/%m/%Y as %H:%M")
 
-    # Gauges SF6
+    # Gauges SF6 + histórico
     _gauges_b64 = gauges_sf6_base64(sf6_tabela) if sf6_tabela else ""
     _gauges_img = (f'<img src="data:image/png;base64,{_gauges_b64}" width="600">'
                    if _gauges_b64 else "")
+    _hist_b64_pdf = evolucao_sf6_base64(sf6_historico) if sf6_historico else ""
+    _hist_img_pdf = (f'<h3>Evolucao Historica — Pressao SF6</h3>'
+                     f'<img src="data:image/png;base64,{_hist_b64_pdf}" width="560">'
+                     if _hist_b64_pdf else "")
 
     # Logos
     _lg = _logo_b64("logo_guardioes.png")
@@ -366,12 +464,13 @@ def gerar_html_pdf(dados: dict) -> str:
     # ── Fotos (página própria, tabela 2 colunas, fotos maiores)
     fotos_html = ""
     if fotos:
+        _fotos_pdf = fotos[:10]
         fotos_html = '<div style="page-break-before:always"></div><h2>7. Registro Fotografico</h2><table><tr>'
-        for i, f in enumerate(fotos[:6]):
+        for i, f in enumerate(_fotos_pdf):
             fotos_html += (f'<td style="text-align:center;padding:6px;border:none;width:50%;vertical-align:top">'
                           f'<img src="data:image/jpeg;base64,{f["base64"]}" width="260"><br>'
                           f'<small><b>Foto {i+1}</b>: {f.get("legenda","—")}</small></td>')
-            if (i + 1) % 2 == 0 and i < len(fotos) - 1:
+            if (i + 1) % 2 == 0 and i < len(_fotos_pdf) - 1:
                 fotos_html += "</tr><tr>"
         fotos_html += "</tr></table>"
 
@@ -428,6 +527,8 @@ continua dos sistemas da usina.</p>
 </table>
 
 {_gauges_img}
+
+{_hist_img_pdf}
 
 {"<h3>Inspecao Visual por Disjuntor</h3><table><tr><th>Disjuntor</th><th>Data</th><th>Status</th><th>Itens NC</th></tr>" + vis_rows + "</table>" if vis_rows else ""}
 
@@ -512,6 +613,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     pendencias    = dados.get("pendencias", [])
     sf6_tabela    = dados.get("sf6_tabela", [])
     sf6_visual    = dados.get("sf6_visual", [])
+    sf6_historico = dados.get("sf6_historico", [])
     operacoes     = dados.get("operacoes", [])
     sec_resumo    = dados.get("sec_resumo", {})
     trafo_tab     = dados.get("trafo_tabela", [])
@@ -625,7 +727,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
         f"<th style='{th_style}'>Status</th></tr>{sf6_rows}</table>"
     )
 
-    # Gauges SF6 (velocímetros)
+    # Gauges SF6 (velocímetros) + histórico completo
     _gauges_b64 = gauges_sf6_base64(sf6_tabela)
     img_sf6_html = (f"<br><img src='data:image/png;base64,{_gauges_b64}' "
                     f"width='100%' style='border-radius:8px;display:block;margin-top:8px;'>"
@@ -633,6 +735,14 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
                     (f"<br><img src='data:image/png;base64,{img_sf6}' "
                      f"width='100%' style='border-radius:8px;display:block;margin-top:8px;'>"
                      if img_sf6 else ""))
+    _hist_b64_html = evolucao_sf6_base64(sf6_historico) if sf6_historico else ""
+    img_sf6_hist_html = (
+        f"<br><p style='font-size:11px;font-weight:700;color:#0f3460;"
+        f"text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;'>"
+        f"📈 Evolução Histórica — Pressão SF6</p>"
+        f"<img src='data:image/png;base64,{_hist_b64_html}' "
+        f"width='100%' style='border-radius:8px;display:block;'>"
+        if _hist_b64_html else "")
 
     # ── Seccionadoras ─────────────────────────────────────────────────────────
     total_sec = sec_resumo.get("total", 0)
@@ -943,7 +1053,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
       f"Siemens 3AP1 FG · Nominal: <strong>6,0 bar</strong> · "
       f"Alarme 1 est.: <strong style='color:#f59e0b;'>5,2 bar</strong> · "
       f"Bloqueio 2 est.: <strong style='color:#ef4444;'>5,0 bar</strong> · Corrigida 20°C"
-      f"</p>{sf6_table}{img_sf6_html}"
+      f"</p>{sf6_table}{img_sf6_html}{img_sf6_hist_html}"
       + (f"<br><p style='font-size:11px;font-weight:700;color:#0f3460;text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;'>Inspecao Visual por Disjuntor</p>"
          f"<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse;font-size:13px;'>"
          f"<tr><th style='{th_style}'>Disjuntor</th><th style='{th_style}'>Data</th>"

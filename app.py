@@ -2223,6 +2223,7 @@ elif "Relatório" in pagina:
 
     # Carregar dados (versões com cache — evita reconexão ao banco a cada render)
     df_sf6_r    = _carregar_sf6(data_ini=d_ini, data_fim=d_fim)
+    df_sf6_hist = _carregar_sf6()  # histórico completo para gráfico de evolução
     df_t_r      = _carregar_temps(data_ini=d_ini, data_fim=d_fim)
     df_p_r      = _carregar_pendencias()
     df_i_r      = _carregar_inspecoes(data_ini=d_ini, data_fim=d_fim)
@@ -2313,7 +2314,16 @@ elif "Relatório" in pagina:
 
     st.divider()
 
-    # Texto do guardião (keys para persistir entre reruns)
+    # Texto do guardião — carrega do banco na primeira abertura da sessão
+    if "rel_obs_guardiao" not in st.session_state:
+        _obs_db = carregar_config("rel_obs_guardiao", "")
+        if _obs_db:
+            st.session_state["rel_obs_guardiao"] = _obs_db
+    if "rel_acoes_destaque" not in st.session_state:
+        _acoes_db = carregar_config("rel_acoes_destaque", "")
+        if _acoes_db:
+            st.session_state["rel_acoes_destaque"] = _acoes_db
+
     obs_r   = st.text_area("📝 Observações do Guardião", height=100,
                             placeholder="Descreva as principais atividades, ocorrências e condições dos sistemas...",
                             key="rel_obs_guardiao")
@@ -2327,7 +2337,7 @@ elif "Relatório" in pagina:
     st.markdown("#### 📷 Registro Fotográfico do Período")
     st.markdown("""<div style='background:#0a1628;border:1px solid #1e3a5f;border-radius:8px;
         padding:10px 16px;margin-bottom:10px;color:#475569;font-size:0.82rem'>
-        📌 Carregue até <b style='color:#60a5fa'>6 fotos</b> (JPG/PNG) de inspeções, anomalias ou
+        📌 Carregue até <b style='color:#60a5fa'>10 fotos</b> (JPG/PNG) de inspeções, anomalias ou
         registros do período. As fotos ficam <b style='color:#10b981'>salvas no banco</b> e
         serão incluídas automaticamente no relatório mensal.
     </div>""", unsafe_allow_html=True)
@@ -2335,7 +2345,7 @@ elif "Relatório" in pagina:
     # Fotos já salvas no banco para o período (cache 30s — máx 6 fotos)
     df_fotos_salvas = _carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim), sem_base64=False)
     _n_salvas = len(df_fotos_salvas)
-    _max_fotos = 6
+    _max_fotos = 10
     _vagas = max(0, _max_fotos - _n_salvas)
 
     # Exibir fotos salvas com imagem real em 2 colunas
@@ -2428,7 +2438,7 @@ elif "Relatório" in pagina:
     def _montar_fotos_dados():
         _df_f = carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim))
         _fotos = []
-        for _, _fr in _df_f.head(6).iterrows():
+        for _, _fr in _df_f.head(10).iterrows():
             if _fr.foto_base64:
                 _fotos.append({"base64": _fr.foto_base64, "legenda": _fr.legenda or ""})
         return _fotos
@@ -2524,6 +2534,7 @@ elif "Relatório" in pagina:
             "insp_complement": insp_complement,
             "contadores":      cnt_lista,
             "fotos":           _montar_fotos_dados(),
+            "sf6_historico":   df_sf6_hist.to_dict("records") if not df_sf6_hist.empty else [],
         }
 
     col_b1, col_b2, col_b3, col_b4 = st.columns(4)
@@ -2564,6 +2575,11 @@ elif "Relatório" in pagina:
             st.error("⚠️ Adicione pelo menos um destinatário nas configurações de e-mail")
         else:
             with st.spinner("Gerando relatório e enviando..."):
+                # Persistir observações no banco para próximas sessões
+                if obs_r:
+                    salvar_config("rel_obs_guardiao", obs_r)
+                if acoes_r:
+                    salvar_config("rel_acoes_destaque", acoes_r)
                 dados_r  = montar_dados_relatorio()
                 _fotos_e = dados_r.get("fotos", [])
                 # Para e-mail: HTML com CID (Gmail/Outlook renderizam as fotos)
