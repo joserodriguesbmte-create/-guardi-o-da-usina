@@ -182,8 +182,12 @@ except Exception as e:
 print("Enviando por e-mail...")
 cfg = carregar_config_email()
 # TESTE — envia apenas para Jose Santos
-cfg["destinatarios"] = ["josesantos@norteenergiasa.com.br"]
-assunto = f"[TESTE] Relatorio Guardiao da Usina — {mes}"
+cfg["destinatarios"] = [
+    "josesantos@norteenergiasa.com.br",
+    "luansantos@norteenergiasa.com.br",
+    "vitorbernardes@norteenergiasa.com.br",
+]
+assunto = f"Relatorio Guardiao da Usina — {mes}"
 ok, msg = enviar_relatorio(cfg, html, assunto,
                            fotos=fotos_dados if fotos_dados else None,
                            anexos=anexos if anexos else None)
