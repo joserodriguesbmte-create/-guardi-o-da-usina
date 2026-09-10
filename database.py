@@ -1,9 +1,11 @@
 import os
 import psycopg2
 import psycopg2.extras
+import psycopg2.pool
 import pandas as pd
 
 _params_cache = None
+_pool = None
 
 def _params():
     global _params_cache
@@ -23,14 +25,61 @@ def _params():
             user=p.username,
             password=unquote(p.password or ""),
             sslmode="require",
-            connect_timeout=5
+            connect_timeout=5,
+            keepalives=1,
+            keepalives_idle=60,
+            keepalives_interval=10,
+            keepalives_count=5,
         )
     except Exception:
         _params_cache = {"dsn": url, "sslmode": "require", "connect_timeout": 5}
     return _params_cache
 
+def _get_pool():
+    global _pool
+    if _pool is None or _pool.closed:
+        _pool = psycopg2.pool.ThreadedConnectionPool(1, 4, **_params())
+    return _pool
+
+class _Conn:
+    """Wrapper que devolve a conexão ao pool ao chamar close()."""
+    def __init__(self):
+        global _pool
+        self._pool = _get_pool()
+        try:
+            self._c = self._pool.getconn()
+            # verifica se a conexão ainda está viva
+            self._c.cursor().execute("SELECT 1")
+        except Exception:
+            # pool pode ter conexões mortas — recria
+            try:
+                self._pool.closeall()
+            except Exception:
+                pass
+            _pool = None
+            self._pool = _get_pool()
+            self._c = self._pool.getconn()
+
+    def cursor(self, *a, **kw):
+        return self._c.cursor(*a, **kw)
+
+    def commit(self):
+        return self._c.commit()
+
+    def rollback(self):
+        return self._c.rollback()
+
+    def close(self):
+        try:
+            self._pool.putconn(self._c)
+        except Exception:
+            pass
+
+    def __getattr__(self, name):
+        return getattr(self._c, name)
+
 def conn():
-    return psycopg2.connect(**_params())
+    return _Conn()
 
 def init_db():
     c = conn(); cur = c.cursor()

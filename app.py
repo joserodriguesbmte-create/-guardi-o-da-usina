@@ -63,6 +63,10 @@ def _carregar_fotos(data_ini=None, data_fim=None, sem_base64=False):
 def _carregar_inspecoes_hoje(data):
     return carregar_inspecoes(data_ini=data, data_fim=data)
 
+@st.cache_data(ttl=300, show_spinner=False)
+def _carregar_config(chave, padrao=None):
+    return carregar_config(chave, padrao)
+
 @st.cache_resource(show_spinner=False)
 def _init_db():
     init_db()
@@ -78,8 +82,7 @@ if "temp_amb_global" not in st.session_state:
 
 # ═══════════════════════════════════════════════════════════════ CSS ══════
 st.markdown("""<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
-html,body,[class*="css"]{font-family:'Inter',sans-serif;}
+html,body,[class*="css"]{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;}
 .stApp{background:#07090f;}
 /* ── Streamlit Cloud: esconder Fork/GitHub mas manter botão ☰ ── */
 footer{display:none !important;}
@@ -406,16 +409,17 @@ if "Painel" in pagina:
 
     pend_abertas = len(df_pend_all[df_pend_all.status == "Aberta"]) if not df_pend_all.empty else 0
 
-    # Alertas preditivos (pré-calcular)
+    # Alertas preditivos — equipamentos já carregados, sem query extra por disjuntor
+    _eq_dict = {r["tag"]: r.to_dict() for _, r in df_djs_db.iterrows()} if not df_djs_db.empty else {}
     alertas_list = []
     if not df_sf6_all.empty:
         _ult = df_sf6_all.sort_values("created_at").groupby(["disjuntor","polo"]).last().reset_index()
         for _, _r in _ult.iterrows():
-            _eq = buscar_equipamento_por_tag(_r.disjuntor)
+            _eq = _eq_dict.get(_r.disjuntor)
             if not _eq: continue
-            _p_al  = float(_eq.get("pressao_alarme", 5.5))
-            _p_bl  = float(_eq.get("pressao_bloqueio", 5.0))
-            _p_nom = float(_eq.get("pressao_nominal", 6.0))
+            _p_al  = float(_eq.get("pressao_alarme") or 5.5)
+            _p_bl  = float(_eq.get("pressao_bloqueio") or 5.0)
+            _p_nom = float(_eq.get("pressao_nominal") or 6.0)
             _p_c   = float(_r.pressao_corrigida)
             if   _p_c < _p_bl:          alertas_list.append({"tag":_r.disjuntor,"polo":_r.polo,"p":_p_c,"nivel":"BLOQUEIO","cor":"#ef4444","bg":"#450a0a","margem":_p_c-_p_bl})
             elif _p_c < _p_al:          alertas_list.append({"tag":_r.disjuntor,"polo":_r.polo,"p":_p_c,"nivel":"ALARME",  "cor":"#f59e0b","bg":"#451a03","margem":_p_c-_p_al})
@@ -466,8 +470,8 @@ if "Painel" in pagina:
         </div>""", unsafe_allow_html=True)
 
     # Badge de último relatório enviado
-    _ult_rel_mes = carregar_config("relatorio_enviado_mes", None)
-    _ult_rel_em  = carregar_config("relatorio_enviado_em",  None)
+    _ult_rel_mes = _carregar_config("relatorio_enviado_mes", None)
+    _ult_rel_em  = _carregar_config("relatorio_enviado_em",  None)
     if _ult_rel_mes and _ult_rel_em:
         st.markdown(
             f"<div style='background:#052e16;border:1px solid #16a34a;border-radius:8px;"
@@ -2638,6 +2642,7 @@ elif "Relatório" in pagina:
                 _carregar_sf6.clear()
                 _carregar_inspecoes.clear()
                 _carregar_inspecoes_hoje.clear()
+                _carregar_config.clear()
                 st.session_state["foto_counter"] = st.session_state.get("foto_counter", 0) + 1
                 # Calcular próximo mês para a mensagem
                 _prox_m = d_fim.month % 12 + 1
