@@ -851,10 +851,13 @@ if "Painel" in pagina:
         "Identificação e sinalização",
     ]
 
-    _secs_todas_feitas = len(secs_inspecionadas) >= len(secs_todos) and len(secs_todos) > 0
-    if _secs_todas_feitas:
-        st.success(f"✅ Todas as {len(secs_todos)} seccionadoras inspecionadas neste mês! Lista disponível para nova rodada.")
-    else:
+    # Ciclo completo = todas inspecionadas E o reset já aconteceu (pendentes == todos)
+    # Após reset: secs_pendentes == secs_todos → condição False → formulário aparece
+    _ciclo_completo = (len(secs_inspecionadas) >= len(secs_todos) and len(secs_todos) > 0
+                       and len(secs_pendentes) >= len(secs_todos))
+    if _ciclo_completo:
+        st.info(f"🔄 Ciclo anterior completo ({len(secs_todos)}/{len(secs_todos)}) — nova rodada iniciada.")
+    if secs_pendentes:
         _df_sec_pend = df_secs_db[df_secs_db["tag"].isin(secs_pendentes)]
         _opc_sec = {r.tag: f"{r.tag}  ·  {(r.descricao or '')[:55]}"
                     for _, r in _df_sec_pend.iterrows()}
@@ -2413,20 +2416,31 @@ elif "Relatório" in pagina:
                                         label_visibility="collapsed")
             if st.button("💾 Salvar fotos no banco", type="primary", use_container_width=True):
                 _saved = 0
+                _erros = []
                 for i, arq in enumerate(fotos_upload[:_vagas]):
-                    arq.seek(0)
-                    img_bytes = arq.read()
-                    leg = st.session_state.get(f"leg_new_{i}", "")
-                    b64 = foto_para_base64(img_bytes)
-                    salvar_foto({
-                        "data": str(d_fim),
-                        "sistema": "Relatório Mensal",
-                        "legenda": leg,
-                        "foto_base64": b64,
-                        "usuario": st.session_state.user
-                    })
-                    _saved += 1
-                st.success(f"✅ {_saved} foto(s) salva(s) com sucesso!")
+                    try:
+                        arq.seek(0)
+                        img_bytes = arq.read()
+                        if not img_bytes:
+                            _erros.append(f"Foto {i+1}: arquivo vazio")
+                            continue
+                        leg = st.session_state.get(f"leg_new_{i}", "")
+                        b64 = foto_para_base64(img_bytes)
+                        salvar_foto({
+                            "data": str(d_fim),
+                            "sistema": "Relatório Mensal",
+                            "legenda": leg,
+                            "foto_base64": b64,
+                            "usuario": st.session_state.login
+                        })
+                        _saved += 1
+                    except Exception as _e:
+                        _erros.append(f"Foto {i+1} ({arq.name}): {_e}")
+                if _saved:
+                    st.success(f"✅ {_saved} foto(s) salva(s) com sucesso!")
+                if _erros:
+                    for _msg in _erros:
+                        st.error(f"⚠️ {_msg}")
                 _carregar_fotos.clear()
                 st.session_state["foto_counter"] = _fk + 1
                 st.rerun()
