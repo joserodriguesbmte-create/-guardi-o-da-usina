@@ -2274,6 +2274,7 @@ elif "Relatório" in pagina:
     df_sf6_r    = _carregar_sf6(data_ini=d_ini, data_fim=d_fim)
     df_sf6_hist = _carregar_sf6()  # histórico completo para gráfico de evolução
     df_t_r      = _carregar_temps(data_ini=d_ini, data_fim=d_fim)
+    df_t_hist   = _carregar_temps()  # histórico completo de temperatura (sem filtro de mês)
     df_p_r      = _carregar_pendencias()
     df_i_r      = _carregar_inspecoes(data_ini=d_ini, data_fim=d_fim)
     df_i_sec    = _carregar_inspecoes(sistema="Seccionadora",  data_ini=d_ini, data_fim=d_fim)
@@ -2350,15 +2351,15 @@ elif "Relatório" in pagina:
             fig_sf6_r = None
 
     with _gc2:
-        st.markdown("#### 🌡️ Temperatura Trafo")
-        if not df_t_r.empty and len(df_t_r) > 1:
-            fig_temp_r = px.line(df_t_r.sort_values("data"), x="data", y="temperatura",
+        st.markdown("#### 🌡️ Temperatura Trafo — Histórico completo")
+        if not df_t_hist.empty and len(df_t_hist) > 1:
+            fig_temp_r = px.line(df_t_hist.sort_values("data"), x="data", y="temperatura",
                                 color="ponto", labels={"temperatura":"°C","data":"Data"})
             fig_temp_r.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0.15)",
                                      font_color="#94a3b8", height=280)
             st.plotly_chart(fig_temp_r, use_container_width=True)
         else:
-            st.info("Sem dados de temperatura no período.")
+            st.info("Sem dados de temperatura registrados.")
             fig_temp_r = None
 
     st.divider()
@@ -2543,7 +2544,7 @@ elif "Relatório" in pagina:
         ops_lista = df_ops_periodo.to_dict("records") if not df_ops_periodo.empty else []
 
         # Trafo — temperaturas
-        trafo_tab = df_t_r.sort_values("data", ascending=False).head(15).to_dict("records") if not df_t_r.empty else []
+        trafo_tab = df_t_hist.sort_values("data", ascending=False).head(15).to_dict("records") if not df_t_hist.empty else []
 
         # Trafo — última inspeção completa
         trafo_insp = {}
