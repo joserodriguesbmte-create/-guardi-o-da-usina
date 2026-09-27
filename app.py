@@ -3,6 +3,8 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
+_TZ_BR = ZoneInfo("America/Belem")  # Pará: UTC-3, sem horário de verão
 import calendar
 from database import (init_db, salvar_sf6, carregar_sf6, salvar_temp, carregar_temps,
                       salvar_operacao, carregar_operacoes, salvar_inspecao, carregar_inspecoes,
@@ -270,7 +272,7 @@ with st.sidebar:
         "📧  Configurar E-mail",
     ], label_visibility="collapsed", key="nav_sidebar")
     st.divider()
-    st.markdown(f"<div style='color:#334155;font-size:0.7rem'>📅 {date.today().strftime('%d/%m/%Y')}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='color:#334155;font-size:0.7rem'>📅 {datetime.now(_TZ_BR).date().strftime('%d/%m/%Y')}</div>", unsafe_allow_html=True)
     if st.button("🚪 Sair", use_container_width=True):
         for k in ["user","nivel","login"]: st.session_state.pop(k,None)
         st.rerun()
@@ -339,7 +341,7 @@ if "Painel" in pagina:
     )
     _data_insp = _a4.date_input(
         "📅 Data da inspeção",
-        value=date.today(),
+        value=datetime.now(_TZ_BR).date(),
         key="data_insp_painel",
         help="Mude para continuar uma inspeção iniciada em outro dia"
     )
@@ -524,7 +526,7 @@ if "Painel" in pagina:
             _ult_sf6 = df_sf6_all.sort_values("data").groupby("disjuntor").last()[["data","pressao_corrigida","status_sf6"]].reset_index()
             _chips = []
             for _, _r in _ult_sf6.iterrows():
-                try: _dias = (date.today() - date.fromisoformat(str(_r.data))).days
+                try: _dias = (datetime.now(_TZ_BR).date() - date.fromisoformat(str(_r.data))).days
                 except: _dias = 999
                 _cor = "#10b981" if _dias == 0 else "#f59e0b" if _dias <= 7 else "#ef4444"
                 _chips.append(f"<span style='background:#0a1628;border:1px solid {_cor};border-radius:6px;"
@@ -632,7 +634,7 @@ if "Painel" in pagina:
                     st.warning(f"⚠️ Preencha todos os {len(_ITENS_DJ)} itens da inspeção visual ({len(_vis_preench)}/{len(_ITENS_DJ)} preenchidos).")
                 else:
                     _vis_nc = sum(1 for v in _res_visual.values() if v == "NC")
-                    _hora_wf = datetime.now().time()
+                    _hora_wf = datetime.now(_TZ_BR).time()
                     _obs_completo = _json.dumps(_res_visual, ensure_ascii=False)
                     if _obs_wf: _obs_completo += f" | {_obs_wf}"
                     _resumo_pressoes = []
@@ -1047,7 +1049,7 @@ if "Painel" in pagina:
                 st.warning("⚠️ Preencha os campos obrigatórios antes de salvar:\n\n"
                            + "\n".join(f"• {f}" for f in _faltando))
             else:
-                _hora_tr = datetime.now().time()
+                _hora_tr = datetime.now(_TZ_BR).time()
                 _alertas_tr = []
                 if _status_oleo != "Dentro da faixa":  _alertas_tr.append(f"Nível óleo: {_status_oleo}")
                 if _nivel_bucha_at != "Normal":         _alertas_tr.append(f"Bucha AT: {_nivel_bucha_at}")
@@ -1491,7 +1493,7 @@ elif "SF6" in pagina:
         dj_f  = cc1.selectbox("⚡ Disjuntor", options=tags_hist,
                               format_func=lambda t: opcoes_hist.get(t, t), key="dj_f")
         d_ini = cc2.date_input("De", value=date(2026, 6, 1), key="sf6_ini")
-        d_fim = cc3.date_input("Até", value=date.today(), key="sf6_fim")
+        d_fim = cc3.date_input("Até", value=datetime.now(_TZ_BR).date(), key="sf6_fim")
 
         df_ev = carregar_sf6(dj_f, d_ini, d_fim)
         if df_ev.empty:
@@ -1596,7 +1598,7 @@ elif "SF6" in pagina:
         st.markdown("### Registro de Operações — Disjuntores")
         with st.form("form_op", clear_on_submit=True):
             c1,c2,c3 = st.columns(3)
-            data_op = c1.date_input("Data", value=date.today())
+            data_op = c1.date_input("Data", value=datetime.now(_TZ_BR).date())
             dj_op   = c2.selectbox("Disjuntor", list(DISJUNTORES.keys()))
             tipo_op = c3.selectbox("Tipo", ["Abertura Normal","Fechamento Normal","Abertura por Falta","Fechamento Automático","Teste"])
             c4,c5   = st.columns(2)
@@ -1633,7 +1635,7 @@ elif "SF6" in pagina:
 
         _cnt_col1, _cnt_col2 = st.columns([2,1])
         dj_cnt = _cnt_col1.selectbox("⚡ Disjuntor", _tags_cnt_all, key="dj_cnt_sel")
-        d_cnt  = _cnt_col2.date_input("📅 Data", value=date.today(), key="d_cnt")
+        d_cnt  = _cnt_col2.date_input("📅 Data", value=datetime.now(_TZ_BR).date(), key="d_cnt")
 
         # Última leitura
         df_cnt_hist = _carregar_contadores(dj_cnt)
@@ -1675,7 +1677,7 @@ elif "SF6" in pagina:
             _salvar_cnt = st.form_submit_button("💾 Registrar Contadores", type="primary", use_container_width=True)
 
         if _salvar_cnt:
-            salvar_contador({"data":str(d_cnt),"hora":str(datetime.now().time()),"turno":turno_cnt,
+            salvar_contador({"data":str(d_cnt),"hora":str(datetime.now(_TZ_BR).time()),"turno":turno_cnt,
                              "disjuntor":dj_cnt,
                              "polo_a":int(_f_a),"polo_b":int(_f_b),"polo_v":int(_f_v),
                              "tripolar":int(_f_trip),"curto_circuito":int(_f_cc),
@@ -1737,8 +1739,8 @@ elif "Temperatura" in pagina:
         </div>""", unsafe_allow_html=True)
 
         c1, c2, c3 = st.columns(3)
-        data_t  = c1.date_input("📅 Data", value=date.today(), key="data_tr")
-        hora_t  = c2.time_input("🕐 Hora", value=datetime.now().time(), key="hora_tr")
+        data_t  = c1.date_input("📅 Data", value=datetime.now(_TZ_BR).date(), key="data_tr")
+        hora_t  = c2.time_input("🕐 Hora", value=datetime.now(_TZ_BR).time(), key="hora_tr")
         turno_t = c3.selectbox("Turno", ["Manhã (06-14h)","Tarde (14-22h)","Noite (22-06h)"],
                                index=["Manhã (06-14h)","Tarde (14-22h)","Noite (22-06h)"].index(
                                    st.session_state.get("turno_global","Manhã (06-14h)")),
@@ -1782,7 +1784,7 @@ elif "Temperatura" in pagina:
     with tab2:
         _c1, _c2 = st.columns(2)
         _di = _c1.date_input("De", value=date(2026, 6, 1), key="tr_ini")
-        _df2 = _c2.date_input("Até", value=date.today(), key="tr_fim")
+        _df2 = _c2.date_input("Até", value=datetime.now(_TZ_BR).date(), key="tr_fim")
         _df_t = _carregar_temps(EQUIP_TR, _di, _df2)
         if _df_t.empty:
             st.info("Sem registros. Use a aba Registrar Leitura para começar.")
@@ -2070,7 +2072,7 @@ elif "Inspeção" in pagina:
     # SF6
     df_sf6_v = _carregar_sf6()
     ultima_sf6 = pd.to_datetime(df_sf6_v["data"].max()) if not df_sf6_v.empty else None
-    dias_sf6   = (date.today() - ultima_sf6.date()).days if ultima_sf6 else 999
+    dias_sf6   = (datetime.now(_TZ_BR).date() - ultima_sf6.date()).days if ultima_sf6 else 999
     cor_sf6    = "#10b981" if dias_sf6<=FREQ_SF6_DIAS else "#f59e0b" if dias_sf6<=FREQ_SF6_DIAS+3 else "#ef4444"
     prox_sf6   = f"Vence em {FREQ_SF6_DIAS-dias_sf6}d" if dias_sf6<FREQ_SF6_DIAS else f"ATRASADO {dias_sf6-FREQ_SF6_DIAS}d" if dias_sf6>FREQ_SF6_DIAS else "Hoje"
     cw[0].markdown(f"""<div class='kpi' style='border-top:3px solid {cor_sf6}'>
@@ -2089,7 +2091,7 @@ elif "Inspeção" in pagina:
         else:
             df_s = pd.DataFrame()
         ultima = pd.to_datetime(df_s["data"].max()) if not df_s.empty else None
-        dias   = (date.today() - ultima.date()).days if ultima else 999
+        dias   = (datetime.now(_TZ_BR).date() - ultima.date()).days if ultima else 999
         lim    = FREQ[sis]
         cor    = "#10b981" if dias<=lim else "#f59e0b" if dias<=lim+7 else "#ef4444"
         prox   = f"Vence em {lim-dias}d" if dias<lim else f"ATRASADO {dias-lim}d" if dias>lim else "Hoje"
@@ -2124,7 +2126,7 @@ elif "Inspeção" in pagina:
         </div>""", unsafe_allow_html=True)
 
         c1,c2,c3 = st.columns(3)
-        data_i  = c1.date_input("📅 Data", value=date.today())
+        data_i  = c1.date_input("📅 Data", value=datetime.now(_TZ_BR).date())
         turno_i = c2.selectbox("🕐 Turno", ["Manhã (06-14h)","Tarde (14-22h)","Noite (22-06h)"],
                                index=["Manhã (06-14h)","Tarde (14-22h)","Noite (22-06h)"].index(
                                    turno_g if turno_g in ["Manhã (06-14h)","Tarde (14-22h)","Noite (22-06h)"]
@@ -2154,7 +2156,7 @@ elif "Inspeção" in pagina:
         c1,c2,c3 = st.columns(3)
         fs = c1.selectbox("Sistema",["Todos"]+SISTEMAS,key="fsh")
         fi = c2.date_input("De",value=date(2026,6,1),key="fih")
-        ff = c3.date_input("Até",value=date.today(),key="ffh")
+        ff = c3.date_input("Até",value=datetime.now(_TZ_BR).date(),key="ffh")
         df_i = carregar_inspecoes(fs,fi,ff)
         if df_i.empty: st.info("Sem registros.")
         else:
@@ -2174,7 +2176,7 @@ elif "Pendências" in pagina:
     with tab1:
         with st.form("fp",clear_on_submit=True):
             c1,c2 = st.columns(2)
-            da = c1.date_input("Data Abertura",value=date.today()); sis = c2.selectbox("Sistema",SISTEMAS)
+            da = c1.date_input("Data Abertura",value=datetime.now(_TZ_BR).date()); sis = c2.selectbox("Sistema",SISTEMAS)
             desc = st.text_area("Descrição",height=80)
             c3,c4,c5 = st.columns(3)
             sap = c3.text_input("Nota SAP"); prio = c4.selectbox("Prioridade",["Alta","Média","Baixa"]); st_p = c5.selectbox("Status",["Aberta","Em andamento"])
@@ -2203,7 +2205,7 @@ elif "Pendências" in pagina:
                     c1.write(f"**Abertura:** {row.data_abertura}"); c2.write(f"**SAP:** {row.nota_sap or '—'}"); c3.write(f"**Status:** {row.status}")
                     st.write(f"**Descrição:** {row.descricao}")
                     ns = st.selectbox("Novo status",["Em andamento","Concluída","Cancelada"],key=f"ns{row.id}")
-                    dc = st.date_input("Data conclusão",value=date.today(),key=f"dc{row.id}")
+                    dc = st.date_input("Data conclusão",value=datetime.now(_TZ_BR).date(),key=f"dc{row.id}")
                     no = st.text_input("Obs.",key=f"no{row.id}")
                     if st.button("Atualizar",key=f"up{row.id}"): atualizar_pendencia(row.id,ns,str(dc),no); st.rerun()
 
@@ -2218,7 +2220,7 @@ elif "Relatório" in pagina:
     # Período — meses gerados dinamicamente (6 atrás + atual + 3 à frente)
     _MESES_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
                  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
-    _hoje_r = date.today()
+    _hoje_r = datetime.now(_TZ_BR).date()
     _meses_dict = {}
     for _d in range(-6, 4):
         _m = (_hoje_r.month + _d - 1) % 12 + 1
@@ -2635,7 +2637,7 @@ elif "Relatório" in pagina:
             if ok:
                 # Registrar envio no banco — persiste para histórico e script de teste
                 salvar_config("relatorio_enviado_mes", mes)
-                salvar_config("relatorio_enviado_em",  str(date.today()))
+                salvar_config("relatorio_enviado_em",  str(datetime.now(_TZ_BR).date()))
                 # Fotos só somem após envio manual pelo app
                 excluir_fotos_periodo(d_ini, d_fim)
                 _carregar_fotos.clear()
