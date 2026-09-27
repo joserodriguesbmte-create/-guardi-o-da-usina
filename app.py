@@ -2241,7 +2241,6 @@ elif "Relatório" in pagina:
         <span style='color:#334155;font-size:0.82rem'> · Envio mensal ao gestor</span>
     </div>""", unsafe_allow_html=True)
 
-    # Período — meses gerados dinamicamente (6 atrás + atual + 3 à frente)
     _MESES_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
                  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
     _hoje_r = datetime.now(_TZ_BR).date()
@@ -2250,16 +2249,26 @@ elif "Relatório" in pagina:
         _m = (_hoje_r.month + _d - 1) % 12 + 1
         _a = _hoje_r.year + (_hoje_r.month + _d - 1) // 12
         _meses_dict[f"{_MESES_PT[_m-1]}/{_a}"] = (_a, _m)
-    # Padrão = mês atual
-    _mes_padrao = f"{_MESES_PT[_hoje_r.month-1]}/{_hoje_r.year}"
-    _idx_mes = list(_meses_dict.keys()).index(_mes_padrao) if _mes_padrao in _meses_dict else 6
+    _mes_atual_str = f"{_MESES_PT[_hoje_r.month-1]}/{_hoje_r.year}"
 
-    _r1, _r2, _r3 = st.columns(3)
-    mes = _r1.selectbox("📅 Mês", list(_meses_dict.keys()), index=_idx_mes, key="rel_mes")
-    _ano_r, _mes_r = _meses_dict[mes]
-    # d_fim padrão = hoje, para incluir inspeções feitas após o fim do mês selecionado
-    d_ini = _r2.date_input("De",  value=date(_ano_r, _mes_r, 1), key="rel_ini")
-    d_fim = _r3.date_input("Até", value=_hoje_r,                 key="rel_fim")
+    # Mês automático = mês atual; checkbox libera seleção manual
+    _alterar_mes = st.checkbox("🔄 Selecionar outro mês de referência", key="rel_alterar_mes")
+    if _alterar_mes:
+        _idx_mes = list(_meses_dict.keys()).index(_mes_atual_str) if _mes_atual_str in _meses_dict else 6
+        _c1, _c2, _c3 = st.columns(3)
+        mes = _c1.selectbox("📅 Mês", list(_meses_dict.keys()), index=_idx_mes, key="rel_mes")
+        _ano_r, _mes_r = _meses_dict[mes]
+        d_ini = _c2.date_input("De",  value=date(_ano_r, _mes_r, 1), key="rel_ini")
+        d_fim = _c3.date_input("Até", value=_hoje_r,                 key="rel_fim")
+    else:
+        mes   = _mes_atual_str
+        _ano_r, _mes_r = _meses_dict[mes]
+        d_ini = date(_ano_r, _mes_r, 1)
+        d_fim = _hoje_r
+        st.markdown(f"<div style='color:#10b981;font-size:0.9rem;margin:4px 0 10px'>"
+                    f"📅 Mês de referência: <b>{mes}</b> &nbsp;·&nbsp; "
+                    f"{d_ini.strftime('%d/%m/%Y')} a {d_fim.strftime('%d/%m/%Y')}</div>",
+                    unsafe_allow_html=True)
 
     # Carregar dados (versões com cache — evita reconexão ao banco a cada render)
     df_sf6_r    = _carregar_sf6(data_ini=d_ini, data_fim=d_fim)
@@ -2605,12 +2614,11 @@ elif "Relatório" in pagina:
             "sf6_historico":   df_sf6_hist.to_dict("records") if not df_sf6_hist.empty else [],
         }
 
-    # Aviso se o mês selecionado for diferente do mês atual
-    _mes_atual_str = f"{_MESES_PT[_hoje_r.month-1]}/{_hoje_r.year}"
-    if mes != _mes_atual_str:
+    # Aviso se o usuário escolheu manualmente um mês diferente do atual
+    if _alterar_mes and mes != _mes_atual_str:
         st.warning(
-            f"⚠️ O mês selecionado é **{mes}**, mas estamos em **{_mes_atual_str}**. "
-            f"Mude para **{_mes_atual_str}** antes de enviar para não mandar o relatório errado."
+            f"⚠️ Mês selecionado: **{mes}** — estamos em **{_mes_atual_str}**. "
+            f"Confirme que deseja enviar referente a **{mes}**."
         )
 
     col_b1, col_b2, col_b3, col_b4 = st.columns(4)
