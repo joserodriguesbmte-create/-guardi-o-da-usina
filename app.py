@@ -1577,6 +1577,17 @@ elif "SF6" in pagina:
                 xaxis_title="Data / Hora", yaxis_title="Pressão (bar a 20°C)",
                 legend=dict(bgcolor="rgba(0,0,0,0)", font_size=10,
                             orientation="h", yanchor="bottom", y=1.01, xanchor="right", x=1))
+            # Rótulos do eixo X em português — um tick por mês
+            _MESES_PT_ABR = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",
+                             7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
+            try:
+                _t0 = df_ev["data_hora"].min().replace(day=1, hour=0, minute=0, second=0)
+                _t1 = df_ev["data_hora"].max()
+                _ticks_v = pd.date_range(_t0, _t1 + pd.DateOffset(months=1), freq="MS")
+                _ticks_l = [f"{_MESES_PT_ABR[t.month]}/{str(t.year)[2:]}" for t in _ticks_v]
+                fig_ev.update_xaxes(tickvals=_ticks_v, ticktext=_ticks_l, tickangle=-30)
+            except Exception:
+                pass
             st.plotly_chart(fig_ev, use_container_width=True)
 
             # ── Tabela histórica ────────────────────────────────────────────

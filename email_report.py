@@ -306,8 +306,12 @@ def evolucao_sf6_base64(sf6_lista: list) -> str:
             ax.text(xmax, 6.04, "  Nominal 6,0 bar",  fontsize=8.5, color="#6b7280",
                     va="bottom", ha="left")
 
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b/%y"))
         ax.xaxis.set_major_locator(mdates.MonthLocator())
+        _MESES_PT = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",
+                     7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
+        ax.xaxis.set_major_formatter(
+            plt.FuncFormatter(lambda x, _: f"{_MESES_PT.get(mdates.num2date(x).month,'?')}/{str(mdates.num2date(x).year)[2:]}")
+        )
         plt.xticks(rotation=30, ha="right", fontsize=9)
         ax.set_ylabel("Pressão a 20 °C (bar)", fontsize=10, color="#374151")
         ax.set_ylim(4.8, 7.2)
