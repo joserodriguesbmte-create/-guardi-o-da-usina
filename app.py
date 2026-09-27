@@ -793,7 +793,7 @@ if "Painel" in pagina:
 
         if not df_sf6_all.empty and len(df_sf6_all) > 1:
             _df_plot = df_sf6_all.copy()
-            _df_plot["data_hora"] = pd.to_datetime(_df_plot["data"] + " " + _df_plot["hora"])
+            _df_plot["data_hora"] = pd.to_datetime(_df_plot["data"] + " " + _df_plot["hora"].astype(str).str.split(".").str[0])
             _df_plot["label"] = _df_plot["disjuntor"] + " · " + _df_plot["polo"]
             _df_plot = _df_plot.sort_values("data_hora")
 
@@ -1502,7 +1502,7 @@ elif "SF6" in pagina:
         if df_ev.empty:
             st.info("Sem dados no período. Registre leituras no Painel Geral.")
         else:
-            df_ev["data_hora"] = pd.to_datetime(df_ev["data"] + " " + df_ev["hora"])
+            df_ev["data_hora"] = pd.to_datetime(df_ev["data"] + " " + df_ev["hora"].astype(str).str.split(".").str[0])
 
             # ── Gauges — status atual por polo ─────────────────────────────
             st.markdown("#### Status Atual (última leitura por polo)")
@@ -1792,7 +1792,7 @@ elif "Temperatura" in pagina:
         if _df_t.empty:
             st.info("Sem registros. Use a aba Registrar Leitura para começar.")
         else:
-            _df_t["data_hora"] = pd.to_datetime(_df_t["data"] + " " + _df_t["hora"])
+            _df_t["data_hora"] = pd.to_datetime(_df_t["data"] + " " + _df_t["hora"].astype(str).str.split(".").str[0])
             _fig_t = px.line(_df_t, x="data_hora", y="temperatura", color="ponto",
                             title="Evolução OTI / WTI — SE+01TRF 230/69kV",
                             labels={"temperatura": "Temp (°C)", "data_hora": "Data/Hora", "ponto": "Ponto"})
