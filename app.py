@@ -2250,11 +2250,9 @@ elif "Relatório" in pagina:
         _m = (_hoje_r.month + _d - 1) % 12 + 1
         _a = _hoje_r.year + (_hoje_r.month + _d - 1) // 12
         _meses_dict[f"{_MESES_PT[_m-1]}/{_a}"] = (_a, _m)
-    # Padrão = mês anterior (relatório fechado ao virar o mês)
-    _prev_m = _hoje_r.month - 1 if _hoje_r.month > 1 else 12
-    _prev_a = _hoje_r.year if _hoje_r.month > 1 else _hoje_r.year - 1
-    _mes_padrao = f"{_MESES_PT[_prev_m-1]}/{_prev_a}"
-    _idx_mes = list(_meses_dict.keys()).index(_mes_padrao) if _mes_padrao in _meses_dict else 5
+    # Padrão = mês atual
+    _mes_padrao = f"{_MESES_PT[_hoje_r.month-1]}/{_hoje_r.year}"
+    _idx_mes = list(_meses_dict.keys()).index(_mes_padrao) if _mes_padrao in _meses_dict else 6
 
     _r1, _r2, _r3 = st.columns(3)
     mes = _r1.selectbox("📅 Mês", list(_meses_dict.keys()), index=_idx_mes, key="rel_mes")
