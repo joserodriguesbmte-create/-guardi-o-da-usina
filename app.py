@@ -2605,6 +2605,14 @@ elif "Relatório" in pagina:
             "sf6_historico":   df_sf6_hist.to_dict("records") if not df_sf6_hist.empty else [],
         }
 
+    # Aviso se o mês selecionado for diferente do mês atual
+    _mes_atual_str = f"{_MESES_PT[_hoje_r.month-1]}/{_hoje_r.year}"
+    if mes != _mes_atual_str:
+        st.warning(
+            f"⚠️ O mês selecionado é **{mes}**, mas estamos em **{_mes_atual_str}**. "
+            f"Mude para **{_mes_atual_str}** antes de enviar para não mandar o relatório errado."
+        )
+
     col_b1, col_b2, col_b3, col_b4 = st.columns(4)
 
     if col_b1.button("👁️ Visualizar", use_container_width=True):
