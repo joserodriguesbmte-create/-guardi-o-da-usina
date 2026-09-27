@@ -134,18 +134,18 @@ div[data-testid="stNumberInput"] input,
 div[data-testid="stTextInput"] input,
 div[data-testid="stTextArea"] textarea
 {color:#f1f5f9 !important; -webkit-text-fill-color:#f1f5f9 !important;
- font-size:1rem !important; background:#0f172a !important;}
+ font-size:1.05rem !important; background:#0f172a !important;}
 /* Labels dos campos */
 div[data-testid="stNumberInput"] label,
 div[data-testid="stTextInput"] label,
 div[data-testid="stSelectbox"] label,
 div[data-testid="stTextArea"] label
-{color:#94a3b8 !important; font-size:0.85rem !important;}
+{color:#94a3b8 !important; font-size:0.95rem !important;}
 .stSlider>div{color:#94a3b8;}
 hr{border-color:#1e3a5f;}
 
-/* ── RESPONSIVO MOBILE ─────────────────────────────────────────── */
-@media (max-width: 768px) {
+/* ── RESPONSIVO TABLET / MOBILE ────────────────────────────────── */
+@media (max-width: 1100px) {
   .block-container{padding:0.5rem 0.8rem !important;}
 
   /* KPIs: grade 2x2 no mobile */
@@ -153,27 +153,28 @@ hr{border-color:#1e3a5f;}
     min-width:48% !important; width:48% !important; flex:0 0 48% !important;
   }
 
-  .kpi{padding:8px 4px !important;}
-  .kpi-n{font-size:1.3rem !important;}
-  .kpi-l{font-size:0.6rem !important;}
+  .kpi{padding:10px 6px !important;}
+  .kpi-n{font-size:1.6rem !important;}
+  .kpi-l{font-size:0.78rem !important;}
 
-  /* Inputs e selects — texto visível e grande */
+  /* Inputs e selects — texto grande para leitura ao sol */
   .stSelectbox label, .stNumberInput label,
   .stTextInput label, .stTextArea label,
   .stSelectbox>div>div, .stNumberInput>div>div>input,
   .stTextInput>div>div>input, .stTextArea>div>div>textarea,
   [data-baseweb="select"] span, [data-baseweb="input"] input
-  {font-size:1rem !important; color:#f1f5f9 !important;}
+  {font-size:1.2rem !important; color:#f1f5f9 !important;}
 
-  /* Botões — tamanho normal para mobile */
-  .stButton>button{font-size:0.85rem !important; min-height:38px !important; padding:0.3rem 0.6rem !important;}
+  /* Botões — grandes para toque fácil com luva ou sol */
+  .stButton>button{font-size:1.1rem !important; min-height:52px !important; padding:0.5rem 0.8rem !important;}
 
   /* Texto */
-  label{font-size:0.9rem !important; color:#94a3b8 !important;}
-  h1{font-size:1.3rem !important;}
-  h2{font-size:1.1rem !important;}
-  h3{font-size:0.95rem !important;}
-  .card{padding:10px !important;}
+  label{font-size:1.05rem !important; color:#94a3b8 !important;}
+  h1{font-size:1.65rem !important;}
+  h2{font-size:1.4rem !important;}
+  h3{font-size:1.2rem !important;}
+  p, li{font-size:1.05rem !important;}
+  .card{padding:12px !important;}
 }
 </style>""", unsafe_allow_html=True)
 
