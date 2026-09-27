@@ -281,6 +281,7 @@ def evolucao_sf6_base64(sf6_lista: list) -> str:
         ax.axhspan(5.2, 7.2, alpha=0.06, color="#10b981", zorder=0)
 
         cores = ["#1d4ed8","#16a34a","#d97706","#7c3aed","#dc2626","#0891b2","#c026d3","#b45309"]
+        xmin = None
         xmax = None
         for i, (dj, g) in enumerate(sorted(grupos.items())):
             if g["datas"]:
@@ -291,6 +292,8 @@ def evolucao_sf6_base64(sf6_lista: list) -> str:
                 ax.annotate(f"{prs[-1]:.2f}", xy=(dts[-1], prs[-1]),
                             xytext=(5, 3), textcoords="offset points",
                             fontsize=8, color=cores[i % len(cores)], fontweight="bold")
+                if xmin is None or dts[0] < xmin:
+                    xmin = dts[0]
                 if xmax is None or dts[-1] > xmax:
                     xmax = dts[-1]
 
@@ -312,6 +315,10 @@ def evolucao_sf6_base64(sf6_lista: list) -> str:
         ax.xaxis.set_major_formatter(
             plt.FuncFormatter(lambda x, _: f"{_MESES_PT.get(mdates.num2date(x).month,'?')}/{str(mdates.num2date(x).year)[2:]}")
         )
+        # Limita o eixo X ao intervalo real dos dados — evita tick do mês seguinte
+        if xmin and xmax:
+            from datetime import timedelta as _td
+            ax.set_xlim(xmin - _td(days=3), xmax + _td(days=3))
         plt.xticks(rotation=30, ha="right", fontsize=9)
         ax.set_ylabel("Pressão a 20 °C (bar)", fontsize=10, color="#374151")
         ax.set_ylim(4.8, 7.2)
