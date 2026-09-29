@@ -395,8 +395,9 @@ if "Painel" in pagina:
     _mes_ini = date(_data_insp.year, _data_insp.month, 1)
     _mes_fim = _data_insp
 
-    df_sf6_mes  = _carregar_sf6(data_ini=_mes_ini, data_fim=_mes_fim)
+    df_sf6_mes      = _carregar_sf6(data_ini=_mes_ini, data_fim=_mes_fim)
     df_insp_sec_mes = _carregar_inspecoes(sistema="Seccionadora", data_ini=_mes_ini, data_fim=_mes_fim)
+    df_insp_mes_all = _carregar_inspecoes(data_ini=_mes_ini, data_fim=_mes_fim)
 
     djs_todos          = df_djs_db["tag"].tolist() if not df_djs_db.empty else []
     djs_inspecionados  = set(df_sf6_mes["disjuntor"].unique()) if not df_sf6_mes.empty else set()
@@ -964,17 +965,16 @@ if "Painel" in pagina:
     _t_amb_tr   = float(st.session_state.get("temp_amb_global", 28.0))
     _lim_oti    = _t_amb_tr + 65.0
 
-    # Verifica se trafo foi inspecionado hoje
-    _df_hoje_all  = _carregar_inspecoes_hoje(_data_insp)
-    _df_trafo_hoje = _df_hoje_all[_df_hoje_all.sistema == "Transformador"] if not _df_hoje_all.empty else _df_hoje_all
-    _trafo_insp = not _df_trafo_hoje.empty
+    # Verifica se trafo foi inspecionado este mês
+    _df_hoje_all   = _carregar_inspecoes_hoje(_data_insp)
+    _df_trafo_mes  = df_insp_mes_all[df_insp_mes_all.sistema == "Transformador"] if not df_insp_mes_all.empty else df_insp_mes_all
+    _trafo_insp    = not _df_trafo_mes.empty
 
     _tr_pct = 1.0 if _trafo_insp else 0.0
-    _data_insp_str = _data_insp.strftime("%d/%m")
-    st.progress(_tr_pct, text=f"1/1 transformador inspecionado em {_data_insp_str}" if _trafo_insp else f"0/1 transformador inspecionado em {_data_insp_str}")
+    st.progress(_tr_pct, text="1/1 transformador inspecionado neste mês" if _trafo_insp else "0/1 transformador inspecionado neste mês")
 
     if _trafo_insp:
-        st.success("✅ Transformador inspecionado hoje!")
+        st.success("✅ Transformador inspecionado neste mês.")
     else:
         # ── Temperaturas ────────────────────────────────────────────────────
         st.markdown(f"<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:8px 0 4px'>🌡️ Temperaturas — TM1 Treetech (Limite: T_amb {_t_amb_tr:.0f}°C + 65°C = <b style=\"color:#ef4444\">{_lim_oti:.0f}°C</b>)</div>", unsafe_allow_html=True)
@@ -1103,6 +1103,7 @@ if "Painel" in pagina:
                 st.success(f"✅ {_TRAFO_NOME} — {_emoji} {_tr_saude_txt}" +
                            (f" | ⚠️ {', '.join(_alertas_tr[:3])}" if _alertas_tr else ""))
                 _carregar_inspecoes_hoje.clear()
+                _carregar_inspecoes.clear()
                 _carregar_temps.clear()
                 st.rerun()
 
@@ -1113,13 +1114,13 @@ if "Painel" in pagina:
         ⚡ Inspeção de Para-raios — 230kV</div>""", unsafe_allow_html=True)
 
     _PR_TAG = "PARA-RAIOS-230kV"
-    _df_pr_hoje = _df_hoje_all[_df_hoje_all.sistema == "Subestação 230kV"] if not _df_hoje_all.empty else _df_hoje_all
-    _pr_insp = not _df_pr_hoje[_df_pr_hoje.item == _PR_TAG].empty if not _df_pr_hoje.empty else False
+    _df_pr_mes = df_insp_mes_all[df_insp_mes_all.sistema == "Subestação 230kV"] if not df_insp_mes_all.empty else df_insp_mes_all
+    _pr_insp = not _df_pr_mes[_df_pr_mes.item == _PR_TAG].empty if not _df_pr_mes.empty else False
     st.progress(1.0 if _pr_insp else 0.0,
                 text="Para-raios inspecionados" if _pr_insp else "Para-raios pendente")
 
     if _pr_insp:
-        st.success("✅ Para-raios inspecionados!")
+        st.success("✅ Para-raios inspecionados neste mês.")
     else:
         with st.form("form_pr", clear_on_submit=True):
             st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:4px 0'>🔍 Inspeção Visual — Para-raios 230kV (por fase: A, B, C)</div>", unsafe_allow_html=True)
@@ -1157,6 +1158,7 @@ if "Painel" in pagina:
                 _txt_pr = "🟢 NORMAL" if not _nc_pr else f"🔴 {_nc_pr} ANOMALIA(S)"
                 st.success(f"✅ Para-raios — {_txt_pr}")
                 _carregar_inspecoes_hoje.clear()
+                _carregar_inspecoes.clear()
                 st.rerun()
 
     # ── 6. SALA ELÉTRICA DA SE — largura total ───────────────────────────────
@@ -1166,13 +1168,13 @@ if "Painel" in pagina:
         🏢 Inspeção — Sala Elétrica da SE</div>""", unsafe_allow_html=True)
 
     _SE_TAG = "SALA-ELETRICA-SE"
-    _df_se_hoje = _df_hoje_all[_df_hoje_all.sistema == "Sala Elétrica da SE"] if not _df_hoje_all.empty else _df_hoje_all
-    _se_insp = not _df_se_hoje[_df_se_hoje.item == _SE_TAG].empty if not _df_se_hoje.empty else False
+    _df_se_mes = df_insp_mes_all[df_insp_mes_all.sistema == "Sala Elétrica da SE"] if not df_insp_mes_all.empty else df_insp_mes_all
+    _se_insp = not _df_se_mes[_df_se_mes.item == _SE_TAG].empty if not _df_se_mes.empty else False
     st.progress(1.0 if _se_insp else 0.0,
                 text="Sala Elétrica inspecionada" if _se_insp else "Sala Elétrica pendente")
 
     if _se_insp:
-        st.success("✅ Sala Elétrica inspecionada!")
+        st.success("✅ Sala Elétrica inspecionada neste mês.")
     else:
         with st.form("form_se", clear_on_submit=True):
             _se_cols = st.columns(3)
@@ -1217,6 +1219,7 @@ if "Painel" in pagina:
                 _txt_se = "🟢 NORMAL" if not _nc_se else f"🟡 {_nc_se} ponto(s) de atenção"
                 st.success(f"✅ Sala Elétrica — {_txt_se}")
                 _carregar_inspecoes_hoje.clear()
+                _carregar_inspecoes.clear()
                 st.rerun()
 
     # ── 7. CÚBILO DE 13.8kV — largura total ──────────────────────────────────
@@ -1226,13 +1229,13 @@ if "Painel" in pagina:
         ⚡ Inspeção — Cúbilo de 13.8kV da SE</div>""", unsafe_allow_html=True)
 
     _CUB_TAG = "CUBILO-13.8kV-SE"
-    _df_cub_hoje = _df_hoje_all[_df_hoje_all.sistema == "Cúbilo de 13.8kV da SE"] if not _df_hoje_all.empty else _df_hoje_all
-    _cub_insp = not _df_cub_hoje[_df_cub_hoje.item == _CUB_TAG].empty if not _df_cub_hoje.empty else False
+    _df_cub_mes = df_insp_mes_all[df_insp_mes_all.sistema == "Cúbilo de 13.8kV da SE"] if not df_insp_mes_all.empty else df_insp_mes_all
+    _cub_insp = not _df_cub_mes[_df_cub_mes.item == _CUB_TAG].empty if not _df_cub_mes.empty else False
     st.progress(1.0 if _cub_insp else 0.0,
                 text="Cúbilo inspecionado" if _cub_insp else "Cúbilo pendente")
 
     if _cub_insp:
-        st.success("✅ Cúbilo de 13.8kV inspecionado!")
+        st.success("✅ Cúbilo de 13.8kV inspecionado neste mês.")
     else:
         with st.form("form_cub", clear_on_submit=True):
             st.markdown("<div style='color:#94a3b8;font-size:0.78rem;font-weight:600;margin:4px 0'>Verificações</div>", unsafe_allow_html=True)
@@ -1272,6 +1275,7 @@ if "Painel" in pagina:
                 _txt_cub = "🟢 NORMAL" if not _nc_cub else f"🔴 {_nc_cub} ponto(s) de atenção"
                 st.success(f"✅ Cúbilo 13.8kV — {_txt_cub}")
                 _carregar_inspecoes_hoje.clear()
+                _carregar_inspecoes.clear()
                 st.rerun()
 
 # ══════════════════════════════════════════════════════ CADASTRO EQUIPAMENTOS
