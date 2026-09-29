@@ -2729,7 +2729,7 @@ elif "Relatório" in pagina:
         with st.spinner("Gerando pré-visualização..."):
             html_r = gerar_html_relatorio(montar_dados_relatorio())
         with st.expander("📄 Pré-visualização", expanded=True):
-            st.components.v1.html(html_r, height=700, scrolling=True)
+            st.components.v1.html(html_r, height=1400, scrolling=True)
 
     if col_b2.button("⬇️ Baixar HTML", use_container_width=True):
         html_r = gerar_html_relatorio(montar_dados_relatorio())
