@@ -512,15 +512,10 @@ if "Painel" in pagina:
             text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
             ⚡ Inspeção SF6 — Disjuntores</div>""", unsafe_allow_html=True)
 
-        # Progresso e dropdown: dia atual — igual a trafo, para-raios e sala elétrica
-        _df_sf6_hoje_wf  = _carregar_sf6(data_ini=_data_insp, data_fim=_data_insp)
-        _djs_feitos_hoje = set(_df_sf6_hoje_wf["disjuntor"].unique()) if not _df_sf6_hoje_wf.empty else set()
-        djs_pendentes    = [t for t in djs_todos if t not in _djs_feitos_hoje]
-
         _dj_tot  = len(djs_todos)
-        _dj_done = len([t for t in djs_todos if t in _djs_feitos_hoje])
+        _dj_done = len([t for t in djs_todos if t in djs_inspecionados])
         _dj_pct  = _dj_done / _dj_tot if _dj_tot else 0
-        st.progress(_dj_pct, text=f"{_dj_done}/{_dj_tot} disjuntores inspecionados hoje")
+        st.progress(_dj_pct, text=f"{_dj_done}/{_dj_tot} disjuntores inspecionados no mês")
 
         # Última leitura por disjuntor — verde=hoje, amarelo=≤7d, vermelho=>7d
         if not df_sf6_all.empty:
@@ -538,7 +533,7 @@ if "Painel" in pagina:
                             unsafe_allow_html=True)
 
         if not djs_pendentes:
-            st.success(f"✅ Todos os {len(djs_todos)} disjuntores inspecionados hoje.")
+            st.success(f"✅ Todos os {len(djs_todos)} disjuntores inspecionados neste mês.")
         else:
             _df_dj_pend = df_djs_db[df_djs_db["tag"].isin(djs_pendentes)]
             _opc_dj = {r.tag: f"{r.tag}  ·  {r.modelo or '—'}  ·  {(r.descricao or '')[:40]}"
@@ -846,17 +841,10 @@ if "Painel" in pagina:
         text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
         🔌 Inspeção de Seccionadoras</div>""", unsafe_allow_html=True)
 
-    # Progresso e dropdown: dia atual — igual a trafo, para-raios e sala elétrica
-    _df_sec_hoje = _carregar_inspecoes_hoje(_data_insp)
-    if not _df_sec_hoje.empty and "sistema" in _df_sec_hoje.columns:
-        _secs_feitas_hoje = set(_df_sec_hoje[_df_sec_hoje.sistema == "Seccionadora"]["item"].unique())
-    else:
-        _secs_feitas_hoje = set()
-
     _sec_tot  = len(secs_todos)
-    _sec_done = len([t for t in secs_todos if t in _secs_feitas_hoje])
+    _sec_done = len([t for t in secs_todos if t in secs_inspecionadas])
     _sec_pct  = _sec_done / _sec_tot if _sec_tot else 0
-    st.progress(_sec_pct, text=f"{_sec_done}/{_sec_tot} seccionadoras inspecionadas hoje")
+    st.progress(_sec_pct, text=f"{_sec_done}/{_sec_tot} seccionadoras inspecionadas no mês")
 
     _ITENS_SEC = [
         "Condição geral (visual)",
@@ -868,9 +856,9 @@ if "Painel" in pagina:
         "Identificação e sinalização",
     ]
 
-    _secs_para_form = [t for t in secs_todos if t not in _secs_feitas_hoje]
+    _secs_para_form = secs_pendentes
     if not _secs_para_form:
-        st.success(f"✅ Todas as {_sec_tot} seccionadoras inspecionadas hoje.")
+        st.success(f"✅ Todas as {_sec_tot} seccionadoras inspecionadas neste mês.")
 
     if _secs_para_form:
         _df_sec_pend = df_secs_db[df_secs_db["tag"].isin(_secs_para_form)]
