@@ -407,8 +407,6 @@ if "Painel" in pagina:
     secs_todos         = df_secs_db["tag"].tolist() if not df_secs_db.empty else []
     secs_inspecionadas = set(df_insp_sec_mes["item"].unique()) if not df_insp_sec_mes.empty else set()
     secs_pendentes     = [t for t in secs_todos if t not in secs_inspecionadas]
-    if not secs_pendentes:
-        secs_pendentes = list(secs_todos)
 
     pend_abertas = len(df_pend_all[df_pend_all.status == "Aberta"]) if not df_pend_all.empty else 0
 
@@ -847,9 +845,9 @@ if "Painel" in pagina:
         🔌 Inspeção de Seccionadoras</div>""", unsafe_allow_html=True)
 
     _sec_tot  = len(secs_todos)
-    _sec_done = _sec_tot - len(secs_pendentes)
+    _sec_done = len([t for t in secs_todos if t in secs_inspecionadas])
     _sec_pct  = _sec_done / _sec_tot if _sec_tot else 0
-    st.progress(_sec_pct, text=f"{_sec_done}/{_sec_tot} seccionadoras inspecionadas hoje")
+    st.progress(_sec_pct, text=f"{_sec_done}/{_sec_tot} seccionadoras inspecionadas no mês")
 
     _ITENS_SEC = [
         "Condição geral (visual)",
@@ -861,14 +859,26 @@ if "Painel" in pagina:
         "Identificação e sinalização",
     ]
 
-    # Ciclo completo = todas inspecionadas E o reset já aconteceu (pendentes == todos)
-    # Após reset: secs_pendentes == secs_todos → condição False → formulário aparece
-    _ciclo_completo = (len(secs_inspecionadas) >= len(secs_todos) and len(secs_todos) > 0
-                       and len(secs_pendentes) >= len(secs_todos))
+    _ciclo_completo = (len(secs_inspecionadas) >= len(secs_todos) and len(secs_todos) > 0)
     if _ciclo_completo:
-        st.info(f"🔄 Ciclo anterior completo ({len(secs_todos)}/{len(secs_todos)}) — nova rodada iniciada.")
-    if secs_pendentes:
-        _df_sec_pend = df_secs_db[df_secs_db["tag"].isin(secs_pendentes)]
+        # Nova rodada: usa inspeções de hoje para controlar o que já foi feito
+        _df_hoje_completo = _carregar_inspecoes_hoje(_data_insp)
+        if not _df_hoje_completo.empty and "sistema" in _df_hoje_completo.columns:
+            _secs_feitas_hoje = set(
+                _df_hoje_completo[_df_hoje_completo.sistema == "Seccionadora"]["item"].unique()
+            )
+        else:
+            _secs_feitas_hoje = set()
+        _secs_para_form = [t for t in secs_todos if t not in _secs_feitas_hoje]
+        if not _secs_para_form:
+            _secs_para_form = list(secs_todos)
+        _nova_rodada_done = len([t for t in secs_todos if t in _secs_feitas_hoje])
+        st.info(f"🔄 Ciclo do mês completo — nova rodada: {_nova_rodada_done}/{len(secs_todos)} feitas hoje.")
+    else:
+        _secs_para_form = secs_pendentes
+
+    if _secs_para_form:
+        _df_sec_pend = df_secs_db[df_secs_db["tag"].isin(_secs_para_form)]
         _opc_sec = {r.tag: f"{r.tag}  ·  {(r.descricao or '')[:55]}"
                     for _, r in _df_sec_pend.iterrows()}
         _sec_sel = st.selectbox("🔌 Seccionadora pendente", list(_opc_sec.keys()),
@@ -930,7 +940,7 @@ if "Painel" in pagina:
                 _leg_sec = st.text_input("Legenda da foto", key=f"leg_sec_{_sec_sel}",
                                           placeholder=f"Ex: {_sec_sel} contato")
             _salvar_sec = st.form_submit_button(
-                f"💾 Salvar {_sec_sel} e Avançar ({len(secs_pendentes)-1} restante(s))",
+                f"💾 Salvar {_sec_sel} e Avançar ({len(_secs_para_form)-1} restante(s))",
                 type="primary", use_container_width=True)
 
         if _salvar_sec:
