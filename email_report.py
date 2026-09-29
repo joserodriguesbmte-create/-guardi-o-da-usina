@@ -410,12 +410,18 @@ def gerar_html_pdf(dados: dict) -> str:
     # ── SF6 tabela
     sf6_rows = ""
     for r in sf6_tabela:
-        cor = _status_cor(r.get("status_sf6", ""))
-        sf6_rows += (f"<tr><td>{r.get('disjuntor','')}</td><td>{r.get('polo','')}</td>"
+        _st_sf6 = str(r.get("status_sf6", "")).upper()
+        cor = _status_cor(_st_sf6)
+        _bg_row = ""
+        if "BLOQUEIO" in _st_sf6:
+            _bg_row = "background:#ffe0e0;"
+        elif "ALARME" in _st_sf6:
+            _bg_row = "background:#fff8e0;"
+        sf6_rows += (f"<tr style='{_bg_row}'><td>{r.get('disjuntor','')}</td><td>{r.get('polo','')}</td>"
                      f"<td>{r.get('pressao_medida','')}</td><td>{r.get('temperatura','')}C</td>"
                      f"<td><b>{r.get('pressao_corrigida','')}</b></td>"
                      f"<td>{r.get('data','')} {str(r.get('hora',''))[:5]}</td>"
-                     f"<td style='color:{cor}'><b>{r.get('status_sf6','')}</b></td></tr>")
+                     f"<td style='color:{cor}'><b>{_st_sf6}</b></td></tr>")
 
     # ── SF6 visual
     vis_rows = ""
@@ -443,7 +449,9 @@ def gerar_html_pdf(dados: dict) -> str:
             _obs_disp = ", ".join([k for k, v in _oj.items() if v == "NC"]) if _oj else _obs_raw[:60]
         except Exception:
             _obs_disp = str(_obs_raw)[:60]
-        sec_nok_rows += f"<tr><td>{n.get('data','')}</td><td><b>{n.get('item','')}</b></td><td>{_obs_disp}</td></tr>"
+        sec_nok_rows += (f"<tr style='background:#fff8e0;'>"
+                         f"<td>{n.get('data','')}</td><td><b>{n.get('item','')}</b></td>"
+                         f"<td style='color:#b45309'>{_obs_disp}</td></tr>")
 
     # ── Trafo
     trafo_rows = ""
@@ -712,6 +720,78 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
         "</table>"
     )
 
+    # ── Tabela resumo de status por equipamento ───────────────────────────────
+    def _status_badge(s):
+        s = str(s).upper()
+        if "NORMAL" in s or s in ("OK", "0 NOK"):
+            return f"<span style='color:#10b981;font-weight:700'>{s}</span>"
+        if "ALARME" in s or "NOK" in s:
+            return f"<span style='color:#f59e0b;font-weight:700'>{s}</span>"
+        if "BLOQUEIO" in s:
+            return f"<span style='color:#ef4444;font-weight:700'>{s}</span>"
+        if "SEM REGISTRO" in s or s == "—":
+            return f"<span style='color:#94a3b8;font-style:italic'>{s}</span>"
+        return f"<span style='color:#64748b'>{s}</span>"
+
+    _th_res = "padding:7px 10px;background:#f1f5f9;color:#0f3460;font-size:11px;text-transform:uppercase;"
+    _td_res = "padding:7px 10px;font-size:12px;"
+
+    # SF6: contagem de disjuntores inspecionados e status
+    _sf6_djs_total = len(set(r.get("disjuntor","") for r in sf6_tabela)) if sf6_tabela else 0
+    _sf6_alarmes   = sum(1 for r in sf6_tabela
+                         if str(r.get("status_sf6","")).upper() not in ("NORMAL",""))
+    _sf6_status    = "NORMAL" if _sf6_alarmes == 0 else f"{_sf6_alarmes} ALARME(S)"
+    _sf6_ult_data  = max((r.get("data","") for r in sf6_tabela), default="—") if sf6_tabela else "—"
+
+    # Seccionadoras
+    _sec_t   = sec_resumo.get("total", 0)
+    _sec_i   = sec_resumo.get("inspecionadas", 0)
+    _sec_nok = len(sec_resumo.get("nok", []))
+    _sec_ult = max((n.get("data","") for n in sec_resumo.get("nok", []) + sec_resumo.get("todas", [])),
+                   default="—") if (sec_resumo.get("nok") or sec_resumo.get("todas")) else "—"
+
+    _resumo_rows = (
+        f"<tr><td style='{_td_res}font-weight:700;color:#0f3460;'>⚡ SF6 Disjuntores</td>"
+        f"<td style='{_td_res}'>{_sf6_djs_total}/6 inspecionados</td>"
+        f"<td style='{_td_res}'>{_status_badge(_sf6_status)}</td>"
+        f"<td style='{_td_res}color:#475569;'>{_sf6_ult_data}</td></tr>"
+
+        f"<tr><td style='{_td_res}font-weight:700;color:#0f3460;'>🔌 Seccionadoras</td>"
+        f"<td style='{_td_res}'>{_sec_i}/{_sec_t} inspecionadas</td>"
+        f"<td style='{_td_res}'>{_status_badge('NORMAL' if _sec_nok == 0 else f'{_sec_nok} NOK')}</td>"
+        f"<td style='{_td_res}color:#475569;'>{_sec_ult}</td></tr>"
+    )
+    # Trafo
+    _tr_data   = trafo_insp.get("data", "—") if trafo_insp else "—"
+    _tr_status = trafo_insp.get("status", "Sem registro") if trafo_insp else "Sem registro"
+    _resumo_rows += (
+        f"<tr><td style='{_td_res}font-weight:700;color:#0f3460;'>🔄 Transformador</td>"
+        f"<td style='{_td_res}'>1/1 inspecionado</td>"
+        f"<td style='{_td_res}'>{_status_badge(_tr_status)}</td>"
+        f"<td style='{_td_res}color:#475569;'>{_tr_data}</td></tr>"
+    )
+    # Inspeções complementares
+    for _ic_item in insp_complement:
+        _ic_icon = ("⛈️" if "Para-raios" in _ic_item.get("nome","")
+                    else "💡" if "Sala" in _ic_item.get("nome","")
+                    else "🔌")
+        _resumo_rows += (
+            f"<tr><td style='{_td_res}font-weight:700;color:#0f3460;'>"
+            f"{_ic_icon} {_ic_item.get('nome','')}</td>"
+            f"<td style='{_td_res}'>1/1 inspecionado</td>"
+            f"<td style='{_td_res}'>{_status_badge(_ic_item.get('status','Sem registro'))}</td>"
+            f"<td style='{_td_res}color:#475569;'>{_ic_item.get('data','—')}</td></tr>"
+        )
+
+    _status_resumo_html = (
+        f"<br><p style='font-size:11px;font-weight:700;color:#0f3460;text-transform:uppercase;"
+        f"letter-spacing:0.5px;margin:14px 0 6px;'>Status por Equipamento</p>"
+        f"<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse;font-size:13px;'>"
+        f"<tr><th style='{_th_res}'>Equipamento</th><th style='{_th_res}'>Inspeções</th>"
+        f"<th style='{_th_res}'>Status</th><th style='{_th_res}'>Última Inspeção</th></tr>"
+        f"{_resumo_rows}</table>"
+    )
+
     # ── SF6 tabela ────────────────────────────────────────────────────────────
     sf6_rows = ""
     for r in sf6_tabela:
@@ -737,6 +817,65 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
         f"<th style='{th_style}'>P.Corrigida 20°C</th><th style='{th_style}'>Data/Hora</th>"
         f"<th style='{th_style}'>Status</th></tr>{sf6_rows}</table>"
     )
+
+    # ── SF6 comparativo mês a mês ─────────────────────────────────────────────
+    _sf6_comp_html = ""
+    if sf6_historico:
+        _por_mes_dj: dict = {}
+        for _rh in sf6_historico:
+            _dj = str(_rh.get("disjuntor", ""))
+            try:
+                _dt_h = datetime.strptime(str(_rh.get("data", ""))[:10], "%Y-%m-%d")
+                _mes_k = (_dt_h.year, _dt_h.month)
+                _p_h   = float(_rh.get("pressao_corrigida", 0) or 0)
+                if _p_h > 0:
+                    _chave = (_dj, _mes_k)
+                    _por_mes_dj[_chave] = min(_por_mes_dj.get(_chave, 99), _p_h)
+            except Exception:
+                pass
+        _meses_disp = sorted(set(mk for (_, mk) in _por_mes_dj.keys()))
+        if len(_meses_disp) >= 2:
+            _m1, _m2 = _meses_disp[-2], _meses_disp[-1]
+            _MESES_PT_C = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",
+                           7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
+            _lbl_m1 = f"{_MESES_PT_C[_m1[1]]}/{str(_m1[0])[2:]}"
+            _lbl_m2 = f"{_MESES_PT_C[_m2[1]]}/{str(_m2[0])[2:]}"
+            _djs_comp = sorted(set(dj for (dj, _) in _por_mes_dj.keys()))
+            _comp_rows = ""
+            _th_c = "padding:7px 10px;background:#f1f5f9;color:#0f3460;font-size:11px;"
+            _td_c = "padding:7px 10px;font-size:12px;"
+            for _dj_c in _djs_comp:
+                _p_ant = _por_mes_dj.get((_dj_c, _m1))
+                _p_atu = _por_mes_dj.get((_dj_c, _m2))
+                if _p_ant is None and _p_atu is None:
+                    continue
+                _s_ant = f"{_p_ant:.3f}" if _p_ant else "—"
+                _s_atu = f"{_p_atu:.3f}" if _p_atu else "—"
+                _delta = ""
+                if _p_ant and _p_atu:
+                    _dv = _p_atu - _p_ant
+                    _delta_cor = "#10b981" if _dv >= 0 else "#ef4444"
+                    _delta = (f"<span style='color:{_delta_cor};font-weight:700'>"
+                              f"{'▲' if _dv >= 0 else '▼'} {abs(_dv):.3f}</span>")
+                _comp_rows += (
+                    f"<tr><td style='{_td_c}font-weight:700;color:#0f3460;'>{_dj_c}</td>"
+                    f"<td style='{_td_c}text-align:center;'>{_s_ant}</td>"
+                    f"<td style='{_td_c}text-align:center;'>{_s_atu}</td>"
+                    f"<td style='{_td_c}text-align:center;'>{_delta}</td></tr>"
+                )
+            if _comp_rows:
+                _sf6_comp_html = (
+                    f"<br><p style='font-size:11px;font-weight:700;color:#0f3460;"
+                    f"text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;'>"
+                    f"Comparativo Mensal — Pressão Mínima por Disjuntor (bar a 20°C)</p>"
+                    f"<table width='100%' cellpadding='0' cellspacing='0' border='0' "
+                    f"style='border-collapse:collapse;font-size:13px;'>"
+                    f"<tr><th style='{_th_c}'>Disjuntor</th>"
+                    f"<th style='{_th_c}text-align:center;'>{_lbl_m1}</th>"
+                    f"<th style='{_th_c}text-align:center;'>{_lbl_m2}</th>"
+                    f"<th style='{_th_c}text-align:center;'>Variação</th></tr>"
+                    f"{_comp_rows}</table>"
+                )
 
     # Gauges SF6 (velocímetros) + histórico completo
     _gauges_b64 = gauges_sf6_base64(sf6_tabela)
@@ -1054,7 +1193,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
 
   <!-- SEÇÃO 1: RESUMO -->
   <tr><td style="padding-bottom:16px;">
-    {secao("📊 1. Resumo Executivo", kpi_html)}
+    {secao("📊 1. Resumo Executivo", kpi_html + _status_resumo_html)}
   </td></tr>
 
   <!-- SEÇÃO 2: SF6 -->
@@ -1064,7 +1203,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
       f"Siemens 3AP1 FG · Nominal: <strong>6,0 bar</strong> · "
       f"Alarme 1 est.: <strong style='color:#f59e0b;'>5,2 bar</strong> · "
       f"Bloqueio 2 est.: <strong style='color:#ef4444;'>5,0 bar</strong> · Corrigida 20°C"
-      f"</p>{sf6_table}{img_sf6_html}{img_sf6_hist_html}"
+      f"</p>{sf6_table}{img_sf6_html}{img_sf6_hist_html}{_sf6_comp_html}"
       + (f"<br><p style='font-size:11px;font-weight:700;color:#0f3460;text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;'>Inspecao Visual por Disjuntor</p>"
          f"<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse;font-size:13px;'>"
          f"<tr><th style='{th_style}'>Disjuntor</th><th style='{th_style}'>Data</th>"

@@ -469,6 +469,15 @@ if "Painel" in pagina:
             {_linhas}
         </div>""", unsafe_allow_html=True)
 
+    # Alerta de manutenção — disjuntor com ≥ 5.000 operações tripolar
+    _df_cnt_alerta = _carregar_contadores()
+    if not _df_cnt_alerta.empty and "tripolar" in _df_cnt_alerta.columns:
+        _cnt_ult = _df_cnt_alerta.sort_values("data").groupby("disjuntor").last()
+        _djs_manut = [str(dj) for dj, row in _cnt_ult.iterrows()
+                      if int(row.get("tripolar") or 0) >= 5000]
+        if _djs_manut:
+            st.warning(f"🔧 Manutenção recomendada: {', '.join(_djs_manut)} — contador de operações ≥ 5.000. Acionar engenharia.")
+
     # Badge de último relatório enviado
     _ult_rel_mes = _carregar_config("relatorio_enviado_mes", None)
     _ult_rel_em  = _carregar_config("relatorio_enviado_em",  None)
@@ -499,6 +508,60 @@ if "Painel" in pagina:
         </div>""" for ic,n,lb,c in _kpis])
     st.markdown(f"""<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));
         gap:8px;margin-bottom:12px'>{_kpi_html}</div>""", unsafe_allow_html=True)
+
+    # ── Chips — dias desde a última inspeção por equipamento ────────────────
+    _d90_chips   = _data_insp - timedelta(days=90)
+    _df_insp_90d = _carregar_inspecoes(data_ini=_d90_chips, data_fim=_data_insp)
+    _ult_por_sis: dict = {}
+    if not _df_insp_90d.empty and "sistema" in _df_insp_90d.columns:
+        for _sis, _g in _df_insp_90d.groupby("sistema"):
+            try:
+                _ult_por_sis[_sis] = max(
+                    date.fromisoformat(str(d)[:10]) for d in _g["data"].dropna())
+            except Exception:
+                pass
+    _hoje_chips = datetime.now(_TZ_BR).date()
+    _chips_ult  = []
+    # SF6 — usa todo o histórico já carregado
+    if not df_sf6_all.empty and "data" in df_sf6_all.columns:
+        try:
+            _d_sf6 = max(date.fromisoformat(str(d)[:10]) for d in df_sf6_all["data"].dropna())
+            _di    = (_hoje_chips - _d_sf6).days
+            _c     = "#10b981" if _di <= 7 else "#f59e0b" if _di <= 30 else "#ef4444"
+            _chips_ult.append(
+                f"<span style='background:#0a1628;border:1px solid {_c};border-radius:20px;"
+                f"padding:3px 10px;font-size:0.7rem;color:{_c};margin:2px;display:inline-block'>"
+                f"⚡ SF6 · {_d_sf6} · {_di}d</span>")
+        except Exception:
+            pass
+    # Outros sistemas
+    for _sn, _ic, _lb in [
+        ("Seccionadora",           "🔌", "Seccionadoras"),
+        ("Transformador",          "🔄", "Transformador"),
+        ("Subestação 230kV",       "⛈️", "Para-raios"),
+        ("Sala Elétrica da SE",    "💡", "Sala Elétrica"),
+        ("Cúbilo de 13.8kV da SE", "🔌", "Cúbilo 13,8kV"),
+    ]:
+        _d_sis = _ult_por_sis.get(_sn)
+        if _d_sis:
+            _di  = (_hoje_chips - _d_sis).days
+            _c   = "#10b981" if _di <= 7 else "#f59e0b" if _di <= 30 else "#ef4444"
+            _chips_ult.append(
+                f"<span style='background:#0a1628;border:1px solid {_c};border-radius:20px;"
+                f"padding:3px 10px;font-size:0.7rem;color:{_c};margin:2px;display:inline-block'>"
+                f"{_ic} {_lb} · {_d_sis} · {_di}d</span>")
+        else:
+            _chips_ult.append(
+                f"<span style='background:#0a1628;border:1px solid #ef4444;border-radius:20px;"
+                f"padding:3px 10px;font-size:0.7rem;color:#ef4444;margin:2px;display:inline-block'>"
+                f"{_ic} {_lb} · sem inspeção recente</span>")
+    if _chips_ult:
+        st.markdown(
+            "<div style='margin:0 0 12px;'>"
+            "<div style='font-size:0.65rem;color:#475569;text-transform:uppercase;"
+            "letter-spacing:1px;margin-bottom:5px'>Ultima inspeção por equipamento</div>"
+            "<div style='line-height:2.2'>" + "".join(_chips_ult) + "</div>"
+            "</div>", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -850,6 +913,43 @@ if "Painel" in pagina:
     _sec_done = len([t for t in secs_todos if t in secs_inspecionadas])
     _sec_pct  = _sec_done / _sec_tot if _sec_tot else 0
     st.progress(_sec_pct, text=f"{_sec_done}/{_sec_tot} seccionadoras inspecionadas no mês")
+
+    # Histórico de NCs — últimos 6 meses
+    _6m_sec_ref = date(_data_insp.year, _data_insp.month, 1) - timedelta(days=150)
+    _6m_sec_ini = date(_6m_sec_ref.year, _6m_sec_ref.month, 1)
+    _df_sec_hist6 = _carregar_inspecoes(sistema="Seccionadora",
+                                         data_ini=_6m_sec_ini, data_fim=_data_insp)
+    if not _df_sec_hist6.empty and "status" in _df_sec_hist6.columns:
+        _MESES_PT_S = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",
+                       7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
+        _df_sec_hist6 = _df_sec_hist6.copy()
+        _df_sec_hist6["_mes"] = (pd.to_datetime(
+            _df_sec_hist6["data"].astype(str).str[:10]).dt.to_period("M"))
+        _nc_mes  = _df_sec_hist6[_df_sec_hist6["status"] == "NOK"].groupby("_mes").size()
+        _tot_mes = _df_sec_hist6.groupby("_mes").size()
+        _meses_s = sorted(_tot_mes.index.tolist())
+        if _meses_s:
+            _lbs  = [f"{_MESES_PT_S[m.month]}/{str(m.year)[2:]}" for m in _meses_s]
+            _ncs  = [int(_nc_mes.get(m, 0)) for m in _meses_s]
+            _fig_nc = go.Figure(go.Bar(
+                x=_lbs, y=_ncs,
+                marker_color=["#ef4444" if v > 0 else "#10b981" for v in _ncs],
+                text=[f"{v} NC" if v > 0 else "OK" for v in _ncs],
+                textposition="outside",
+                hovertemplate="%{x}<br>%{y} NC<extra></extra>",
+            ))
+            _fig_nc.update_layout(
+                title=dict(text="NCs em Seccionadoras — últimos 6 meses",
+                           font=dict(size=12, color="#94a3b8"), x=0),
+                paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                font_color="#94a3b8", height=180,
+                margin=dict(l=20, r=20, t=36, b=20),
+                showlegend=False,
+                yaxis=dict(gridcolor="#1e3a5f", zeroline=True, zerolinecolor="#1e3a5f",
+                           tickformat="d", rangemode="tozero"),
+                xaxis=dict(gridcolor="#1e3a5f"),
+            )
+            st.plotly_chart(_fig_nc, use_container_width=True)
 
     _ITENS_SEC = [
         "Condição geral (visual)",
