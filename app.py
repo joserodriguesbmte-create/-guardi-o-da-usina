@@ -738,11 +738,15 @@ if "Painel" in pagina:
             _sec_hoje = _insp_hoje[_insp_hoje.sistema == "Seccionadora"]
             _outros_hoje = _insp_hoje[_insp_hoje.sistema != "Seccionadora"]
 
-            if not _sec_hoje.empty:
-                _n_sec = len(_sec_hoje["item"].unique())
-                _cor_sec = "#10b981" if _n_sec >= len(secs_todos) else "#06b6d4"
+            _n_sec_mes = len([t for t in secs_todos if t in secs_inspecionadas])
+            if _n_sec_mes > 0:
+                _cor_sec = "#10b981" if _n_sec_mes >= len(secs_todos) else "#06b6d4"
+                _n_sec_hoje = len(_sec_hoje["item"].unique()) if not _sec_hoje.empty else 0
+                _label_sec = f"{_n_sec_mes}/{len(secs_todos)} no mês"
+                if _n_sec_hoje > 0 and _n_sec_hoje < _n_sec_mes:
+                    _label_sec += f" · {_n_sec_hoje} hoje"
                 _hist_itens.append(("🔌", "#0c2340",
-                    f"<b style='color:{_cor_sec}'>{_n_sec}/{len(secs_todos)} seccionadoras</b>"
+                    f"<b style='color:{_cor_sec}'>{_label_sec} seccionadoras</b>"
                     f"<span style='color:#475569'> inspecionadas</span>"))
 
             for _, _ri in _outros_hoje.drop_duplicates("sistema").iterrows():
