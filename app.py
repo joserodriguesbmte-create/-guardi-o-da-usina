@@ -844,10 +844,17 @@ if "Painel" in pagina:
         text-transform:uppercase;letter-spacing:1px;margin-bottom:6px'>
         🔌 Inspeção de Seccionadoras</div>""", unsafe_allow_html=True)
 
+    # Progresso e dropdown: baseados no dia atual (consistente com "atividades de hoje")
+    _df_sec_hoje = _carregar_inspecoes_hoje(_data_insp)
+    if not _df_sec_hoje.empty and "sistema" in _df_sec_hoje.columns:
+        _secs_feitas_hoje = set(_df_sec_hoje[_df_sec_hoje.sistema == "Seccionadora"]["item"].unique())
+    else:
+        _secs_feitas_hoje = set()
+
     _sec_tot  = len(secs_todos)
-    _sec_done = len([t for t in secs_todos if t in secs_inspecionadas])
+    _sec_done = len([t for t in secs_todos if t in _secs_feitas_hoje])
     _sec_pct  = _sec_done / _sec_tot if _sec_tot else 0
-    st.progress(_sec_pct, text=f"{_sec_done}/{_sec_tot} seccionadoras inspecionadas no mês")
+    st.progress(_sec_pct, text=f"{_sec_done}/{_sec_tot} seccionadoras inspecionadas hoje")
 
     _ITENS_SEC = [
         "Condição geral (visual)",
@@ -859,23 +866,10 @@ if "Painel" in pagina:
         "Identificação e sinalização",
     ]
 
-    _ciclo_completo = (len(secs_inspecionadas) >= len(secs_todos) and len(secs_todos) > 0)
-    if _ciclo_completo:
-        # Nova rodada: usa inspeções de hoje para controlar o que já foi feito
-        _df_hoje_completo = _carregar_inspecoes_hoje(_data_insp)
-        if not _df_hoje_completo.empty and "sistema" in _df_hoje_completo.columns:
-            _secs_feitas_hoje = set(
-                _df_hoje_completo[_df_hoje_completo.sistema == "Seccionadora"]["item"].unique()
-            )
-        else:
-            _secs_feitas_hoje = set()
-        _secs_para_form = [t for t in secs_todos if t not in _secs_feitas_hoje]
-        if not _secs_para_form:
-            _secs_para_form = list(secs_todos)
-        _nova_rodada_done = len([t for t in secs_todos if t in _secs_feitas_hoje])
-        st.info(f"🔄 Ciclo do mês completo — nova rodada: {_nova_rodada_done}/{len(secs_todos)} feitas hoje.")
-    else:
-        _secs_para_form = secs_pendentes
+    _secs_para_form = [t for t in secs_todos if t not in _secs_feitas_hoje]
+    if not _secs_para_form:
+        _secs_para_form = list(secs_todos)
+        st.info(f"✅ Todas as {_sec_tot} seccionadoras inspecionadas hoje.")
 
     if _secs_para_form:
         _df_sec_pend = df_secs_db[df_secs_db["tag"].isin(_secs_para_form)]
