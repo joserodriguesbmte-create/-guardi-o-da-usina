@@ -529,6 +529,70 @@ if "Painel" in pagina:
     st.markdown(f"""<div style='display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));
         gap:8px;margin-bottom:12px'>{_kpi_html}</div>""", unsafe_allow_html=True)
 
+    # ── Tendência SF6 — projeção de queda de pressão ─────────────────────────
+    if not df_sf6_all.empty and "data" in df_sf6_all.columns and len(df_sf6_all) >= 4:
+        try:
+            import numpy as np
+            _df_tend = df_sf6_all.copy()
+            _df_tend["_data_p"] = pd.to_datetime(_df_tend["data"].astype(str).str[:10])
+            _df_tend["_mes_n"]  = _df_tend["_data_p"].dt.year * 12 + _df_tend["_data_p"].dt.month
+            _por_mes_t = (_df_tend.groupby(["disjuntor","_mes_n"])["pressao_corrigida"]
+                          .min().reset_index())
+            _tend_itens = []
+            for _dj_t, _g_t in _por_mes_t.groupby("disjuntor"):
+                _g_t = _g_t.sort_values("_mes_n")
+                if len(_g_t) < 2:
+                    continue
+                _x_t = _g_t["_mes_n"].values.astype(float)
+                _y_t = _g_t["pressao_corrigida"].values.astype(float)
+                _sl, _ = np.polyfit(_x_t, _y_t, 1)  # bar/mês
+                if _sl >= -0.001:
+                    continue  # estável ou subindo
+                _p_atu_t  = float(_y_t[-1])
+                _meses_al = (_p_atu_t - 5.2) / abs(_sl)
+                _meses_bl = (_p_atu_t - 5.0) / abs(_sl)
+                _tend_itens.append({
+                    "dj": str(_dj_t), "sl": _sl,
+                    "p": _p_atu_t, "mal": _meses_al, "mbl": _meses_bl,
+                })
+            if _tend_itens:
+                _tend_itens.sort(key=lambda x: x["mal"])
+                _linhas_t = ""
+                for _ti in _tend_itens:
+                    _mal = _ti["mal"]
+                    _mbl = _ti["mbl"]
+                    _cor_t = ("#ef4444" if _mal < 1
+                              else "#f97316" if _mal < 3
+                              else "#f59e0b" if _mal < 6
+                              else "#10b981")
+                    _mal_s = f"{_mal:.1f} meses" if _mal > 0 else "JA EM ALARME"
+                    _mbl_s = f"{_mbl:.1f} meses" if 0 < _mbl < 99 else "—"
+                    _sl_s  = f"{abs(_ti['sl'])*1000:.0f} mbar/mês"
+                    _linhas_t += (
+                        f"<div style='display:flex;justify-content:space-between;align-items:center;"
+                        f"background:rgba(0,0,0,0.25);border-radius:6px;padding:7px 12px;margin:4px 0'>"
+                        f"<span style='color:#f1f5f9;font-weight:700;font-size:0.88rem'>⚡ {_ti['dj']}"
+                        f" · {_ti['p']:.3f} bar</span>"
+                        f"<span style='color:#64748b;font-size:0.75rem'>-{_sl_s}</span>"
+                        f"<span style='color:{_cor_t};font-weight:700;font-size:0.85rem'>"
+                        f"alarme ~{_mal_s}</span></div>"
+                    )
+                st.markdown(
+                    f"<div style='background:#0f172a;border:1px solid #334155;"
+                    f"border-left:3px solid #f59e0b;border-radius:10px;"
+                    f"padding:12px 16px;margin-bottom:12px'>"
+                    f"<div style='color:#f59e0b;font-size:0.8rem;font-weight:700;"
+                    f"text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px'>"
+                    f"📉 Tendência SF6 — projeção de queda</div>"
+                    f"{_linhas_t}"
+                    f"<div style='color:#334155;font-size:0.68rem;margin-top:8px'>"
+                    f"Regressão linear · histórico mensal · pressão mínima por disjuntor a 20°C</div>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+        except Exception:
+            pass
+
     # ── Chips — dias desde a última inspeção por equipamento ────────────────
     _d90_chips   = _data_insp - timedelta(days=90)
     _df_insp_90d = _carregar_inspecoes(data_ini=_d90_chips, data_fim=_data_insp)
