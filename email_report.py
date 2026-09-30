@@ -436,9 +436,10 @@ def gerar_html_pdf(dados: dict) -> str:
                             f"<td style='text-align:center'>{_dlt_str}</td></tr>")
             if _cr_pdf:
                 _sf6_comp_pdf = (
+                    f"<div style='page-break-inside:avoid'>"
                     f"<h3>Comparativo Mensal — Pressao Minima por Disjuntor (bar a 20C)</h3>"
                     f"<table><tr><th>Disjuntor</th><th>{_l1c}</th><th>{_l2c}</th>"
-                    f"<th>Variacao</th></tr>{_cr_pdf}</table>"
+                    f"<th>Variacao</th></tr>{_cr_pdf}</table></div>"
                 )
 
     # Tendência SF6 — regressão linear (PDF)
@@ -487,10 +488,11 @@ def gerar_html_pdf(dados: dict) -> str:
                 )
             if _tend_rows:
                 _sf6_tend_pdf = (
+                    "<div style='page-break-inside:avoid'>"
                     "<h3>Tendencia de Queda SF6 — Projecao (pressao corrigida a 20C)</h3>"
                     "<table><tr><th>Disjuntor</th><th>P.Atual (bar)</th>"
                     "<th>Queda</th><th>Alarme em</th><th>Bloqueio em</th></tr>"
-                    f"{_tend_rows}</table>"
+                    f"{_tend_rows}</table></div>"
                 )
         except Exception:
             pass
@@ -687,9 +689,9 @@ continua dos sistemas da usina.</p>
 
 {_sf6_tend_pdf}
 
-{"<h3>Inspecao Visual por Disjuntor</h3><table><tr><th>Disjuntor</th><th>Data</th><th>Status</th><th>Itens NC</th></tr>" + vis_rows + "</table>" if vis_rows else ""}
+{"<div style='page-break-inside:avoid'><h3>Inspecao Visual por Disjuntor</h3><table><tr><th>Disjuntor</th><th>Data</th><th>Status</th><th>Itens NC</th></tr>" + vis_rows + "</table></div>" if vis_rows else ""}
 
-{"<h3>Contadores de Operacoes</h3><table><tr><th>Data</th><th>Disjuntor</th><th>Tripolar</th><th>Curto-Circ.</th><th>Polo A</th><th>Polo B</th><th>Polo V</th></tr>" + cnt_rows + "</table>" if cnt_rows else ""}
+{"<div style='page-break-inside:avoid'><h3>Contadores de Operacoes</h3><table><tr><th>Data</th><th>Disjuntor</th><th>Tripolar</th><th>Curto-Circ.</th><th>Polo A</th><th>Polo B</th><th>Polo V</th></tr>" + cnt_rows + "</table></div>" if cnt_rows else ""}
 
 <!-- SECCIONADORAS -->
 <div style="page-break-inside:avoid">
