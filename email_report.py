@@ -438,7 +438,7 @@ def gerar_html_pdf(dados: dict) -> str:
                 _sf6_comp_pdf = (
                     f"<div style='page-break-inside:avoid'>"
                     f"<h3>Comparativo Mensal — Pressao Minima por Disjuntor (bar a 20C)</h3>"
-                    f"<table><tr><th>Disjuntor</th><th>{_l1c}</th><th>{_l2c}</th>"
+                    f"<table style='page-break-inside:avoid'><tr><th>Disjuntor</th><th>{_l1c}</th><th>{_l2c}</th>"
                     f"<th>Variacao</th></tr>{_cr_pdf}</table></div>"
                 )
 
@@ -490,7 +490,7 @@ def gerar_html_pdf(dados: dict) -> str:
                 _sf6_tend_pdf = (
                     "<div style='page-break-inside:avoid'>"
                     "<h3>Tendencia de Queda SF6 — Projecao (pressao corrigida a 20C)</h3>"
-                    "<table><tr><th>Disjuntor</th><th>P.Atual (bar)</th>"
+                    "<table style='page-break-inside:avoid'><tr><th>Disjuntor</th><th>P.Atual (bar)</th>"
                     "<th>Queda</th><th>Alarme em</th><th>Bloqueio em</th></tr>"
                     f"{_tend_rows}</table></div>"
                 )
@@ -633,8 +633,8 @@ def gerar_html_pdf(dados: dict) -> str:
 @page {{ size: A4; margin: 1.5cm; }}
 body {{ font-family: Arial, sans-serif; font-size: 12px; color: #334155; }}
 h1 {{ color: #0c2340; font-size: 18px; text-align: center; }}
-h2 {{ color: #0f3460; font-size: 14px; border-bottom: 2px solid #0f3460; padding-bottom: 4px; margin-top: 20px; }}
-h3 {{ color: #0f3460; font-size: 13px; margin-top: 16px; }}
+h2 {{ color: #0f3460; font-size: 14px; border-bottom: 2px solid #0f3460; padding-bottom: 4px; margin-top: 28px; margin-bottom: 10px; }}
+h3 {{ color: #0f3460; font-size: 13px; margin-top: 18px; margin-bottom: 6px; }}
 table {{ width: 100%; border-collapse: collapse; margin: 8px 0; }}
 th {{ background: #e2e8f0; padding: 6px 8px; text-align: left; font-size: 11px; border: 1px solid #cbd5e1; }}
 td {{ padding: 5px 8px; font-size: 11px; border: 1px solid #e2e8f0; }}
@@ -689,12 +689,12 @@ continua dos sistemas da usina.</p>
 
 {_sf6_tend_pdf}
 
-{"<div style='page-break-inside:avoid'><h3>Inspecao Visual por Disjuntor</h3><table><tr><th>Disjuntor</th><th>Data</th><th>Status</th><th>Itens NC</th></tr>" + vis_rows + "</table></div>" if vis_rows else ""}
+{"<div style='page-break-inside:avoid'><h3>Inspecao Visual por Disjuntor</h3><table style='page-break-inside:avoid'><tr><th>Disjuntor</th><th>Data</th><th>Status</th><th>Itens NC</th></tr>" + vis_rows + "</table></div>" if vis_rows else ""}
 
-{"<div style='page-break-inside:avoid'><h3>Contadores de Operacoes</h3><table><tr><th>Data</th><th>Disjuntor</th><th>Tripolar</th><th>Curto-Circ.</th><th>Polo A</th><th>Polo B</th><th>Polo V</th></tr>" + cnt_rows + "</table></div>" if cnt_rows else ""}
+{"<div style='page-break-inside:avoid'><h3>Contadores de Operacoes</h3><table style='page-break-inside:avoid'><tr><th>Data</th><th>Disjuntor</th><th>Tripolar</th><th>Curto-Circ.</th><th>Polo A</th><th>Polo B</th><th>Polo V</th></tr>" + cnt_rows + "</table></div>" if cnt_rows else ""}
 
 <!-- SECCIONADORAS -->
-<div style="page-break-inside:avoid">
+<div style="page-break-inside:avoid;margin-top:10px">
 <h2>3. Inspecoes de Seccionadoras</h2>
 <p>Inspecionadas: <b>{sec_resumo.get('inspecionadas',0)}/{sec_resumo.get('total',0)}</b>
 ({int(sec_resumo.get('inspecionadas',0)/sec_resumo.get('total',1)*100)}%) · NOK: <b>{len(nok_sec)}</b></p>
@@ -718,7 +718,7 @@ continua dos sistemas da usina.</p>
 <!-- PENDÊNCIAS -->
 <div style="page-break-inside:avoid">
 <h2>6. Pendencias em Aberto</h2>
-{"<table style='table-layout:fixed;width:100%'><tr><th style='width:12%'>Data</th><th style='width:44%'>Descricao</th><th style='width:12%'>Prioridade</th><th style='width:16%'>Nota SAP</th><th style='width:16%'>Status</th></tr>" + pend_rows + "</table>" if pend_rows else '<p style="color:#10b981">Sem pendencias abertas.</p>'}
+{"<table style='page-break-inside:avoid;table-layout:fixed;width:100%'><tr><th style='width:12%'>Data</th><th style='width:44%'>Descricao</th><th style='width:12%'>Prioridade</th><th style='width:16%'>Nota SAP</th><th style='width:16%'>Status</th></tr>" + pend_rows + "</table>" if pend_rows else '<p style="color:#10b981">Sem pendencias abertas.</p>'}
 </div>
 
 <!-- FOTOS -->
@@ -733,7 +733,7 @@ continua dos sistemas da usina.</p>
 </div>
 
 <!-- ASSINATURA -->
-<div style="margin-top:30px">
+<div style="margin-top:40px">
 <table style="border:none"><tr>
 <td style="border:none;width:50%"><hr style="border-top:1px solid #cbd5e1">
 <b>{operador}</b><br><small>Guardiao — Nivel {nivel}</small></td>
