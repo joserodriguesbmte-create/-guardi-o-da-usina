@@ -441,6 +441,60 @@ def gerar_html_pdf(dados: dict) -> str:
                     f"<th>Variacao</th></tr>{_cr_pdf}</table>"
                 )
 
+    # Tendência SF6 — regressão linear (PDF)
+    _sf6_tend_pdf = ""
+    if sf6_historico and len(sf6_historico) >= 4:
+        try:
+            import numpy as _np
+            _pmt: dict = {}
+            for _rh in sf6_historico:
+                _djh2 = str(_rh.get("disjuntor", ""))
+                try:
+                    _dt3 = datetime.strptime(str(_rh.get("data", ""))[:10], "%Y-%m-%d")
+                    _mn  = _dt3.year * 12 + _dt3.month
+                    _ph2 = float(_rh.get("pressao_corrigida", 0) or 0)
+                    if _ph2 > 0:
+                        _ck2 = (_djh2, _mn)
+                        _pmt[_ck2] = min(_pmt.get(_ck2, 99), _ph2)
+                except Exception:
+                    pass
+            _djs_t = sorted(set(d for (d, _) in _pmt.keys()))
+            _tend_rows = ""
+            for _djt in _djs_t:
+                _pts = sorted((mn, p) for (d, mn), p in _pmt.items() if d == _djt)
+                if len(_pts) < 2:
+                    continue
+                _xt = _np.array([p[0] for p in _pts], dtype=float)
+                _yt = _np.array([p[1] for p in _pts], dtype=float)
+                _sl2, _ = _np.polyfit(_xt, _yt, 1)
+                if _sl2 >= -0.001:
+                    continue
+                _p_at = float(_yt[-1])
+                _mal2 = (_p_at - 5.2) / abs(_sl2)
+                _mbl2 = (_p_at - 5.0) / abs(_sl2)
+                _cor_t2 = ("#ef4444" if _mal2 < 1 else
+                           "#f97316" if _mal2 < 3 else
+                           "#f59e0b" if _mal2 < 6 else "#10b981")
+                _mal2_s = f"{_mal2:.1f} meses" if _mal2 > 0 else "JA EM ALARME"
+                _mbl2_s = f"{_mbl2:.1f} meses" if 0 < _mbl2 < 99 else "—"
+                _sl2_s  = f"{abs(_sl2)*1000:.0f} mbar/mes"
+                _tend_rows += (
+                    f"<tr><td><b>{_djt}</b></td>"
+                    f"<td style='text-align:center'>{_p_at:.3f}</td>"
+                    f"<td style='text-align:center;color:#ef4444'>-{_sl2_s}</td>"
+                    f"<td style='text-align:center;color:{_cor_t2}'><b>{_mal2_s}</b></td>"
+                    f"<td style='text-align:center'>{_mbl2_s}</td></tr>"
+                )
+            if _tend_rows:
+                _sf6_tend_pdf = (
+                    "<h3>Tendencia de Queda SF6 — Projecao (pressao corrigida a 20C)</h3>"
+                    "<table><tr><th>Disjuntor</th><th>P.Atual (bar)</th>"
+                    "<th>Queda</th><th>Alarme em</th><th>Bloqueio em</th></tr>"
+                    f"{_tend_rows}</table>"
+                )
+        except Exception:
+            pass
+
     # Logos
     _lg = _logo_b64("logo_guardioes.png")
     _ln = _logo_b64("logo_norte_energia.png")
@@ -630,6 +684,8 @@ continua dos sistemas da usina.</p>
 {_hist_img_pdf}
 
 {_sf6_comp_pdf}
+
+{_sf6_tend_pdf}
 
 {"<h3>Inspecao Visual por Disjuntor</h3><table><tr><th>Disjuntor</th><th>Data</th><th>Status</th><th>Itens NC</th></tr>" + vis_rows + "</table>" if vis_rows else ""}
 
