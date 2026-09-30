@@ -394,6 +394,53 @@ def gerar_html_pdf(dados: dict) -> str:
                      f'<img src="data:image/png;base64,{_hist_b64_pdf}" width="560">'
                      if _hist_b64_pdf else "")
 
+    # Comparativo SF6 mês a mês (PDF)
+    _sf6_comp_pdf = ""
+    if sf6_historico:
+        _pmdf: dict = {}
+        for _rh in sf6_historico:
+            _djh = str(_rh.get("disjuntor", ""))
+            try:
+                _dt2 = datetime.strptime(str(_rh.get("data", ""))[:10], "%Y-%m-%d")
+                _mkh = (_dt2.year, _dt2.month)
+                _ph = float(_rh.get("pressao_corrigida", 0) or 0)
+                if _ph > 0:
+                    _ck = (_djh, _mkh)
+                    _pmdf[_ck] = min(_pmdf.get(_ck, 99), _ph)
+            except Exception:
+                pass
+        _ms_pdf = sorted(set(mk for (_, mk) in _pmdf.keys()))
+        if len(_ms_pdf) >= 2:
+            _m1c, _m2c = _ms_pdf[-2], _ms_pdf[-1]
+            _PT2 = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",
+                    7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
+            _l1c = f"{_PT2[_m1c[1]]}/{str(_m1c[0])[2:]}"
+            _l2c = f"{_PT2[_m2c[1]]}/{str(_m2c[0])[2:]}"
+            _cr_pdf = ""
+            for _djc in sorted(set(d for (d, _) in _pmdf.keys())):
+                _pa = _pmdf.get((_djc, _m1c))
+                _pb = _pmdf.get((_djc, _m2c))
+                if _pa is None and _pb is None:
+                    continue
+                _sa = f"{_pa:.3f}" if _pa else "—"
+                _sb = f"{_pb:.3f}" if _pb else "—"
+                _dlt_str = ""
+                if _pa and _pb:
+                    _dv = _pb - _pa
+                    _dcor = "#10b981" if _dv >= 0 else "#ef4444"
+                    _sg = "+" if _dv >= 0 else "-"
+                    _dlt_str = f"<span style='color:{_dcor}'><b>{_sg}{abs(_dv):.3f}</b></span>"
+                _cr_pdf += (f"<tr><td>{_djc}</td>"
+                            f"<td style='text-align:center'>{_sa}</td>"
+                            f"<td style='text-align:center'>{_sb}</td>"
+                            f"<td style='text-align:center'>{_dlt_str}</td></tr>")
+            if _cr_pdf:
+                _sf6_comp_pdf = (
+                    f"<h3>Comparativo Mensal — Pressao Minima por Disjuntor (bar a 20C)</h3>"
+                    f"<table><tr><th>Disjuntor</th><th>{_l1c}</th><th>{_l2c}</th>"
+                    f"<th>Variacao</th></tr>{_cr_pdf}</table>"
+                )
+
     # Logos
     _lg = _logo_b64("logo_guardioes.png")
     _ln = _logo_b64("logo_norte_energia.png")
@@ -469,16 +516,47 @@ def gerar_html_pdf(dados: dict) -> str:
         comp_rows += (f"<tr><td><b>{ic.get('nome','')}</b></td><td>{ic.get('data','—')}</td>"
                       f"<td style='color:{cor}'><b>{ic.get('status','—')}</b></td></tr>")
 
+    # ── Tabela de status por equipamento (PDF)
+    _sf6_djs_insp = len(set(r.get("disjuntor","") for r in sf6_tabela)) if sf6_tabela else 0
+    _sf6_alarm_cnt = sum(1 for r in sf6_tabela if str(r.get("status_sf6","")).upper() not in ("NORMAL",""))
+    _sf6_status_p = "NORMAL" if _sf6_alarm_cnt == 0 else f"{_sf6_alarm_cnt} ALARME(S)"
+    _sec_nok_cnt = len(nok_sec)
+    _sec_status_p = "NORMAL" if _sec_nok_cnt == 0 else f"{_sec_nok_cnt} NOK"
+    _sec_cor_p = "#10b981" if _sec_nok_cnt == 0 else "#f59e0b"
+    _st_eq_rows = (
+        f"<tr><td>SF6 Disjuntores</td><td>{_sf6_djs_insp}/6 inspecionados</td>"
+        f"<td style='color:{_status_cor(_sf6_status_p)}'><b>{_sf6_status_p}</b></td></tr>"
+        f"<tr><td>Seccionadoras</td>"
+        f"<td>{sec_resumo.get('inspecionadas',0)}/{sec_resumo.get('total',0)} inspecionadas</td>"
+        f"<td style='color:{_sec_cor_p}'><b>{_sec_status_p}</b></td></tr>"
+    )
+    for _ic_p in insp_complement:
+        _ic_cor_p = _status_cor(_ic_p.get("status", ""))
+        _st_eq_rows += (
+            f"<tr><td>{_ic_p.get('nome','')}</td><td>Inspecionado</td>"
+            f"<td style='color:{_ic_cor_p}'><b>{_ic_p.get('status','—')}</b></td></tr>"
+        )
+    _status_eq_html = (
+        "<h3>Status por Equipamento</h3>"
+        "<table><tr><th>Equipamento</th><th>Inspecoes</th><th>Status</th></tr>"
+        f"{_st_eq_rows}</table>"
+    )
+
     # ── Pendências
     pend_rows = ""
     for p in pendencias:
         _pri = p.get('prioridade', '')
+        _sta = p.get('status', '')
         _pri_cor = "#ef4444" if _pri == "Alta" else "#f59e0b" if _pri in ("Media","Média") else "#475569"
-        pend_rows += (f"<tr><td style='width:70px'>{p.get('data_abertura','')}</td>"
-                      f"<td style='word-wrap:break-word'>{str(p.get('descricao',''))}</td>"
-                      f"<td style='color:{_pri_cor};width:50px'><b>{_pri}</b></td>"
-                      f"<td style='width:70px'>{p.get('nota_sap','—')}</td>"
-                      f"<td style='width:50px'>{p.get('status','')}</td></tr>")
+        _bg_pend = ("background:#ffe0e0;" if _pri == "Alta"
+                    else "background:#fff8e0;" if _pri in ("Media","Média")
+                    else "background:#e8f5e9;" if "Conclu" in _sta else "")
+        pend_rows += (f"<tr style='{_bg_pend}'>"
+                      f"<td>{p.get('data_abertura','')}</td>"
+                      f"<td style='word-break:break-all;overflow-wrap:break-word'>{str(p.get('descricao',''))}</td>"
+                      f"<td style='color:{_pri_cor}'><b>{_pri}</b></td>"
+                      f"<td>{p.get('nota_sap','—')}</td>"
+                      f"<td>{_sta}</td></tr>")
 
     # ── Fotos (página própria, tabela 2 colunas, fotos maiores)
     fotos_html = ""
@@ -537,6 +615,8 @@ continua dos sistemas da usina.</p>
 <td style="text-align:center"><b style="font-size:20px;color:#06b6d4">{resumo.get('pendencias_concluidas',0)}</b><br><small>Pend. Concluidas</small></td>
 </tr></table>
 
+{_status_eq_html}
+
 <!-- SF6 -->
 <h2>2. Monitoramento SF6 — Disjuntores 230kV</h2>
 <p><small>Siemens 3AP1 FG · Nominal: 6,0 bar · Alarme: 5,2 bar · Bloqueio: 5,0 bar · Corrigida 20C</small></p>
@@ -548,6 +628,8 @@ continua dos sistemas da usina.</p>
 {_gauges_img}
 
 {_hist_img_pdf}
+
+{_sf6_comp_pdf}
 
 {"<h3>Inspecao Visual por Disjuntor</h3><table><tr><th>Disjuntor</th><th>Data</th><th>Status</th><th>Itens NC</th></tr>" + vis_rows + "</table>" if vis_rows else ""}
 
@@ -578,7 +660,7 @@ continua dos sistemas da usina.</p>
 <!-- PENDÊNCIAS -->
 <div style="page-break-inside:avoid">
 <h2>6. Pendencias em Aberto</h2>
-{"<table><tr><th>Data</th><th>Descricao</th><th>Prioridade</th><th>Nota SAP</th><th>Status</th></tr>" + pend_rows + "</table>" if pend_rows else '<p style="color:#10b981">Sem pendencias abertas.</p>'}
+{"<table style='table-layout:fixed;width:100%'><tr><th style='width:12%'>Data</th><th style='width:44%'>Descricao</th><th style='width:12%'>Prioridade</th><th style='width:16%'>Nota SAP</th><th style='width:16%'>Status</th></tr>" + pend_rows + "</table>" if pend_rows else '<p style="color:#10b981">Sem pendencias abertas.</p>'}
 </div>
 
 <!-- FOTOS -->

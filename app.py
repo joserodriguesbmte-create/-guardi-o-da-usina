@@ -394,6 +394,15 @@ if "Painel" in pagina:
     # Período do mês atual para controle de inspeções
     _mes_ini = date(_data_insp.year, _data_insp.month, 1)
     _mes_fim = _data_insp
+    # Após envio do relatório, nova rodada começa da data do envio
+    _ciclo_ini_str = _carregar_config("ciclo_inicio", None)
+    if _ciclo_ini_str:
+        try:
+            _ci = date.fromisoformat(_ciclo_ini_str)
+            if _ci.year == _data_insp.year and _ci.month == _data_insp.month:
+                _mes_ini = _ci
+        except Exception:
+            pass
 
     df_sf6_mes      = _carregar_sf6(data_ini=_mes_ini, data_fim=_mes_fim)
     df_insp_sec_mes = _carregar_inspecoes(sistema="Seccionadora", data_ini=_mes_ini, data_fim=_mes_fim)
@@ -482,12 +491,23 @@ if "Painel" in pagina:
     _ult_rel_mes = _carregar_config("relatorio_enviado_mes", None)
     _ult_rel_em  = _carregar_config("relatorio_enviado_em",  None)
     if _ult_rel_mes and _ult_rel_em:
-        st.markdown(
-            f"<div style='background:#052e16;border:1px solid #16a34a;border-radius:8px;"
-            f"padding:8px 14px;margin-bottom:10px;font-size:0.82rem;color:#86efac'>"
-            f"✅ Último relatório enviado: <b>{_ult_rel_mes}</b> em <b>{_ult_rel_em}</b>"
-            f"</div>",
-            unsafe_allow_html=True)
+        _col_badge, _col_btn = st.columns([4, 1])
+        with _col_badge:
+            st.markdown(
+                f"<div style='background:#052e16;border:1px solid #16a34a;border-radius:8px;"
+                f"padding:8px 14px;font-size:0.82rem;color:#86efac'>"
+                f"✅ Último relatório enviado: <b>{_ult_rel_mes}</b> em <b>{_ult_rel_em}</b>"
+                f"</div>",
+                unsafe_allow_html=True)
+        with _col_btn:
+            if st.button("🔄 Nova Rodada", key="btn_nova_rodada",
+                         help="Libera todos os equipamentos para uma nova rodada de inspeções"):
+                salvar_config("ciclo_inicio", str(datetime.now(_TZ_BR).date()))
+                _carregar_sf6.clear()
+                _carregar_inspecoes.clear()
+                _carregar_inspecoes_hoje.clear()
+                _carregar_config.clear()
+                st.rerun()
 
     # ══ KPIs ════════════════════════════════════════════════════════════════
     # KPIs em grid HTML responsivo — funciona no mobile sem depender de st.columns
@@ -2789,6 +2809,7 @@ elif "Relatório" in pagina:
                 # Registrar envio no banco — persiste para histórico e script de teste
                 salvar_config("relatorio_enviado_mes", mes)
                 salvar_config("relatorio_enviado_em",  str(datetime.now(_TZ_BR).date()))
+                salvar_config("ciclo_inicio", str(datetime.now(_TZ_BR).date()))
                 # Fotos só somem após envio manual pelo app
                 excluir_fotos_periodo(d_ini, d_fim)
                 _carregar_fotos.clear()
