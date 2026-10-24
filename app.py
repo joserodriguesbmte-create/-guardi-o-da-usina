@@ -213,7 +213,7 @@ if not st.session_state.user:
     <style>
     /* LOGIN — tela cheia, responsivo */
     .login-box{
-        max-width:420px; margin:40px auto; padding:32px 24px;
+        max-width:420px; margin:40px auto 16px; padding:24px 24px 16px;
         background:linear-gradient(145deg,#0f172a,#1e293b);
         border:1px solid #1e3a5f; border-radius:18px;
     }
@@ -228,10 +228,25 @@ if not st.session_state.user:
     </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-    st.markdown("<div class='login-logo'>🛡️</div>", unsafe_allow_html=True)
-    st.markdown("<div class='login-title'>Guardião da Usina</div>", unsafe_allow_html=True)
-    st.markdown("<div class='login-sub'>Norte Energia · UHE Pimental · SE 230kV</div>", unsafe_allow_html=True)
+    import base64 as _b64, os as _os
+    _logo_path = _os.path.join(_os.path.dirname(__file__), "assets", "logo_guardioes.png")
+    _logo_b64 = ""
+    if _os.path.exists(_logo_path):
+        with open(_logo_path, "rb") as _f:
+            _logo_b64 = _b64.b64encode(_f.read()).decode()
+
+    _logo_tag = (
+        f"<img src='data:image/png;base64,{_logo_b64}' "
+        "style='width:100%;max-width:320px;display:block;margin:0 auto 16px;' alt='Guardião da Usina'>"
+        if _logo_b64 else
+        "<div class='login-logo'>🛡️</div>"
+    )
+    st.markdown(f"""
+    <div class='login-box'>
+        {_logo_tag}
+        <div class='login-sub'>Norte Energia · UHE Pimental · SE 230kV</div>
+    </div>
+    """, unsafe_allow_html=True)
 
     operador = st.selectbox("👤 Seu nome", list(PINS.keys()), key="login_nome")
     pin      = st.text_input("🔑 PIN", type="password", max_chars=6,
@@ -245,8 +260,6 @@ if not st.session_state.user:
             st.rerun()
         else:
             st.error("PIN incorreto. Tente novamente.")
-
-    st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
 # ═══════════════════════════════════════════════════════════════ SIDEBAR ══
