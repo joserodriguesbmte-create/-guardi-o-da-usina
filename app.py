@@ -631,13 +631,22 @@ if "Painel" in pagina:
                 pass
     _hoje_chips = datetime.now(_TZ_BR).date()
     _chips_ult  = []
+    # Frequência SF6 — carrega do banco para usar no chip sem depender da seção de Inspeção
+    import json as _jf_chip
+    _freq_sf6_chip = 7
+    try:
+        _raw_fc = carregar_config("freq_inspecoes", None)
+        if _raw_fc:
+            _freq_sf6_chip = _jf_chip.loads(_raw_fc).get("SF6 Gás", 7)
+    except Exception:
+        pass
     # SF6 — usa todo o histórico já carregado; cor relativa à frequência configurada
     if not df_sf6_all.empty and "data" in df_sf6_all.columns:
         try:
             _d_sf6 = max(date.fromisoformat(str(d)[:10]) for d in df_sf6_all["data"].dropna())
             _di    = (_hoje_chips - _d_sf6).days
-            _atr_sf6 = _di - FREQ_SF6_DIAS
-            if _di <= FREQ_SF6_DIAS:
+            _atr_sf6 = _di - _freq_sf6_chip
+            if _di <= _freq_sf6_chip:
                 _c = "#10b981"; _txt_sf6 = f"{_di}d atrás"
             elif _atr_sf6 <= 3:
                 _c = "#f59e0b"; _txt_sf6 = f"vence hoje" if _atr_sf6 == 0 else f"ATRASADO {_atr_sf6}d"
