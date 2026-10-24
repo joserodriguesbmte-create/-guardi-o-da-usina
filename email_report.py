@@ -111,7 +111,7 @@ def fig_para_base64(fig) -> str:
         ax.legend(fontsize=8, loc="upper center", bbox_to_anchor=(0.5, -0.15),
                   ncol=4, framealpha=0.9, edgecolor="#e2e8f0")
         ax.grid(True, alpha=0.3)
-        ax.set_title("Evolucao SF6 — Pressao Corrigida a 20°C", fontsize=12,
+        ax.set_title("Evolucao SF6 — Pressao SF6 (20 °C)", fontsize=12,
                       color="#0f3460", fontweight="bold", pad=10)
         plt.subplots_adjust(bottom=0.25)
         _fig.savefig(buf, format="png", bbox_inches="tight")
@@ -227,7 +227,7 @@ def gauges_sf6_base64(sf6_tabela: list) -> str:
         for idx in range(n, len(axes)):
             axes[idx].axis("off")
 
-        plt.suptitle("Pressao SF6 — Disjuntores 230kV (Corrigida a 20°C)",
+        plt.suptitle("Pressao SF6 — Disjuntores 230kV (20 °C)",
                      fontsize=13, fontweight="bold", color="#0f3460", y=0.98)
         plt.tight_layout(rect=[0, 0, 1, 0.95])
         buf = io.BytesIO()
@@ -675,9 +675,9 @@ continua dos sistemas da usina.</p>
 
 <!-- SF6 -->
 <h2>2. Monitoramento SF6 — Disjuntores 230kV</h2>
-<p><small>Siemens 3AP1 FG · Nominal: 6,0 bar · Alarme: 5,2 bar · Bloqueio: 5,0 bar · Corrigida 20C</small></p>
+<p><small>Siemens 3AP1 FG · Nominal: 6,0 bar · Alarme: 5,2 bar · Bloqueio: 5,0 bar · Manômetro compensado a 20 °C</small></p>
 <table>
-<tr><th>Disjuntor</th><th>Polo</th><th>P.Medida</th><th>Temp.</th><th>P.Corrigida</th><th>Data/Hora</th><th>Status</th></tr>
+<tr><th>Disjuntor</th><th>Polo</th><th>P.Medida</th><th>Temp.</th><th>Pressão (20 °C)</th><th>Data/Hora</th><th>Status</th></tr>
 {sf6_rows if sf6_rows else '<tr><td colspan="7" style="text-align:center;color:#94a3b8">Sem leituras no periodo</td></tr>'}
 </table>
 
@@ -954,7 +954,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
         f"<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse;font-size:13px;'>"
         f"<tr><th style='{th_style}'>Disjuntor</th><th style='{th_style}'>Polo</th>"
         f"<th style='{th_style}'>P.Medida</th><th style='{th_style}'>Temp.</th>"
-        f"<th style='{th_style}'>P.Corrigida 20°C</th><th style='{th_style}'>Data/Hora</th>"
+        f"<th style='{th_style}'>Pressão (20 °C)</th><th style='{th_style}'>Data/Hora</th>"
         f"<th style='{th_style}'>Status</th></tr>{sf6_rows}</table>"
     )
 
@@ -1342,7 +1342,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
       f"<p style='font-size:12px;color:#64748b;margin:0 0 12px;'>"
       f"Siemens 3AP1 FG · Nominal: <strong>6,0 bar</strong> · "
       f"Alarme 1 est.: <strong style='color:#f59e0b;'>5,2 bar</strong> · "
-      f"Bloqueio 2 est.: <strong style='color:#ef4444;'>5,0 bar</strong> · Corrigida 20°C"
+      f"Bloqueio 2 est.: <strong style='color:#ef4444;'>5,0 bar</strong> · Manômetro compensado a 20 °C"
       f"</p>{sf6_table}{img_sf6_html}{img_sf6_hist_html}{_sf6_comp_html}"
       + (f"<br><p style='font-size:11px;font-weight:700;color:#0f3460;text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 6px;'>Inspecao Visual por Disjuntor</p>"
          f"<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse;font-size:13px;'>"

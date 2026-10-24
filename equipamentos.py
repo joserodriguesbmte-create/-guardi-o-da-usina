@@ -3,12 +3,12 @@
 
 DISJUNTORES = {
     # Siemens 3AP1 FG — Placa: Nom=6.0 | Alarme(1°est)=5.2 | Bloqueio(2°est)=5.0 | IEC 62271-100
-    "PMDJ6-01": {"descricao": "Disjuntor Bay 01PUL", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
-    "PMDJ6-02": {"descricao": "Disjuntor Vão Linha (3 polos separados)", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 3},
-    "PMDJ6-03": {"descricao": "Disjuntor Bay 02PVL", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
-    "PMDJ6-04": {"descricao": "Disjuntor Vão Trafo", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
-    "PMDJ6-05": {"descricao": "Disjuntor Bay 03PVL", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1},
-    "PMDB6-01": {"descricao": "Disjuntor Acoplamento de Barras (3 polos separados)", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 3},
+    "PMDJ6-01": {"descricao": "Disjuntor Bay 01PUL", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1, "manometro_compensado": True},
+    "PMDJ6-02": {"descricao": "Disjuntor Vão Linha (3 polos separados)", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 3, "manometro_compensado": True},
+    "PMDJ6-03": {"descricao": "Disjuntor Bay 02PVL", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1, "manometro_compensado": True},
+    "PMDJ6-04": {"descricao": "Disjuntor Vão Trafo", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1, "manometro_compensado": True},
+    "PMDJ6-05": {"descricao": "Disjuntor Bay 03PVL", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 1, "manometro_compensado": True},
+    "PMDB6-01": {"descricao": "Disjuntor Acoplamento de Barras (3 polos separados)", "fabricante": "Siemens", "modelo": "3AP1 FG", "tensao_nominal": 245, "corrente_nominal": 3150, "pressao_nominal": 6.0, "pressao_alarme": 5.2, "pressao_bloqueio": 5.0, "tipo_gas": "SF6", "num_polos": 3, "manometro_compensado": True},
 }
 
 TRANSFORMADORES = {
@@ -39,13 +39,17 @@ PAINEL_CUBICULOS = {
     "CUB-13.8-03": {"descricao": "Cubículo 03 - Medição", "fabricante": "Schneider", "tensao_nominal": 13.8, "corrente_nominal": 200},
 }
 
-# Fórmula INTEC para correção de pressão SF6 para 20°C
-# Baseada na Lei dos Gases: P1/T1 = P2/T2
+# Fórmula INTEC (Lei dos Gases): usada apenas quando manometro_compensado=False.
 def corrigir_pressao_sf6(p_medida: float, t_medida: float) -> float:
-    """Corrige pressão SF6 medida em campo para 20°C de referência."""
-    T_ref = 293.15  # 20°C em Kelvin
+    T_ref = 293.15  # 20 °C em Kelvin
     T_med = t_medida + 273.15
     return round(p_medida * (T_ref / T_med), 3)
+
+def pressao_sf6_referencia(p_medida: float, t_medida: float, manometro_compensado: bool = True) -> float:
+    """Retorna pressão a 20 °C. Manômetro WIKA com compensação já entrega o valor correto."""
+    if manometro_compensado:
+        return round(p_medida, 3)
+    return corrigir_pressao_sf6(p_medida, t_medida)
 
 def status_sf6(p_corrigida: float, tag: str) -> dict:
     dj = DISJUNTORES.get(tag, {})

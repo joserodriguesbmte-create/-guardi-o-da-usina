@@ -15,7 +15,7 @@ from database import (init_db, salvar_sf6, carregar_sf6, salvar_temp, carregar_t
                       salvar_contador, carregar_contadores,
                       salvar_foto, carregar_fotos, carregar_foto_base64, excluir_foto,
                       excluir_fotos_periodo)
-from equipamentos import DISJUNTORES, TRANSFORMADORES, BATERIAS, corrigir_pressao_sf6, status_sf6
+from equipamentos import DISJUNTORES, TRANSFORMADORES, BATERIAS, corrigir_pressao_sf6, pressao_sf6_referencia, status_sf6
 from email_report import (salvar_config_email, carregar_config_email,
                            gerar_html_relatorio, enviar_relatorio, fig_para_base64,
                            foto_para_base64)
@@ -781,8 +781,9 @@ if "Painel" in pagina:
                     _obs_completo = _json.dumps(_res_visual, ensure_ascii=False)
                     if _obs_wf: _obs_completo += f" | {_obs_wf}"
                     _resumo_pressoes = []
+                    _comp = DISJUNTORES.get(_dj_sel, {}).get("manometro_compensado", True)
                     for _polo, _p_med in _pressoes_form.items():
-                        _p_cor = corrigir_pressao_sf6(_p_med, t_amb)
+                        _p_cor = pressao_sf6_referencia(_p_med, t_amb, _comp)
                         if _p_cor < _p_bl_wf: _st_sf6 = "BLOQUEIO"
                         elif _p_cor < _p_al_wf: _st_sf6 = "ALARME"
                         else: _st_sf6 = "NORMAL"
@@ -1790,6 +1791,7 @@ elif "SF6" in pagina:
             cols_show = ["data","hora","turno","disjuntor","polo",
                          "pressao_medida","temperatura","pressao_corrigida","status_sf6","observacao"]
             _df_show = df_ev[cols_show].sort_values(["data","hora"], ascending=False).reset_index(drop=True)
+            _df_show = _df_show.rename(columns={"pressao_corrigida": "Pressão (20 °C)"})
 
             def _cor_status(v):
                 if v == "NORMAL":   return "color: #10b981; font-weight: bold"
