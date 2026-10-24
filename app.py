@@ -721,7 +721,7 @@ if "Painel" in pagina:
                 _cor = "#10b981" if _dias == 0 else "#f59e0b" if _dias <= 7 else "#ef4444"
                 _chips.append(f"<span style='background:#0a1628;border:1px solid {_cor};border-radius:6px;"
                                f"padding:2px 8px;font-size:0.7rem;color:{_cor};margin:2px;display:inline-block'>"
-                               f"{_r.disjuntor} · {str(_r.data)[5:7]}/{str(_r.data)[8:10]} · {_r.pressao_corrigida:.3f} bar</span>")
+                               f"{_r.disjuntor} · {str(_r.data)[8:10]}/{str(_r.data)[5:7]} · {_r.pressao_corrigida:.3f} bar</span>")
             if _chips:
                 st.markdown("<div style='margin:4px 0 10px;line-height:2'>" + "".join(_chips) + "</div>",
                             unsafe_allow_html=True)
