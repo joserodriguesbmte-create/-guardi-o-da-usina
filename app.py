@@ -2276,6 +2276,14 @@ elif "Inspeção" in pagina:
         "Transformador TR-SE-01 (Toshiba 10/12.5 MVA)": ["Transformador TR-SE-01 (Toshiba 10/12.5 MVA)", "Transformador"],
     }
 
+    # Rótulos curtos para exibição nos cards e inputs (sem alterar chaves do banco)
+    _SIS_LABEL = {
+        "Subestação 230kV":                             "Subestação 230kV",
+        "Sala Elétrica da SE":                          "Sala Elétrica",
+        "Cúbilo de 13.8kV da SE":                      "Cúbilo 13,8kV",
+        "Transformador TR-SE-01 (Toshiba 10/12.5 MVA)":"Trafo TR-SE-01",
+    }
+
     # Frequência configurável (salva no banco)
     import json as _jf
     _freq_cfg_raw = carregar_config("freq_inspecoes", None)
@@ -2290,7 +2298,7 @@ elif "Inspeção" in pagina:
                                          value=_freq_cfg.get("SF6 Gás", 7), key="freq_sf6")
         _freq_new = {"SF6 Gás": _freq_sf6}
         for i, s in enumerate(SISTEMAS):
-            _freq_new[s] = _fc[i+1].number_input(s[:18], min_value=1, max_value=365,
+            _freq_new[s] = _fc[i+1].number_input(_SIS_LABEL.get(s, s[:18]), min_value=1, max_value=365,
                                                   value=_freq_cfg.get(s, 30), key=f"freq_{i}")
         if st.button("💾 Salvar frequências", use_container_width=True):
             salvar_config("freq_inspecoes", _jf.dumps(_freq_new))
@@ -2331,9 +2339,10 @@ elif "Inspeção" in pagina:
         lim    = FREQ[sis]
         cor    = "#10b981" if dias<=lim else "#f59e0b" if dias<=lim+7 else "#ef4444"
         prox   = f"Vence em {lim-dias}d" if dias<lim else f"ATRASADO {dias-lim}d" if dias>lim else "Hoje"
+        _label = _SIS_LABEL.get(sis, sis[:18])
         cw[i+1].markdown(f"""<div class='kpi' style='border-top:3px solid {cor}'>
             <div style='font-size:1.1rem'>📋</div>
-            <div style='color:#f1f5f9;font-weight:700;font-size:0.82rem'>{sis[:20]}</div>
+            <div style='color:#f1f5f9;font-weight:700;font-size:0.82rem'>{_label}</div>
             <div style='color:#475569;font-size:0.72rem'>A cada {lim}d</div>
             <div style='color:{cor};font-weight:900;font-size:0.9rem;margin-top:4px'>{prox}</div>
             <div style='color:#334155;font-size:0.7rem'>Última: {ultima.strftime("%d/%m") if ultima else "—"}</div>
