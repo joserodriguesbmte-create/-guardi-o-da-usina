@@ -516,12 +516,14 @@ if "Painel" in pagina:
     _ult_rel_mes = _carregar_config("relatorio_enviado_mes", None)
     _ult_rel_em  = _carregar_config("relatorio_enviado_em",  None)
     if _ult_rel_mes and _ult_rel_em:
+        _ult_rel_em_fmt = (f"{_ult_rel_em[8:10]}/{_ult_rel_em[5:7]}/{_ult_rel_em[:4]}"
+                           if _ult_rel_em and len(_ult_rel_em) == 10 else (_ult_rel_em or ""))
         _col_badge, _col_btn = st.columns([4, 1])
         with _col_badge:
             st.markdown(
                 f"<div style='background:#052e16;border:1px solid #16a34a;border-radius:8px;"
                 f"padding:8px 14px;font-size:0.82rem;color:#86efac'>"
-                f"✅ Último relatório enviado: <b>{_ult_rel_mes}</b> em <b>{_ult_rel_em}</b>"
+                f"✅ Último relatório enviado: <b>{_ult_rel_mes}</b> em <b>{_ult_rel_em_fmt}</b>"
                 f"</div>",
                 unsafe_allow_html=True)
         with _col_btn:

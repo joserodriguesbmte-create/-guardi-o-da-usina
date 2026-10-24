@@ -782,6 +782,12 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     fotos           = dados.get("fotos", [])
     gerado_em       = datetime.now().strftime("%d/%m/%Y as %H:%M")
 
+    def _fd(v):
+        s = str(v) if v is not None else ""
+        if len(s) == 10 and s[4] == "-" and s[7] == "-":
+            return f"{s[8:10]}/{s[5:7]}/{s[:4]}"
+        return s or "—"
+
     def badge(s):
         s = str(s).upper()
         cor = "#10b981" if "NORMAL" in s or s == "OK" else \
@@ -881,14 +887,14 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     _sf6_alarmes   = sum(1 for r in sf6_tabela
                          if str(r.get("status_sf6","")).upper() not in ("NORMAL",""))
     _sf6_status    = "NORMAL" if _sf6_alarmes == 0 else f"{_sf6_alarmes} ALARME(S)"
-    _sf6_ult_data  = max((r.get("data","") for r in sf6_tabela), default="—") if sf6_tabela else "—"
+    _sf6_ult_data  = _fd(max((r.get("data","") for r in sf6_tabela), default="—")) if sf6_tabela else "—"
 
     # Seccionadoras
     _sec_t   = sec_resumo.get("total", 0)
     _sec_i   = sec_resumo.get("inspecionadas", 0)
     _sec_nok = len(sec_resumo.get("nok", []))
-    _sec_ult = max((n.get("data","") for n in sec_resumo.get("nok", []) + sec_resumo.get("todas", [])),
-                   default="—") if (sec_resumo.get("nok") or sec_resumo.get("todas")) else "—"
+    _sec_ult = _fd(max((n.get("data","") for n in sec_resumo.get("nok", []) + sec_resumo.get("todas", [])),
+                   default="—")) if (sec_resumo.get("nok") or sec_resumo.get("todas")) else "—"
 
     _resumo_rows = (
         f"<tr><td style='{_td_res}font-weight:700;color:#0f3460;'>⚡ SF6 Disjuntores</td>"
@@ -902,7 +908,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
         f"<td style='{_td_res}color:#475569;'>{_sec_ult}</td></tr>"
     )
     # Trafo
-    _tr_data   = trafo_insp.get("data", "—") if trafo_insp else "—"
+    _tr_data   = _fd(trafo_insp.get("data", "—")) if trafo_insp else "—"
     _tr_status = trafo_insp.get("status", "Sem registro") if trafo_insp else "Sem registro"
     _resumo_rows += (
         f"<tr><td style='{_td_res}font-weight:700;color:#0f3460;'>🔄 Transformador</td>"
@@ -920,7 +926,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
             f"{_ic_icon} {_ic_item.get('nome','')}</td>"
             f"<td style='{_td_res}'>1/1 inspecionado</td>"
             f"<td style='{_td_res}'>{_status_badge(_ic_item.get('status','Sem registro'))}</td>"
-            f"<td style='{_td_res}color:#475569;'>{_ic_item.get('data','—')}</td></tr>"
+            f"<td style='{_td_res}color:#475569;'>{_fd(_ic_item.get('data','—'))}</td></tr>"
         )
 
     _status_resumo_html = (
@@ -942,7 +948,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
             f"<td style='padding:8px 10px;color:#475569;'>{r.get('pressao_medida','')}</td>"
             f"<td style='padding:8px 10px;color:#475569;'>{r.get('temperatura','')}°C</td>"
             f"<td style='padding:8px 10px;font-weight:700;'>{r.get('pressao_corrigida','')}</td>"
-            f"<td style='padding:8px 10px;color:#475569;'>{r.get('data','')} {str(r.get('hora',''))[:5]}</td>"
+            f"<td style='padding:8px 10px;color:#475569;'>{_fd(r.get('data',''))} {str(r.get('hora',''))[:5]}</td>"
             f"<td style='padding:8px 10px;'>{badge(r.get('status_sf6',''))}</td>"
             f"</tr>"
         )
@@ -1055,7 +1061,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
                 _obs_display = _obs_raw[:80] if _obs_raw else "—"
         except Exception:
             _obs_display = str(_obs_raw)[:80] if _obs_raw else "—"
-        nok_rows += (f"<tr><td style='padding:7px 10px;color:#475569;'>{n.get('data','')}</td>"
+        nok_rows += (f"<tr><td style='padding:7px 10px;color:#475569;'>{_fd(n.get('data',''))}</td>"
                      f"<td style='padding:7px 10px;font-weight:700;color:#0f3460;'>{n.get('item','')}</td>"
                      f"<td style='padding:7px 10px;color:#ef4444;'>{_obs_display}</td></tr>")
 
@@ -1072,7 +1078,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     trafo_rows = ""
     for r in trafo_tab:
         trafo_rows += (
-            f"<tr><td style='padding:7px 10px;color:#475569;'>{r.get('data','')} {str(r.get('hora',''))[:5]}</td>"
+            f"<tr><td style='padding:7px 10px;color:#475569;'>{_fd(r.get('data',''))} {str(r.get('hora',''))[:5]}</td>"
             f"<td style='padding:7px 10px;color:#475569;'>{r.get('ponto','')}</td>"
             f"<td style='padding:7px 10px;font-weight:700;'>{r.get('temperatura','')}°C</td>"
             f"<td style='padding:7px 10px;color:#475569;'>{r.get('limite_max','')}°C</td>"
@@ -1097,7 +1103,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     for p in pendencias:
         pri = p.get("prioridade", "")
         pend_rows += (
-            f"<tr><td style='padding:7px 10px;color:#475569;'>{p.get('data_abertura','')}</td>"
+            f"<tr><td style='padding:7px 10px;color:#475569;'>{_fd(p.get('data_abertura',''))}</td>"
             f"<td style='padding:7px 10px;color:#475569;'>{p.get('sistema','')}</td>"
             f"<td style='padding:7px 10px;color:#475569;'>{str(p.get('descricao',''))[:60]}</td>"
             f"<td style='padding:7px 10px;font-weight:700;color:{cor_prio(pri)};'>{pri}</td>"
@@ -1137,7 +1143,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
         comp_rows += (
             f"<tr style='border-bottom:1px solid #f1f5f9;'>"
             f"<td style='padding:8px 10px;font-weight:700;color:#0f3460;'>{ic.get('nome','')}</td>"
-            f"<td style='padding:8px 10px;color:#475569;'>{ic.get('data','—')}</td>"
+            f"<td style='padding:8px 10px;color:#475569;'>{_fd(ic.get('data','—'))}</td>"
             f"<td style='padding:8px 10px;'>{_badge_ic(ic.get('status','—'))}</td>"
             f"<td style='padding:8px 10px;color:#ef4444;font-size:12px;'>{_anomalias_ic or '—'}</td>"
             f"</tr>"
@@ -1158,7 +1164,7 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
         for cnt in contadores:
             cnt_rows += (
                 f"<tr style='border-bottom:1px solid #f1f5f9;'>"
-                f"<td style='padding:7px 10px;color:#475569;'>{cnt.get('data','')}</td>"
+                f"<td style='padding:7px 10px;color:#475569;'>{_fd(cnt.get('data',''))}</td>"
                 f"<td style='padding:7px 10px;font-weight:700;color:#0f3460;'>{cnt.get('disjuntor','')}</td>"
                 f"<td style='padding:7px 10px;color:#475569;text-align:center;'>{cnt.get('tripolar',0)}</td>"
                 f"<td style='padding:7px 10px;color:#ef4444;text-align:center;font-weight:700;'>{cnt.get('curto_circuito',0)}</td>"
