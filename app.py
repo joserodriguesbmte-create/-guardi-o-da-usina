@@ -2835,6 +2835,57 @@ elif "Relatório" in pagina:
 
         cnt_lista = df_cnt_r.to_dict("records") if not df_cnt_r.empty else []
 
+        # Condições ambientais do período
+        _t_amb_cfg = carregar_config("temp_amb", "—")
+        _u_amb_cfg = carregar_config("umid_amb", "—")
+        _turno_cfg = carregar_config("turno",    "—")
+
+        # Alertas SF6 ativos
+        _alertas = []
+        if not df_sf6_r.empty:
+            _djs_db_r = _carregar_equipamentos("Disjuntor SF6")
+            _eq_r = {r["tag"]: r.to_dict() for _, r in _djs_db_r.iterrows()} if not _djs_db_r.empty else {}
+            _ult_r = df_sf6_r.sort_values("created_at").groupby(["disjuntor","polo"]).last().reset_index()
+            for _, _rv in _ult_r.iterrows():
+                _eq_rv = _eq_r.get(_rv.disjuntor, {})
+                _p_al = float(_eq_rv.get("pressao_alarme") or 5.5)
+                _p_bl = float(_eq_rv.get("pressao_bloqueio") or 5.0)
+                _p_c  = float(_rv.pressao_corrigida)
+                if   _p_c < _p_bl:        _alertas.append({"tag":_rv.disjuntor,"polo":_rv.polo,"p":_p_c,"nivel":"BLOQUEIO"})
+                elif _p_c < _p_al:        _alertas.append({"tag":_rv.disjuntor,"polo":_rv.polo,"p":_p_c,"nivel":"ALARME"})
+                elif _p_c < _p_al + 0.3:  _alertas.append({"tag":_rv.disjuntor,"polo":_rv.polo,"p":_p_c,"nivel":"PRÉ-ALARME"})
+
+        # Checklists de inspeção — resumo por sistema (última inspeção no período)
+        _CKSIS = [
+            "Subestação 230kV",
+            "Sala Elétrica da SE",
+            "Cúbilo de 13.8kV da SE",
+            "Transformador TR-SE-01 (Toshiba 10/12.5 MVA)",
+        ]
+        checklists_insp = []
+        for _cs in _CKSIS:
+            _df_cs = df_i_r[df_i_r.sistema == _cs] if not df_i_r.empty else pd.DataFrame()
+            if _df_cs.empty:
+                checklists_insp.append({"sistema": _cs, "data": None, "turno": "—",
+                                        "total": 0, "ok": 0, "nok": 0, "atencao": 0,
+                                        "itens_nok": [], "itens_atencao": []})
+                continue
+            _ult_data = _df_cs["data"].max()
+            _df_ult   = _df_cs[_df_cs["data"] == _ult_data]
+            _itens_nok  = _df_ult[_df_ult.status == "❌ NOK"]["item"].tolist()
+            _itens_at   = _df_ult[_df_ult.status.str.contains("Atenção", na=False)]["item"].tolist()
+            checklists_insp.append({
+                "sistema":      _cs,
+                "data":         str(_ult_data),
+                "turno":        _df_ult.iloc[0].get("turno", "—") if len(_df_ult) else "—",
+                "total":        len(_df_ult),
+                "ok":           len(_df_ult[_df_ult.status == "✅ OK"]),
+                "nok":          len(_itens_nok),
+                "atencao":      len(_itens_at),
+                "itens_nok":    _itens_nok,
+                "itens_atencao": _itens_at,
+            })
+
         return {
             "operador": st.session_state.user,
             "nivel":    st.session_state.nivel,
@@ -2868,6 +2919,13 @@ elif "Relatório" in pagina:
             "contadores":      cnt_lista,
             "fotos":           _montar_fotos_dados(),
             "sf6_historico":   df_sf6_hist.to_dict("records") if not df_sf6_hist.empty else [],
+            "cond_ambientais": {
+                "temperatura": _t_amb_cfg,
+                "umidade":     _u_amb_cfg,
+                "turno":       _turno_cfg,
+            },
+            "alertas_sf6":    _alertas,
+            "checklists_insp": checklists_insp,
         }
 
     # Aviso se o usuário escolheu manualmente um mês diferente do atual

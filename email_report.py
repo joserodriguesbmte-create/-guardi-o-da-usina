@@ -777,10 +777,13 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     sec_resumo    = dados.get("sec_resumo", {})
     trafo_tab     = dados.get("trafo_tabela", [])
     trafo_insp      = dados.get("trafo_insp", {})
-    insp_complement = dados.get("insp_complement", [])
-    contadores      = dados.get("contadores", [])
-    fotos           = dados.get("fotos", [])
-    gerado_em       = datetime.now().strftime("%d/%m/%Y as %H:%M")
+    insp_complement  = dados.get("insp_complement", [])
+    contadores       = dados.get("contadores", [])
+    fotos            = dados.get("fotos", [])
+    cond_ambientais  = dados.get("cond_ambientais", {})
+    alertas_sf6      = dados.get("alertas_sf6", [])
+    checklists_insp  = dados.get("checklists_insp", [])
+    gerado_em        = datetime.now().strftime("%d/%m/%Y as %H:%M")
 
     def _fd(v):
         s = str(v) if v is not None else ""
@@ -1238,11 +1241,100 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
             fotos_html += "</tr>"
 
         fotos_section = secao(
-            "📷 7. Registro Fotografico do Periodo",
+            "📷 8. Registro Fotografico do Periodo",
             f"<table width='100%' cellpadding='0' cellspacing='4' border='0'>{fotos_html}</table>"
         )
 
-    num_obs = 8 if fotos else 7
+    num_obs = 9 if fotos else 8
+
+    # ── Condições Ambientais ─────────────────────────────────────────────────
+    _t_cfg = str(cond_ambientais.get("temperatura", "—"))
+    _u_cfg = str(cond_ambientais.get("umidade", "—"))
+    _tr_cfg = str(cond_ambientais.get("turno", "—"))
+    _cond_html = (
+        f"<br><p style='font-size:11px;font-weight:700;color:#0f3460;text-transform:uppercase;"
+        f"letter-spacing:0.5px;margin:14px 0 6px;'>Condicoes Ambientais</p>"
+        f"<table width='100%' cellpadding='0' cellspacing='0' border='0'><tr>"
+        f"<td width='33%' style='padding:4px;'>"
+        f"<table width='100%' cellpadding='12' cellspacing='0' border='0' "
+        f"style='background:#f1f5f9;border-radius:10px;border-top:3px solid #f59e0b;text-align:center;'>"
+        f"<tr><td><div style='font-size:22px;font-weight:900;color:#f59e0b;'>{_t_cfg}°C</div>"
+        f"<div style='font-size:10px;color:#64748b;'>TEMPERATURA</div></td></tr></table></td>"
+        f"<td width='33%' style='padding:4px;'>"
+        f"<table width='100%' cellpadding='12' cellspacing='0' border='0' "
+        f"style='background:#f1f5f9;border-radius:10px;border-top:3px solid #3b82f6;text-align:center;'>"
+        f"<tr><td><div style='font-size:22px;font-weight:900;color:#3b82f6;'>{_u_cfg}%</div>"
+        f"<div style='font-size:10px;color:#64748b;'>UMIDADE</div></td></tr></table></td>"
+        f"<td width='33%' style='padding:4px;'>"
+        f"<table width='100%' cellpadding='12' cellspacing='0' border='0' "
+        f"style='background:#f1f5f9;border-radius:10px;border-top:3px solid #10b981;text-align:center;'>"
+        f"<tr><td><div style='font-size:14px;font-weight:900;color:#10b981;'>{_tr_cfg.split()[0] if _tr_cfg != '—' else '—'}</div>"
+        f"<div style='font-size:10px;color:#64748b;'>TURNO</div></td></tr></table></td>"
+        f"</tr></table>"
+    )
+
+    # ── Alertas SF6 ──────────────────────────────────────────────────────────
+    _alertas_html = ""
+    if alertas_sf6:
+        _cor_al = "#ef4444" if any(a["nivel"]=="BLOQUEIO" for a in alertas_sf6) else \
+                  "#f59e0b" if any(a["nivel"]=="ALARME" for a in alertas_sf6) else "#f97316"
+        _rows_al = "".join([
+            f"<tr><td style='padding:7px 10px;font-weight:700;color:#0f3460;'>{a['tag']}</td>"
+            f"<td style='padding:7px 10px;color:#475569;'>{a['polo']}</td>"
+            f"<td style='padding:7px 10px;font-weight:700;color:{_cor_al};'>{a['p']:.3f} bar</td>"
+            f"<td style='padding:7px 10px;'><span style='background:{_cor_al};color:#fff;"
+            f"border-radius:4px;padding:2px 8px;font-size:11px;font-weight:700;'>{a['nivel']}</span></td></tr>"
+            for a in alertas_sf6
+        ])
+        _alertas_html = (
+            f"<div style='background:#fff7ed;border:2px solid {_cor_al};border-radius:8px;"
+            f"padding:12px 16px;margin-bottom:12px;'>"
+            f"<div style='color:{_cor_al};font-size:13px;font-weight:800;margin-bottom:8px;'>"
+            f"🚨 Alertas SF6 Ativos no Fechamento do Período</div>"
+            f"<table width='100%' cellpadding='0' cellspacing='0' border='0' style='font-size:13px;'>"
+            f"<tr><th style='{_th_res}'>Disjuntor</th><th style='{_th_res}'>Polo</th>"
+            f"<th style='{_th_res}'>Pressao</th><th style='{_th_res}'>Nivel</th></tr>"
+            f"{_rows_al}</table></div>"
+        )
+
+    # ── Checklists de Inspeção ───────────────────────────────────────────────
+    _ck_rows = ""
+    for _ck in checklists_insp:
+        _ck_data = _fd(_ck.get("data")) if _ck.get("data") else "Sem registro"
+        _ck_ok   = _ck.get("ok", 0)
+        _ck_nok  = _ck.get("nok", 0)
+        _ck_at   = _ck.get("atencao", 0)
+        _ck_tot  = _ck.get("total", 0)
+        _ck_cor  = "#ef4444" if _ck_nok > 0 else "#f59e0b" if _ck_at > 0 else "#10b981" if _ck_tot > 0 else "#94a3b8"
+        _ck_sts  = (f"{_ck_nok} NOK" if _ck_nok > 0 else
+                    f"{_ck_at} Atenção" if _ck_at > 0 else
+                    "OK" if _ck_tot > 0 else "Sem registro")
+        _itens_p = ", ".join(_ck.get("itens_nok", [])[:3])
+        if len(_ck.get("itens_nok", [])) > 3:
+            _itens_p += f" (+{len(_ck['itens_nok'])-3})"
+        if not _itens_p and _ck.get("itens_atencao"):
+            _itens_p = ", ".join(_ck["itens_atencao"][:2])
+        _ck_rows += (
+            f"<tr style='border-bottom:1px solid #f1f5f9;'>"
+            f"<td style='padding:8px 10px;font-weight:700;color:#0f3460;'>{_ck['sistema']}</td>"
+            f"<td style='padding:8px 10px;color:#475569;'>{_ck_data}</td>"
+            f"<td style='padding:8px 10px;text-align:center;'>{_ck_tot}</td>"
+            f"<td style='padding:8px 10px;text-align:center;color:#10b981;font-weight:700;'>{_ck_ok}</td>"
+            f"<td style='padding:8px 10px;'>"
+            f"<span style='color:{_ck_cor};font-weight:700;'>{_ck_sts}</span></td>"
+            f"<td style='padding:8px 10px;color:#ef4444;font-size:12px;'>{_itens_p or '—'}</td>"
+            f"</tr>"
+        )
+    if not _ck_rows:
+        _ck_rows = "<tr><td colspan='6' style='padding:12px;text-align:center;color:#94a3b8;font-style:italic;'>Sem registros no periodo</td></tr>"
+
+    _ck_table = (
+        f"<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse;font-size:13px;'>"
+        f"<tr><th style='{th_style}'>Sistema</th><th style='{th_style}'>Ultima Insp.</th>"
+        f"<th style='{th_style}'>Itens</th><th style='{th_style}'>OK</th>"
+        f"<th style='{th_style}'>Status</th><th style='{th_style}'>Desvios</th></tr>"
+        f"{_ck_rows}</table>"
+    )
 
     # ── LOGOS INSTITUCIONAIS ─────────────────────────────────────────────────
     logo_guardioes_b64 = _logo_b64("logo_guardioes.png")
@@ -1339,8 +1431,11 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
 
   <!-- SEÇÃO 1: RESUMO -->
   <tr><td style="padding-bottom:16px;">
-    {secao("📊 1. Resumo Executivo", kpi_html + _status_resumo_html)}
+    {secao("📊 1. Resumo Executivo", kpi_html + _cond_html + _status_resumo_html)}
   </td></tr>
+
+  <!-- ALERTAS SF6 (se houver) -->
+  {'<tr><td style="padding-bottom:16px;">' + secao("🚨 Alertas SF6", _alertas_html) + '</td></tr>' if alertas_sf6 else ''}
 
   <!-- SEÇÃO 2: SF6 -->
   <tr><td style="padding-bottom:16px;">
@@ -1422,18 +1517,23 @@ def gerar_html_relatorio(dados: dict, usar_cid: bool = False) -> str:
     )}
   </td></tr>
 
-  <!-- SEÇÃO 5: INSPEÇÕES COMPLEMENTARES -->
+  <!-- SEÇÃO 5: CHECKLISTS DE INSPEÇÃO -->
   <tr><td style="padding-bottom:16px;">
-    {secao("🔍 5. Inspecoes Complementares — Para-raios · Sala Eletrica · Cubilo 13,8kV",
+    {secao("📋 5. Checklists de Inspecao de Campo", _ck_table)}
+  </td></tr>
+
+  <!-- SEÇÃO 6: INSPEÇÕES COMPLEMENTARES -->
+  <tr><td style="padding-bottom:16px;">
+    {secao("🔍 6. Inspecoes Complementares — Para-raios · Sala Eletrica · Cubilo 13,8kV",
       comp_table)}
   </td></tr>
 
-  <!-- SEÇÃO 6: PENDÊNCIAS -->
+  <!-- SEÇÃO 7: PENDÊNCIAS -->
   <tr><td style="padding-bottom:16px;">
-    {secao("⚠️ 6. Pendencias em Aberto", pend_table)}
+    {secao("⚠️ 7. Pendencias em Aberto", pend_table)}
   </td></tr>
 
-  <!-- SEÇÃO 7: FOTOS (se houver) -->
+  <!-- SEÇÃO 8: FOTOS (se houver) -->
   {'<tr><td style="padding-bottom:16px;">' + fotos_section + '</td></tr>' if fotos else ''}
 
   <!-- SEÇÃO OBS -->
