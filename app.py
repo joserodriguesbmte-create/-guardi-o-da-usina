@@ -228,22 +228,34 @@ if not st.session_state.user:
     </style>
     """, unsafe_allow_html=True)
 
-    import base64 as _b64, os as _os
-    _logo_path = _os.path.join(_os.path.dirname(__file__), "assets", "logo_guardioes.png")
-    _logo_b64 = ""
-    if _os.path.exists(_logo_path):
-        with open(_logo_path, "rb") as _f:
-            _logo_b64 = _b64.b64encode(_f.read()).decode()
-
-    _logo_tag = (
-        f"<img src='data:image/png;base64,{_logo_b64}' "
-        "style='width:100%;max-width:320px;display:block;margin:0 auto 16px;' alt='Guardião da Usina'>"
-        if _logo_b64 else
-        "<div class='login-logo'>🛡️</div>"
-    )
-    st.markdown(f"""
+    st.markdown("""
     <div class='login-box'>
-        {_logo_tag}
+        <svg width="280" height="100" viewBox="0 0 280 100" xmlns="http://www.w3.org/2000/svg"
+             style="display:block;margin:0 auto 8px;">
+            <defs>
+                <linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#0A84FF"/>
+                    <stop offset="100%" style="stop-color:#5E5CE6"/>
+                </linearGradient>
+                <filter id="gw">
+                    <feGaussianBlur stdDeviation="2" result="b"/>
+                    <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+            </defs>
+            <g transform="translate(10,6) scale(0.82)">
+                <path d="M42 4 L72 14 L72 44 Q72 68 42 80 Q12 68 12 44 L12 14 Z"
+                      fill="url(#sg)" filter="url(#gw)" opacity="0.95"/>
+                <path d="M47 22 L36 44 L43 44 L37 62 L54 38 L46 38 Z"
+                      fill="white" opacity="0.95"/>
+            </g>
+            <text x="80" y="30" font-family="-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"
+                  font-size="11" font-weight="400" fill="#8E8E93" letter-spacing="1.5">PROGRAMA</text>
+            <text x="80" y="52" font-family="-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"
+                  font-size="22" font-weight="700" fill="white" letter-spacing="-0.3">GUARDIÕES</text>
+            <text x="80" y="72" font-family="-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif"
+                  font-size="22" font-weight="300" fill="#0A84FF" letter-spacing="-0.3">DA USINA</text>
+            <rect x="80" y="79" width="190" height="1" fill="#0A84FF" opacity="0.35" rx="0.5"/>
+        </svg>
         <div class='login-sub'>Norte Energia · UHE Pimental · SE 230kV</div>
     </div>
     """, unsafe_allow_html=True)
