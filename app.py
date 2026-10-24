@@ -371,9 +371,9 @@ if "Painel" in pagina:
         help="Mude para continuar uma inspeção iniciada em outro dia"
     )
 
-    if t_amb > 35:   _cc = "#ef4444"; _ct = "Muito Quente"
-    elif t_amb > 30: _cc = "#f59e0b"; _ct = "Quente"
-    elif t_amb > 22: _cc = "#10b981"; _ct = "Confortável"
+    if t_amb > 38:   _cc = "#ef4444"; _ct = "T. Elevada"
+    elif t_amb > 33: _cc = "#f59e0b"; _ct = "Quente"
+    elif t_amb > 25: _cc = "#10b981"; _ct = "Normal"
     else:            _cc = "#3b82f6"; _ct = "Ameno"
 
     st.markdown(f"""<div style='background:#0a1628;border:1px solid #1e3a5f;border-radius:10px;
@@ -631,34 +631,46 @@ if "Painel" in pagina:
                 pass
     _hoje_chips = datetime.now(_TZ_BR).date()
     _chips_ult  = []
-    # SF6 — usa todo o histórico já carregado
+    # SF6 — usa todo o histórico já carregado; cor relativa à frequência configurada
     if not df_sf6_all.empty and "data" in df_sf6_all.columns:
         try:
             _d_sf6 = max(date.fromisoformat(str(d)[:10]) for d in df_sf6_all["data"].dropna())
             _di    = (_hoje_chips - _d_sf6).days
-            _c     = "#10b981" if _di <= 7 else "#f59e0b" if _di <= 30 else "#ef4444"
+            _atr_sf6 = _di - FREQ_SF6_DIAS
+            if _di <= FREQ_SF6_DIAS:
+                _c = "#10b981"; _txt_sf6 = f"{_di}d atrás"
+            elif _atr_sf6 <= 3:
+                _c = "#f59e0b"; _txt_sf6 = f"vence hoje" if _atr_sf6 == 0 else f"ATRASADO {_atr_sf6}d"
+            else:
+                _c = "#ef4444"; _txt_sf6 = f"ATRASADO {_atr_sf6}d"
             _chips_ult.append(
                 f"<span style='background:#0a1628;border:1px solid {_c};border-radius:20px;"
                 f"padding:3px 10px;font-size:0.7rem;color:{_c};margin:2px;display:inline-block'>"
-                f"⚡ SF6 · {_d_sf6} · {_di}d</span>")
+                f"⚡ SF6 · {_d_sf6.strftime('%d/%m')} · {_txt_sf6}</span>")
         except Exception:
             pass
-    # Outros sistemas
-    for _sn, _ic, _lb in [
-        ("Seccionadora",           "🔌", "Seccionadoras"),
-        ("Transformador",          "🔄", "Transformador"),
-        ("Subestação 230kV",       "⛈️", "Para-raios"),
-        ("Sala Elétrica da SE",    "💡", "Sala Elétrica"),
-        ("Cúbilo de 13.8kV da SE", "🔌", "Cúbilo 13,8kV"),
+    # Outros sistemas — cor por dias absolutos (frequência padrão 30d)
+    for _sn, _ic, _lb, _freq_chip in [
+        ("Seccionadora",           "🔌", "Seccionadoras", 30),
+        ("Transformador",          "🔄", "Transformador",  30),
+        ("Subestação 230kV",       "⛈️", "Para-raios",    30),
+        ("Sala Elétrica da SE",    "💡", "Sala Elétrica",  30),
+        ("Cúbilo de 13.8kV da SE", "🔌", "Cúbilo 13,8kV", 30),
     ]:
         _d_sis = _ult_por_sis.get(_sn)
         if _d_sis:
             _di  = (_hoje_chips - _d_sis).days
-            _c   = "#10b981" if _di <= 7 else "#f59e0b" if _di <= 30 else "#ef4444"
+            _atr = _di - _freq_chip
+            if _di <= _freq_chip:
+                _c = "#10b981"; _txt_s = f"{_di}d atrás"
+            elif _atr <= 7:
+                _c = "#f59e0b"; _txt_s = f"ATRASADO {_atr}d"
+            else:
+                _c = "#ef4444"; _txt_s = f"ATRASADO {_atr}d"
             _chips_ult.append(
                 f"<span style='background:#0a1628;border:1px solid {_c};border-radius:20px;"
                 f"padding:3px 10px;font-size:0.7rem;color:{_c};margin:2px;display:inline-block'>"
-                f"{_ic} {_lb} · {_d_sis} · {_di}d</span>")
+                f"{_ic} {_lb} · {_d_sis.strftime('%d/%m')} · {_txt_s}</span>")
         else:
             _chips_ult.append(
                 f"<span style='background:#0a1628;border:1px solid #ef4444;border-radius:20px;"
