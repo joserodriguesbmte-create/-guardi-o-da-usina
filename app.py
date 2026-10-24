@@ -721,7 +721,7 @@ if "Painel" in pagina:
                 _cor = "#10b981" if _dias == 0 else "#f59e0b" if _dias <= 7 else "#ef4444"
                 _chips.append(f"<span style='background:#0a1628;border:1px solid {_cor};border-radius:6px;"
                                f"padding:2px 8px;font-size:0.7rem;color:{_cor};margin:2px;display:inline-block'>"
-                               f"{_r.disjuntor} · {_r.data} · {_r.pressao_corrigida:.3f} bar</span>")
+                               f"{_r.disjuntor} · {str(_r.data)[5:7]}/{str(_r.data)[8:10]} · {_r.pressao_corrigida:.3f} bar</span>")
             if _chips:
                 st.markdown("<div style='margin:4px 0 10px;line-height:2'>" + "".join(_chips) + "</div>",
                             unsafe_allow_html=True)
@@ -1837,7 +1837,14 @@ elif "SF6" in pagina:
             cols_show = ["data","hora","turno","disjuntor","polo",
                          "pressao_medida","temperatura","pressao_corrigida","status_sf6","observacao"]
             _df_show = df_ev[cols_show].sort_values(["data","hora"], ascending=False).reset_index(drop=True)
-            _df_show = _df_show.rename(columns={"pressao_corrigida": "Pressão (20 °C)"})
+            _df_show["data"] = pd.to_datetime(_df_show["data"], errors="coerce").dt.strftime("%d/%m/%Y").fillna(_df_show["data"])
+            _df_show = _df_show.rename(columns={
+                "data": "Data", "hora": "Hora", "turno": "Turno",
+                "disjuntor": "Disjuntor", "polo": "Polo",
+                "pressao_medida": "P. Medida (bar)", "temperatura": "Temp (°C)",
+                "pressao_corrigida": "Pressão (20 °C)",
+                "status_sf6": "Status", "observacao": "Observação",
+            })
 
             def _cor_status(v):
                 if v == "NORMAL":   return "color: #10b981; font-weight: bold"
@@ -1845,7 +1852,7 @@ elif "SF6" in pagina:
                 return "color: #ef4444; font-weight: bold"
 
             st.dataframe(
-                _df_show.style.map(_cor_status, subset=["status_sf6"]),
+                _df_show.style.map(_cor_status, subset=["Status"]),
                 use_container_width=True, hide_index=True
             )
             _csv = _df_show.to_csv(index=False).encode("utf-8-sig")
@@ -1875,8 +1882,10 @@ elif "SF6" in pagina:
             fig_op.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0.15)",
                                 font_color="#94a3b8", height=280)
             st.plotly_chart(fig_op, use_container_width=True)
-            st.dataframe(df_op[["data","disjuntor","tipo_operacao","motivo","num_operacoes_total","usuario"]],
-                        use_container_width=True, hide_index=True)
+            _df_op_show = df_op[["data","disjuntor","tipo_operacao","motivo","num_operacoes_total","usuario"]].copy()
+            _df_op_show["data"] = pd.to_datetime(_df_op_show["data"], errors="coerce").dt.strftime("%d/%m/%Y").fillna(_df_op_show["data"])
+            _df_op_show = _df_op_show.rename(columns={"data":"Data","disjuntor":"Disjuntor","tipo_operacao":"Tipo","motivo":"Motivo","num_operacoes_total":"Total Op.","usuario":"Usuário"})
+            st.dataframe(_df_op_show, use_container_width=True, hide_index=True)
 
     with tab4:
         st.markdown("### 📟 Contadores de Operações — Disjuntores 3 Polos")
@@ -1899,7 +1908,7 @@ elif "SF6" in pagina:
         if not df_cnt_hist.empty:
             _ult = df_cnt_hist.iloc[0]
             _is3p = dj_cnt in _tags_3p
-            st.markdown(f"<div style='color:#94a3b8;font-size:0.78rem;margin:4px 0'>Última leitura registrada: <b style='color:#60a5fa'>{_ult.data}</b></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='color:#94a3b8;font-size:0.78rem;margin:4px 0'>Última leitura registrada: <b style='color:#60a5fa'>{str(_ult.data)[8:10]}/{str(_ult.data)[5:7]}/{str(_ult.data)[:4]}</b></div>", unsafe_allow_html=True)
             _kpis_cnt = []
             if _is3p:
                 _kpis_cnt += [("P1LA\nPolo A", _ult.polo_a, "#3b82f6"),
@@ -2062,8 +2071,10 @@ elif "Temperatura" in pagina:
                 return "color:#ef4444;font-weight:bold" if v == "ALARME" else "color:#10b981;font-weight:bold"
             _df_t_show = _df_t[["data","hora","turno","ponto","temperatura","limite_max","status"]
                                ].sort_values(["data","hora"], ascending=False).reset_index(drop=True)
+            _df_t_show["data"] = pd.to_datetime(_df_t_show["data"], errors="coerce").dt.strftime("%d/%m/%Y").fillna(_df_t_show["data"])
+            _df_t_show = _df_t_show.rename(columns={"data":"Data","hora":"Hora","turno":"Turno","ponto":"Ponto","temperatura":"Temp (°C)","limite_max":"Limite (°C)","status":"Status"})
             st.dataframe(
-                _df_t_show.style.map(_cor_st, subset=["status"]),
+                _df_t_show.style.map(_cor_st, subset=["Status"]),
                 use_container_width=True, hide_index=True
             )
             _csv_t = _df_t_show.to_csv(index=False).encode("utf-8-sig")
@@ -2662,7 +2673,7 @@ elif "Relatório" in pagina:
                 st.markdown(f"<div style='font-size:0.78rem;color:#e2e8f0;margin:2px 0'>"
                             f"<b>{_fr.legenda or '—'}</b></div>"
                             f"<div style='font-size:0.68rem;color:#64748b;margin-bottom:6px'>"
-                            f"📅 {_fr.data} · {_fr.sistema or ''}</div>",
+                            f"📅 {str(_fr.data)[8:10]}/{str(_fr.data)[5:7]}/{str(_fr.data)[:4]} · {_fr.sistema or ''}</div>",
                             unsafe_allow_html=True)
                 if st.button("🗑️ Remover", key=f"rm_foto_{_fr.id}", use_container_width=True):
                     excluir_foto(_fr.id)
