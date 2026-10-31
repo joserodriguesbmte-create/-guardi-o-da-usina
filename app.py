@@ -1023,13 +1023,14 @@ if "Painel" in pagina:
                 legend=dict(bgcolor="rgba(0,0,0,0)", font_size=9, orientation="h",
                             yanchor="bottom", y=1.02, xanchor="right", x=1))
             try:
-                _MESES_PT_ABR = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",
-                                 7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
-                _pt0 = _df_plot["data_hora"].min().replace(day=1, hour=0, minute=0, second=0)
+                _datas_unicas = sorted(_df_plot["data_hora"].dt.normalize().unique())
+                _ptv = _datas_unicas
+                _ptl = [pd.Timestamp(t).strftime("%d/%m") for t in _ptv]
+                _pt0 = _df_plot["data_hora"].min()
                 _pt1 = _df_plot["data_hora"].max()
-                _ptv = pd.date_range(_pt0, _pt1, freq="MS")
-                _ptl = [f"{_MESES_PT_ABR[t.month]}/{str(t.year)[2:]}" for t in _ptv]
-                _fig.update_xaxes(tickvals=_ptv, ticktext=_ptl, tickangle=-30)
+                _fig.update_xaxes(
+                    tickvals=_ptv, ticktext=_ptl, tickangle=-30,
+                    range=[_pt0 - pd.Timedelta(days=3), _pt1 + pd.Timedelta(days=3)])
             except Exception:
                 pass
             st.plotly_chart(_fig, use_container_width=True)
@@ -1833,15 +1834,15 @@ elif "SF6" in pagina:
                 xaxis_title="Data / Hora", yaxis_title="Pressão (bar a 20°C)",
                 legend=dict(bgcolor="rgba(0,0,0,0)", font_size=10,
                             orientation="h", yanchor="bottom", y=1.01, xanchor="right", x=1))
-            # Rótulos do eixo X em português — um tick por mês
-            _MESES_PT_ABR = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",
-                             7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
             try:
-                _t0 = df_ev["data_hora"].min().replace(day=1, hour=0, minute=0, second=0)
+                _t0 = df_ev["data_hora"].min()
                 _t1 = df_ev["data_hora"].max()
-                _ticks_v = pd.date_range(_t0, _t1, freq="MS")
-                _ticks_l = [f"{_MESES_PT_ABR[t.month]}/{str(t.year)[2:]}" for t in _ticks_v]
-                fig_ev.update_xaxes(tickvals=_ticks_v, ticktext=_ticks_l, tickangle=-30)
+                _datas_ev = sorted(df_ev["data_hora"].dt.normalize().unique())
+                _ticks_v = _datas_ev
+                _ticks_l = [pd.Timestamp(t).strftime("%d/%m") for t in _datas_ev]
+                fig_ev.update_xaxes(
+                    tickvals=_ticks_v, ticktext=_ticks_l, tickangle=-30,
+                    range=[_t0 - pd.Timedelta(days=3), _t1 + pd.Timedelta(days=3)])
             except Exception:
                 pass
             st.plotly_chart(fig_ev, use_container_width=True)
