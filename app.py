@@ -199,15 +199,53 @@ setTimeout(removeStreamlitBar, 1500);
 </script>""", unsafe_allow_html=True)
 
 # ═══════════════════════════════════════════════════════════════ LOGIN ════
+import hashlib as _hl
+
+_PINS  = {"José Aparecido": "200695"}
+_NIVEL = {"José Aparecido": "SR"}
+
+def _token(op):
+    return _hl.sha256(f"{op}:{_PINS.get(op,'')}:pimental2026".encode()).hexdigest()[:24]
+
 if "user" not in st.session_state:
     st.session_state.user = None
 
+# Restaura sessão do localStorage via query_params injetados pelo JS
 if not st.session_state.user:
-    # PINs por operador — adicione novos operadores aqui conforme necessário
-    PINS = {
-        "José Aparecido": "200695",
+    _u = st.query_params.get("u", "")
+    _t = st.query_params.get("t", "")
+    if _u in _PINS and _t == _token(_u):
+        st.session_state.user  = _u
+        st.session_state.nivel = _NIVEL.get(_u, "OP")
+        st.session_state.login = _u.split()[0].lower()
+        st.query_params.clear()
+        st.rerun()
+
+if not st.session_state.user:
+    PINS  = _PINS
+    NIVEL = _NIVEL
+
+    # JS: logout intencional limpa localStorage; caso contrário tenta restaurar sessão
+    if st.session_state.pop("_logout", False):
+        st.components.v1.html("""<script>
+try{window.parent.localStorage.removeItem('guardiao_user');
+    window.parent.localStorage.removeItem('guardiao_token');}catch(e){}
+</script>""", height=0)
+    else:
+        st.components.v1.html("""<script>
+try{
+  var u=window.parent.localStorage.getItem('guardiao_user');
+  var t=window.parent.localStorage.getItem('guardiao_token');
+  if(u&&t){
+    var url=new URL(window.parent.location.href);
+    if(!url.searchParams.has('u')){
+      url.searchParams.set('u',u);
+      url.searchParams.set('t',t);
+      window.parent.location.replace(url.toString());
     }
-    NIVEL = {"José Aparecido": "SR"}
+  }
+}catch(e){}
+</script>""", height=0)
 
     st.markdown("""
     <style>
@@ -269,6 +307,11 @@ if not st.session_state.user:
             st.session_state.user  = operador
             st.session_state.nivel = NIVEL.get(operador, "OP")
             st.session_state.login = operador.split()[0].lower()
+            _tk = _token(operador)
+            st.components.v1.html(f"""<script>
+try{{window.parent.localStorage.setItem('guardiao_user','{operador}');
+     window.parent.localStorage.setItem('guardiao_token','{_tk}');}}catch(e){{}}
+</script>""", height=0)
             st.rerun()
         else:
             st.error("PIN incorreto. Tente novamente.")
@@ -300,6 +343,7 @@ with st.sidebar:
     st.markdown(f"<div style='color:#334155;font-size:0.7rem'>📅 {datetime.now(_TZ_BR).date().strftime('%d/%m/%Y')}</div>", unsafe_allow_html=True)
     if st.button("🚪 Sair", use_container_width=True):
         for k in ["user","nivel","login"]: st.session_state.pop(k,None)
+        st.session_state["_logout"] = True
         st.rerun()
 
 # ── MENU MOBILE (dropdown no topo — sempre visível) ────────────────────────
