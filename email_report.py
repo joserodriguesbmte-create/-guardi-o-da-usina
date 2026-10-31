@@ -309,13 +309,9 @@ def evolucao_sf6_base64(sf6_lista: list) -> str:
             ax.text(xmax, 6.04, "  Nominal 6,0 bar",  fontsize=8.5, color="#6b7280",
                     va="bottom", ha="left")
 
-        ax.xaxis.set_major_locator(mdates.MonthLocator())
-        _MESES_PT = {1:"Jan",2:"Fev",3:"Mar",4:"Abr",5:"Mai",6:"Jun",
-                     7:"Jul",8:"Ago",9:"Set",10:"Out",11:"Nov",12:"Dez"}
-        ax.xaxis.set_major_formatter(
-            plt.FuncFormatter(lambda x, _: f"{_MESES_PT.get(mdates.num2date(x).month,'?')}/{str(mdates.num2date(x).year)[2:]}")
-        )
-        # Limita o eixo X ao intervalo real dos dados — evita tick do mês seguinte
+        _todas_datas = sorted(set(d for g in grupos.values() for d in g["datas"]))
+        ax.set_xticks(_todas_datas)
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%d/%m"))
         if xmin and xmax:
             from datetime import timedelta as _td
             ax.set_xlim(xmin - _td(days=3), xmax + _td(days=3))
