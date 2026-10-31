@@ -1278,6 +1278,12 @@ if "Painel" in pagina:
             st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:8px 0'></div>", unsafe_allow_html=True)
             _obs_tr = st.text_area("Observações", height=70, key="tr_obs",
                                    placeholder="Condições observadas, ocorrências, ações tomadas...")
+            _foto_tr = st.file_uploader("📷 Foto (opcional)", type=["jpg","jpeg","png"],
+                                        key="foto_trafo")
+            _leg_tr = ""
+            if _foto_tr:
+                _leg_tr = st.text_input("Legenda da foto", key="leg_trafo",
+                                        placeholder="Ex: Conservador de óleo — nível normal")
             _salvar_tr = st.form_submit_button("💾 Salvar Inspeção do Transformador",
                                                type="primary", use_container_width=True)
 
@@ -1335,6 +1341,12 @@ if "Painel" in pagina:
                                  "sistema":"Transformador","item":_TRAFO_TAG,
                                  "status":_tr_saude_txt,
                                  "observacao":_json.dumps(_insp_dados, ensure_ascii=False),
+                                 "usuario":st.session_state.login})
+                if _foto_tr:
+                    _foto_tr.seek(0)
+                    salvar_foto({"data":str(_data_insp), "sistema":"Transformador",
+                                 "legenda":_leg_tr or _TRAFO_TAG,
+                                 "foto_base64":foto_para_base64(_foto_tr.read()),
                                  "usuario":st.session_state.login})
                 _emoji = "🟢" if _tr_saude_txt=="NORMAL" else "🟡" if _tr_saude_txt=="ATENCAO" else "🔴"
                 st.success(f"✅ {_TRAFO_NOME} — {_emoji} {_tr_saude_txt}" +
