@@ -151,14 +151,13 @@ div[data-testid="stTextArea"] label
 hr{border-color:#1e3a5f;}
 
 /* ── RESPONSIVO TABLET / MOBILE ────────────────────────────────── */
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .block-container{padding:0.5rem 0.8rem !important;}
 
-  /* KPIs: grade 2x2 no mobile */
+  /* KPIs: grade 2x2 */
   [data-testid="stHorizontalBlock"]:has(.kpi) [data-testid="column"]{
     min-width:48% !important; width:48% !important; flex:0 0 48% !important;
   }
-
   .kpi{padding:10px 6px !important;}
   .kpi-n{font-size:1.6rem !important;}
   .kpi-l{font-size:0.78rem !important;}
@@ -169,10 +168,47 @@ hr{border-color:#1e3a5f;}
   .stSelectbox>div>div, .stNumberInput>div>div>input,
   .stTextInput>div>div>input, .stTextArea>div>div>textarea,
   [data-baseweb="select"] span, [data-baseweb="input"] input
-  {font-size:1.2rem !important; color:#f1f5f9 !important;}
+  {font-size:1.15rem !important; color:#f1f5f9 !important;}
 
-  /* Botões — grandes para toque fácil com luva ou sol */
-  .stButton>button{font-size:1.1rem !important; min-height:52px !important; padding:0.5rem 0.8rem !important;}
+  /* Altura mínima dos inputs para toque fácil */
+  .stSelectbox>div>div,
+  div[data-testid="stNumberInput"] input,
+  div[data-testid="stTextInput"] input
+  {min-height:48px !important;}
+
+  div[data-testid="stTextArea"] textarea
+  {min-height:80px !important; font-size:1.05rem !important;}
+
+  /* Botões +/- do number input — muito maiores no tablet */
+  div[data-testid="stNumberInput"] button{
+    width:52px !important; height:48px !important;
+    font-size:1.5rem !important; border-radius:8px !important;
+  }
+
+  /* Botões de ação — grandes e fáceis de tocar */
+  .stButton>button{
+    font-size:1.1rem !important; min-height:54px !important;
+    padding:0.6rem 1rem !important; border-radius:10px !important;
+  }
+
+  /* Radio buttons — área de toque grande */
+  div[data-testid="stRadio"] label{
+    padding:10px 16px !important; font-size:1.05rem !important;
+    min-height:46px !important; display:flex !important;
+    align-items:center !important;
+  }
+  div[data-testid="stRadio"] div[role="radiogroup"]{
+    gap:8px !important;
+  }
+
+  /* Checkbox maior */
+  div[data-testid="stCheckbox"] label{
+    font-size:1.05rem !important; min-height:44px !important;
+    display:flex !important; align-items:center !important;
+  }
+  div[data-testid="stCheckbox"] input[type="checkbox"]{
+    width:22px !important; height:22px !important;
+  }
 
   /* Texto */
   label{font-size:1.05rem !important; color:#94a3b8 !important;}
@@ -181,6 +217,21 @@ hr{border-color:#1e3a5f;}
   h3{font-size:1.2rem !important;}
   p, li{font-size:1.05rem !important;}
   .card{padding:12px !important;}
+
+  /* Separador entre seções */
+  hr{margin:16px 0 !important;}
+
+  /* Tabs internas (SF6, Cadastro etc.) */
+  div[data-baseweb="tab"] button{
+    font-size:1rem !important; padding:10px 16px !important;
+    min-height:46px !important;
+  }
+
+  /* Dropdown lista — itens maiores */
+  li[role="option"]{
+    font-size:1.1rem !important; padding:12px 16px !important;
+    min-height:46px !important;
+  }
 }
 </style>""", unsafe_allow_html=True)
 
