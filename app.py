@@ -57,9 +57,13 @@ def _carregar_temps(equipamento=None, data_ini=None, data_fim=None):
 def _carregar_operacoes(disjuntor=None):
     return carregar_operacoes(disjuntor)
 
-@st.cache_data(ttl=120, show_spinner=False)
-def _carregar_fotos(data_ini=None, data_fim=None, sem_base64=False):
+@st.cache_data(ttl=600, show_spinner=False)
+def _carregar_fotos(data_ini=None, data_fim=None, sem_base64=True):
     return carregar_fotos(data_ini=data_ini, data_fim=data_fim, sem_base64=sem_base64)
+
+@st.cache_data(ttl=600, show_spinner=False)
+def _carregar_foto_b64(id_):
+    return carregar_foto_base64(id_)
 
 @st.cache_data(ttl=120, show_spinner=False)
 def _carregar_inspecoes_hoje(data):
@@ -2713,7 +2717,7 @@ elif "Relatório" in pagina:
     </div>""", unsafe_allow_html=True)
 
     # Fotos já salvas no banco para o período (cache 30s — máx 6 fotos)
-    df_fotos_salvas = _carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim), sem_base64=False)
+    df_fotos_salvas = _carregar_fotos(data_ini=str(d_ini), data_fim=str(d_fim), sem_base64=True)
     _n_salvas = len(df_fotos_salvas)
     _max_fotos = 10
     _vagas = max(0, _max_fotos - _n_salvas)
@@ -2727,7 +2731,8 @@ elif "Relatório" in pagina:
         for i, (_, _fr) in enumerate(df_fotos_salvas.iterrows()):
             with _cols_fs[i % 2]:
                 try:
-                    _img_bytes = _b64.b64decode(_fr.foto_base64)
+                    _b64_data = _carregar_foto_b64(_fr.id)
+                    _img_bytes = _b64.b64decode(_b64_data)
                     st.image(_img_bytes, use_container_width=True)
                 except Exception:
                     st.markdown("📷", unsafe_allow_html=False)
@@ -2739,6 +2744,7 @@ elif "Relatório" in pagina:
                 if st.button("🗑️ Remover", key=f"rm_foto_{_fr.id}", use_container_width=True):
                     excluir_foto(_fr.id)
                     _carregar_fotos.clear()
+                    _carregar_foto_b64.clear()
                     st.rerun()
 
     # Upload de novas fotos (se houver vagas)
@@ -2785,6 +2791,7 @@ elif "Relatório" in pagina:
                     for _msg in _erros:
                         st.error(f"⚠️ {_msg}")
                 _carregar_fotos.clear()
+                _carregar_foto_b64.clear()
                 st.session_state["foto_counter"] = _fk + 1
                 st.rerun()
     elif _n_salvas >= _max_fotos:
@@ -2800,6 +2807,7 @@ elif "Relatório" in pagina:
             if _cf1.button("✅ Sim, excluir todas", type="primary", use_container_width=True):
                 n = excluir_fotos_periodo(d_ini, d_fim)
                 _carregar_fotos.clear()
+                _carregar_foto_b64.clear()
                 st.session_state["_confirmar_limpar_fotos"] = False
                 st.success(f"✅ {n} foto(s) excluída(s)!")
                 st.rerun()
@@ -3064,6 +3072,7 @@ elif "Relatório" in pagina:
                 # Fotos só somem após envio manual pelo app
                 excluir_fotos_periodo(d_ini, d_fim)
                 _carregar_fotos.clear()
+                _carregar_foto_b64.clear()
                 # Liberar nova rodada de inspeções (limpar caches do Painel)
                 _carregar_sf6.clear()
                 _carregar_inspecoes.clear()
