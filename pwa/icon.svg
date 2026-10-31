@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="32" fill="#0c2340"/>
+  <path d="M96 24 L152 48 L152 100 C152 136 96 168 96 168 C96 168 40 136 40 100 L40 48 Z"
+        fill="#1e3a5f" stroke="#3b82f6" stroke-width="4"/>
+  <path d="M96 40 L140 60 L140 100 C140 128 96 155 96 155 C96 155 52 128 52 100 L52 60 Z"
+        fill="#0f2d50"/>
+  <text x="96" y="118" text-anchor="middle" font-family="Arial" font-size="52"
+        font-weight="bold" fill="#3b82f6">G</text>
+</svg>

@@ -1,0 +1,18 @@
+{
+  "name": "Guardiao da Usina",
+  "short_name": "Guardiao",
+  "description": "Monitoramento SE 230kV — UHE Pimental",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b1120",
+  "theme_color": "#0c2340",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

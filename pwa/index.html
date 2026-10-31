@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Guardiao da Usina</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon.svg">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh;overscroll-behavior:none}
+/* ---- LOGIN ---- */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+.login-box{background:#0f1e3a;border:1px solid #1e3a5f;border-radius:16px;padding:32px 28px;width:100%;max-width:380px}
+.login-logo{font-size:3.5rem;text-align:center;margin-bottom:8px}
+.login-title{color:#f1f5f9;font-size:1.4rem;font-weight:900;text-align:center;margin-bottom:2px}
+.login-sub{color:#475569;font-size:0.8rem;text-align:center;margin-bottom:24px}
+.login-box select,.login-box input[type="password"]{width:100%;padding:12px;border-radius:8px;border:1px solid #1e3a5f;background:#0b1120;color:#f1f5f9;font-size:1rem;margin-bottom:12px}
+.login-box label{display:block;color:#94a3b8;font-size:0.85rem;margin-bottom:4px}
+.btn-login{width:100%;padding:14px;background:#3b82f6;color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;margin-top:4px}
+.login-err{color:#ef4444;font-size:0.82rem;text-align:center;margin-top:8px;display:none}
+/* ---- HEADER ---- */
+.header{background:#0c2340;padding:12px 16px;text-align:center;position:sticky;top:0;z-index:100;border-bottom:2px solid #1e5a96}
+.header h1{font-size:1rem;color:#f1f5f9;font-weight:900}
+.header .sub{font-size:0.68rem;color:#60a5fa;margin-top:2px}
+/* ---- SYNC BAR ---- */
+.sync-bar{background:#0a1628;padding:7px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #1e3a5f;gap:8px}
+.sync-bar .left{font-size:0.72rem;color:#94a3b8;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sync-bar button{background:#3b82f6;color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:0.75rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.sync-bar button:disabled{background:#475569;cursor:not-allowed}
+.online{color:#10b981}.offline{color:#ef4444}
+.btn-sair{background:#374151 !important;font-size:0.7rem !important;padding:4px 8px !important}
+/* ---- TABS ---- */
+.tabs{display:flex;gap:4px;padding:8px 10px;overflow-x:auto;background:#0f1e3a;border-bottom:1px solid #1e3a5f;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:9px 14px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;color:#94a3b8;white-space:nowrap;border:1px solid transparent;user-select:none;min-height:40px;display:flex;align-items:center}
+.tab.active{background:#1e3a5f;color:#60a5fa;border-color:#3b82f6}
+/* ---- PAGES ---- */
+.page{display:none;padding:12px 14px;padding-bottom:40px}
+.page.active{display:block}
+/* ---- CARDS ---- */
+.card{background:#0f1e3a;border:1px solid #1e3a5f;border-radius:10px;padding:14px;margin-bottom:12px}
+.card-title{font-size:0.78rem;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;border-bottom:1px solid #1e3a5f;padding-bottom:6px}
+/* ---- FORMS ---- */
+label{display:block;font-size:0.78rem;color:#94a3b8;margin:8px 0 4px}
+input[type="number"],input[type="text"],input[type="date"],select,textarea{
+  width:100%;padding:10px;border-radius:6px;border:1px solid #1e3a5f;
+  background:#0b1120;color:#f1f5f9;font-size:0.9rem;font-family:Arial,sans-serif}
+textarea{resize:vertical;min-height:56px}
+input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
+/* ---- BUTTONS ---- */
+.btn-primary{width:100%;padding:14px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;margin-top:12px}
+.btn-primary:disabled{background:#475569}
+.btn-danger{background:#ef4444}
+.btn-sm{padding:6px 14px;border-radius:6px;border:none;font-size:0.8rem;font-weight:700;cursor:pointer;color:#fff}
+.btn-green{background:#059669}.btn-yellow{background:#d97706}.btn-gray{background:#374151}
+/* ---- RADIO GROUPS (SF6/SEC) ---- */
+.radio-group{display:flex;gap:6px;margin:4px 0 8px;flex-wrap:wrap}
+.radio-group label{display:flex;align-items:center;gap:4px;background:#0b1120;border:1px solid #1e3a5f;border-radius:6px;padding:8px 12px;cursor:pointer;font-size:0.82rem;color:#e2e8f0;margin:0;min-height:40px}
+.radio-group input[type="radio"]{accent-color:#3b82f6;width:16px;height:16px}
+/* ---- INSPECTION ITEMS ---- */
+.insp-item{background:#0b1120;border:1px solid #1e3a5f;border-radius:8px;padding:10px 12px;margin-bottom:6px}
+.insp-desc{font-size:0.82rem;color:#cbd5e1;margin-bottom:8px;line-height:1.4}
+.insp-opts{display:flex;gap:5px;flex-wrap:wrap}
+.insp-opts label{background:#162447;border:1px solid #1e3a5f;border-radius:6px;padding:7px 10px;font-size:0.78rem;cursor:pointer;color:#94a3b8;margin:0;display:flex;align-items:center;gap:4px;min-height:38px}
+.insp-opts input[type="radio"]:checked+span{font-weight:700;color:#f1f5f9}
+.insp-opts input[type="radio"][value="✅ OK"]:checked+span{color:#10b981}
+.insp-opts input[type="radio"][value="❌ NOK"]:checked+span{color:#ef4444}
+.insp-opts input[type="radio"][value="⚠️ Atenção"]:checked+span{color:#f59e0b}
+.insp-obs{width:100%;padding:6px 8px;border-radius:5px;border:1px solid #1e3a5f;background:#0b1120;color:#94a3b8;font-size:0.78rem;margin-top:6px}
+/* ---- KPI ---- */
+.kpi-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(80px,1fr));gap:6px;margin-bottom:12px}
+.kpi{background:#162447;border-radius:8px;padding:10px 6px;text-align:center;border-top:3px solid #3b82f6}
+.kpi .num{font-size:1.2rem;font-weight:900}.kpi .lbl{font-size:0.6rem;color:#94a3b8;margin-top:2px}
+/* ---- ALERT BANNERS ---- */
+.alert-banner{border-radius:10px;padding:12px 16px;margin-bottom:12px;border:2px solid}
+.alert-title{font-weight:900;font-size:0.9rem;margin-bottom:6px}
+.alert-row{display:flex;justify-content:space-between;align-items:center;background:rgba(0,0,0,0.3);border-radius:6px;padding:5px 10px;margin:3px 0;font-size:0.8rem}
+/* ---- EQUIPAMENTO LIST ---- */
+.eq-item{background:#0b1120;border:1px solid #1e3a5f;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;min-height:52px}
+.eq-item:active{border-color:#3b82f6}
+.eq-item .tag{font-weight:700;color:#f1f5f9;font-size:0.88rem}
+.eq-item .info{font-size:0.7rem;color:#64748b;margin-top:2px}
+.done-tag{display:inline-block;background:#052e16;color:#10b981;font-size:0.68rem;padding:3px 10px;border-radius:10px;font-weight:700}
+.pend-tag{display:inline-block;background:#451a03;color:#f59e0b;font-size:0.68rem;padding:3px 10px;border-radius:10px;font-weight:700}
+/* ---- PENDENCIAS ---- */
+.pend-card{background:#0b1120;border:1px solid #1e3a5f;border-radius:8px;padding:12px;margin-bottom:8px}
+.pend-header{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px}
+.pend-desc{font-size:0.85rem;color:#f1f5f9;line-height:1.4;flex:1}
+.status-ab{color:#ef4444;font-weight:700;font-size:0.75rem}
+.status-an{color:#f59e0b;font-weight:700;font-size:0.75rem}
+.status-ok{color:#10b981;font-weight:700;font-size:0.75rem}
+.pend-meta{font-size:0.72rem;color:#475569;margin-top:4px}
+.pend-detail{display:none;margin-top:10px;border-top:1px solid #1e3a5f;padding-top:10px}
+.pend-detail.open{display:block}
+/* ---- HISTORICO ---- */
+.hist-item{background:#0b1120;border:1px solid #1e3a5f;border-radius:6px;padding:8px 10px;margin-bottom:4px;font-size:0.78rem;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hist-item .h-tag{color:#60a5fa;font-weight:700}
+.hist-item .h-date{color:#64748b}
+.synced-badge{background:#052e16;color:#10b981;font-size:0.65rem;padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap}
+.unsync-badge{background:#451a03;color:#f59e0b;font-size:0.65rem;padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap}
+/* ---- GRIDS ---- */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+/* ---- TOAST ---- */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#10b981;color:#fff;padding:10px 20px;border-radius:8px;font-size:0.85rem;font-weight:600;z-index:9999;display:none;text-align:center;max-width:90vw}
+.toast.error{background:#ef4444}
+/* ---- DIVIDER ---- */
+.divider{border:none;border-top:1px solid #1e3a5f;margin:12px 0}
+/* ---- SECTION TITLE ---- */
+.sec-title{font-size:0.72rem;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.6px;margin:12px 0 6px}
+/* ---- PEND FORM ---- */
+.pend-form-wrap{display:none;background:#0f1e3a;border:1px solid #1e5a96;border-radius:10px;padding:14px;margin-bottom:12px}
+.pend-form-wrap.open{display:block}
+</style>
+</head>
+<body>
+
+<!-- ════ LOGIN ════ -->
+<div class="login-wrap" id="pg-login">
+  <div class="login-box">
+    <div class="login-logo">🛡️</div>
+    <div class="login-title">Guardiao da Usina</div>
+    <div class="login-sub">Norte Energia · UHE Pimental · SE 230kV</div>
+    <label>Operador</label>
+    <select id="ln-nome">
+      <option>Jose Aparecido</option>
+    </select>
+    <label>PIN</label>
+    <input type="password" id="ln-pin" maxlength="6" placeholder="Digite seu PIN"
+           onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn-login" onclick="doLogin()">🛡️ Entrar</button>
+    <div class="login-err" id="ln-err">PIN incorreto. Tente novamente.</div>
+  </div>
+</div>
+
+<!-- ════ APP ════ -->
+<div id="app" style="display:none">
+
+  <div class="header">
+    <h1>🛡️ Guardiao da Usina</h1>
+    <div class="sub">SE 230kV · UHE Pimental</div>
+  </div>
+
+  <div class="sync-bar">
+    <div class="left">
+      <span id="connStatus" class="offline">⬤ Offline</span>
+      <span id="pendCount"></span>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center">
+      <button id="btnSync" onclick="syncQueue()" disabled>🔄 Sync</button>
+      <button class="btn-sair" onclick="doLogout()">Sair</button>
+    </div>
+  </div>
+
+  <div class="tabs" id="tabBar">
+    <div class="tab active" onclick="showPage('painel')">🏠 Painel</div>
+    <div class="tab" onclick="showPage('sf6')">⚡ SF6</div>
+    <div class="tab" onclick="showPage('sec')">🔌 Secc.</div>
+    <div class="tab" onclick="showPage('insp')">📋 Insp.</div>
+    <div class="tab" onclick="showPage('pend')">⚠️ Pend.</div>
+    <div class="tab" onclick="showPage('hist')">📜 Hist.</div>
+  </div>
+
+  <!-- ── PAINEL ── -->
+  <div class="page active" id="pg-painel">
+    <div class="card">
+      <div class="card-title">⚙️ Configuracao do Turno</div>
+      <div class="grid-2" style="margin-bottom:8px">
+        <div>
+          <label>👤 Operador</label>
+          <input type="text" id="cfgUsuario" readonly>
+        </div>
+        <div>
+          <label>⏰ Turno</label>
+          <select id="cfgTurno" onchange="saveSessao()">
+            <option>Manha (06-14h)</option>
+            <option>Tarde (14-22h)</option>
+            <option>Noite (22-06h)</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-4">
+        <div>
+          <label>📅 Data</label>
+          <input type="date" id="cfgData" onchange="saveSessao();renderPainel()">
+        </div>
+        <div>
+          <label>🌡️ Temp (°C)</label>
+          <input type="number" id="cfgTemp" value="31" step="0.5" min="-10" max="60" onchange="saveSessao()">
+        </div>
+        <div>
+          <label>💧 Umid (%)</label>
+          <input type="number" id="cfgUmid" value="70" step="1" min="0" max="100" onchange="saveSessao()">
+        </div>
+        <div style="display:flex;align-items:flex-end">
+          <button class="btn-primary" style="margin:0;padding:10px" onclick="renderPainel()">🔄</button>
+        </div>
+      </div>
+    </div>
+    <div class="kpi-bar" id="kpiBar"></div>
+    <div id="alertBanner"></div>
+    <div class="card-title" style="margin-top:4px">⚡ Disjuntores SF6 — Mes</div>
+    <div id="djList"></div>
+    <div class="card-title" style="margin-top:8px">🔌 Seccionadoras — Mes</div>
+    <div id="secResume" style="font-size:0.82rem;color:#94a3b8;padding:8px 0"></div>
+  </div>
+
+  <!-- ── SF6 ── -->
+  <div class="page" id="pg-sf6">
+    <div class="card">
+      <div class="card-title">⚡ Inspecao SF6</div>
+      <label>Selecionar disjuntor</label>
+      <select id="sf6Sel" onchange="sf6Selecionou()">
+        <option value="">-- Selecionar --</option>
+      </select>
+      <div id="sf6Form" style="display:none;margin-top:12px">
+        <div id="sf6Polos"></div>
+        <hr class="divider">
+        <div class="sec-title">🔍 Inspecao Visual</div>
+        <div id="sf6Visual"></div>
+        <hr class="divider">
+        <div class="sec-title">🔢 Operacoes no Turno</div>
+        <div class="grid-2">
+          <div>
+            <label>Houve operacao?</label>
+            <select id="sf6HouveOp" onchange="toggleOpTipo()">
+              <option value="Nao">Nao</option>
+              <option value="Sim">Sim</option>
+            </select>
+          </div>
+          <div id="sf6OpTipoDiv">
+            <label>Tipo</label>
+            <select id="sf6OpTipo">
+              <option>Abertura Normal</option>
+              <option>Fechamento Normal</option>
+              <option>Abertura por Falta</option>
+              <option>Fechamento Automatico</option>
+              <option>Teste</option>
+            </select>
+          </div>
+        </div>
+        <div id="sf6OpQtdDiv">
+          <label>Quantidade</label>
+          <input type="number" id="sf6OpQtd" value="1" min="1" max="50">
+        </div>
+        <hr class="divider">
+        <div class="sec-title">📟 Contadores (opcional)</div>
+        <div class="grid-2">
+          <div><label>P1LT Tripolar</label><input type="number" id="sf6CntTrip" value="0" min="0"></div>
+          <div><label>P2 Curto-Circ.</label><input type="number" id="sf6CntCC" value="0" min="0"></div>
+        </div>
+        <div class="grid-3" id="sf6CntPolos" style="display:none">
+          <div><label>Polo A</label><input type="number" id="sf6CntA" value="0" min="0"></div>
+          <div><label>Polo B</label><input type="number" id="sf6CntB" value="0" min="0"></div>
+          <div><label>Polo V</label><input type="number" id="sf6CntV" value="0" min="0"></div>
+        </div>
+        <hr class="divider">
+        <label>📷 Foto (opcional)</label>
+        <input type="file" id="sf6Foto" accept="image/*" capture="environment">
+        <label>Legenda da foto</label>
+        <input type="text" id="sf6FotoLeg" placeholder="Ex: Manometro PMDJ6-01">
+        <label>Observacao geral</label>
+        <input type="text" id="sf6Obs" placeholder="Condicoes de campo...">
+        <button class="btn-primary" onclick="salvarSF6()">💾 Salvar Inspecao SF6</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SECCIONADORAS ── -->
+  <div class="page" id="pg-sec">
+    <div class="card">
+      <div class="card-title">🔌 Inspecao de Seccionadora</div>
+      <label>Selecionar seccionadora</label>
+      <select id="secSel" onchange="secSelecionou()">
+        <option value="">-- Selecionar --</option>
+      </select>
+      <div id="secForm" style="display:none;margin-top:12px">
+        <div id="secItens"></div>
+        <hr class="divider">
+        <label>📷 Foto (opcional)</label>
+        <input type="file" id="secFoto" accept="image/*" capture="environment">
+        <label>Legenda</label>
+        <input type="text" id="secFotoLeg" placeholder="Ex: Contato PMSD6-01">
+        <label>Observacao</label>
+        <input type="text" id="secObs" placeholder="Condicoes observadas...">
+        <button class="btn-primary" onclick="salvarSec()">💾 Salvar Inspecao Seccionadora</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── INSPECAO DE CAMPO ── -->
+  <div class="page" id="pg-insp">
+    <div class="card">
+      <div class="card-title">📋 Inspecao de Campo — Checklist</div>
+      <div class="grid-3" style="margin-bottom:10px">
+        <div>
+          <label>📅 Data</label>
+          <input type="date" id="inspData">
+        </div>
+        <div>
+          <label>⏰ Turno</label>
+          <select id="inspTurno">
+            <option>Manha (06-14h)</option>
+            <option>Tarde (14-22h)</option>
+            <option>Noite (22-06h)</option>
+          </select>
+        </div>
+        <div>
+          <label>⚡ Sistema</label>
+          <select id="inspSis" onchange="renderChecklist()">
+            <option>Subestacao 230kV</option>
+            <option>Sala Eletrica da SE</option>
+            <option>Cubilo de 13.8kV da SE</option>
+            <option>Transformador TR-SE-01</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div id="checklistItems"></div>
+    <button class="btn-primary" id="btnSalvarInsp" onclick="salvarInsp()">💾 Salvar Inspecao</button>
+  </div>
+
+  <!-- ── PENDENCIAS ── -->
+  <div class="page" id="pg-pend">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="font-size:0.9rem;font-weight:700;color:#f1f5f9">⚠️ Pendencias SAP</div>
+      <button class="btn-sm btn-green" onclick="togglePendForm()">+ Nova</button>
+    </div>
+    <div class="pend-form-wrap" id="pendFormWrap">
+      <div class="card-title">➕ Nova Pendencia</div>
+      <div class="grid-2">
+        <div>
+          <label>Data Abertura</label>
+          <input type="date" id="pfData">
+        </div>
+        <div>
+          <label>Sistema</label>
+          <select id="pfSis">
+            <option>Subestacao 230kV</option>
+            <option>Sala Eletrica da SE</option>
+            <option>Cubilo de 13.8kV da SE</option>
+            <option>Transformador TR-SE-01</option>
+            <option>Patio 69kV</option>
+            <option>Seguranca</option>
+            <option>Geral</option>
+          </select>
+        </div>
+      </div>
+      <label>Descricao</label>
+      <textarea id="pfDesc" placeholder="Descreva a pendencia..."></textarea>
+      <div class="grid-3">
+        <div>
+          <label>Nota SAP</label>
+          <input type="text" id="pfSap" placeholder="Opcional">
+        </div>
+        <div>
+          <label>Prioridade</label>
+          <select id="pfPrio">
+            <option>Alta</option>
+            <option>Media</option>
+            <option>Baixa</option>
+          </select>
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="pfStatus">
+            <option>Aberta</option>
+            <option>Em andamento</option>
+          </select>
+        </div>
+      </div>
+      <label>Observacao</label>
+      <input type="text" id="pfObs" placeholder="Opcional">
+      <button class="btn-primary" onclick="salvarPend()">💾 Registrar Pendencia</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <button class="btn-sm btn-gray" id="filtAberta" onclick="filtrarPend('ab')" style="background:#3b82f6">Abertas</button>
+      <button class="btn-sm btn-gray" id="filtTodas" onclick="filtrarPend('all')">Todas</button>
+    </div>
+    <div id="pendList"><div style="color:#475569;text-align:center;padding:20px">Carregando...</div></div>
+  </div>
+
+  <!-- ── HISTORICO ── -->
+  <div class="page" id="pg-hist">
+    <div class="card">
+      <div class="card-title">📜 Registros Locais</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <button class="btn-sm btn-gray" id="hFiltAll" onclick="filtHist('all')" style="background:#3b82f6">Todos</button>
+        <button class="btn-sm btn-gray" id="hFiltPend" onclick="filtHist('pend')">Pendentes</button>
+        <button class="btn-sm btn-gray" id="hFiltSync" onclick="filtHist('sync')">Sincronizados</button>
+      </div>
+      <div id="histList"></div>
+      <button class="btn-primary btn-danger" onclick="limparSincronizados()" style="margin-top:8px">🗑️ Limpar Sincronizados</button>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═════════════════════════════════════════════════════════════════
+// CONFIGURACAO
+// ═════════════════════════════════════════════════════════════════
+const SUPA_URL = "https://stgibmuefxrnistysckt.supabase.co/rest/v1";
+const SUPA_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0Z2libXVlZnhybmlzdHlzY2t0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyOTc5NjksImV4cCI6MjA5NTg3Mzk2OX0.yUQa2P6HignR-j6RJF1jsbjMQS2mhbqEMr2BRPLfbJ8";
+
+// ═════════════════════════════════════════════════════════════════
+// DADOS ESTATICOS
+// ═════════════════════════════════════════════════════════════════
+const PINS = {"Jose Aparecido": "200695"};
+
+const DISJUNTORES = {
+  "PMDJ6-01": {desc:"Bay 01PUL",            polos:1, nom:6.0, al:5.2, bl:5.0},
+  "PMDJ6-02": {desc:"Vao Linha (3 polos)",  polos:3, nom:6.0, al:5.2, bl:5.0},
+  "PMDJ6-03": {desc:"Bay 02PVL",            polos:1, nom:6.0, al:5.2, bl:5.0},
+  "PMDJ6-04": {desc:"Vao Trafo",            polos:1, nom:6.0, al:5.2, bl:5.0},
+  "PMDJ6-05": {desc:"Bay 03PVL",            polos:1, nom:6.0, al:5.2, bl:5.0},
+  "PMDB6-01": {desc:"Acopl. Barras (3p)",   polos:3, nom:6.0, al:5.2, bl:5.0},
+};
+
+const SECCIONADORAS = [
+  "PMCA6-01","PMCA6-02","PMCA6-03","PMCA6-04","PMCA6-05",
+  "PMSD6-01","PMSD6-02","PMSD6-03","PMSD6-04","PMSD6-05","PMSD6-06","PMSD6-07",
+  "PMSB6-01","PMSB6-02","PMSB6-03","PMSB6-04","PMSB6-05","PMSB6-06","PMSB6-07",
+  "PMSB6-08","PMSB6-09","PMSB6-10",
+  "PMSY6-01","PMSY6-02","PMSY6-03","PMSY6-04","PMSY6-05"
+];
+
+const ITENS_VISUAL_DJ = [
+  "Sem vazamentos visiveis",
+  "Indicador de pressao funcionando",
+  "Sem corrosao / aparencia anormal",
+  "Mecanismo de operacao normal",
+  "Sem ruidos anormais"
+];
+
+const ITENS_SEC = [
+  "Condicao geral (visual)",
+  "Isoladores — trincas e sujidade",
+  "Fixacao e parafusos",
+  "Lubrificacao — articulacoes e mecanismo",
+  "Contatos — desgaste e oxidacao",
+  "Sistema de travamento/bloqueio",
+  "Identificacao e sinalizacao"
+];
+
+const ITENS_SEC_PMCA = [
+  "Condicao geral (visual)",
+  "Fixacao e parafusos",
+  "Lubrificacao — articulacoes e mecanismo",
+  "Contatos — desgaste e oxidacao",
+  "Sistema de travamento/bloqueio",
+  "Identificacao e sinalizacao"
+];
+
+// Mapeamento: nome exibido → nome salvo no banco (compativel com Streamlit)
+const SIS_DISPLAY_TO_DB = {
+  "Subestacao 230kV":       "Subestacao 230kV",
+  "Sala Eletrica da SE":    "Sala Eletrica da SE",
+  "Cubilo de 13.8kV da SE": "Cubilo de 13.8kV da SE",
+  "Transformador TR-SE-01": "Transformador TR-SE-01 (Toshiba 10/12.5 MVA)",
+  "Patio 69kV":             "Patio 69kV",
+  "Seguranca":              "Seguranca",
+  "Geral":                  "Geral"
+};
+
+const CHECKLISTS = {
+  "Subestacao 230kV": [
+    "Verificar condicao geral dos equipamentos (disjuntores, seccionadoras, TCs, TPs)",
+    "Verificar nivel e cor do oleo dos transformadores",
+    "Verificar pressao do SF6 nos disjuntores",
+    "Verificar alarmes e sinalizacoes no painel de controle",
+    "Verificar condicao dos para-raios",
+    "Verificar estado da sinalizacao e cartoes de identificacao",
+    "Verificar sistema de aterramento",
+    "Verificar condicao da cerca e acesso a subestacao",
+    "Verificar limpeza e conservacao da area externa",
+    "Verificar iluminacao interna e externa da SE",
+    "Registrar leituras dos medidores (tensao, corrente, potencia)",
+    "Verificar sistema de protecao — reles em servico"
+  ],
+  "Sala Eletrica da SE": [
+    "Verificar temperatura ambiente da sala (max. 35C)",
+    "Verificar funcionamento do ar-condicionado / ventilacao",
+    "Verificar condicao dos paineis e cubiculos eletricos",
+    "Verificar sistema de iluminacao de emergencia",
+    "Verificar extintores (prazo de validade e lacre)",
+    "Verificar organizacao e limpeza da sala",
+    "Verificar ausencia de vazamentos ou infiltracoes",
+    "Verificar condicao dos cabos e bandejas de cabos",
+    "Verificar cartoes de identificacao dos paineis",
+    "Verificar sistema de alarme de incendio",
+    "Verificar registros de temperatura nos paineis (termografia)",
+    "Verificar estado do piso elevado (se aplicavel)"
+  ],
+  "Cubilo de 13.8kV da SE": [
+    "Verificar posicao das chaves e disjuntores (aberto/fechado)",
+    "Verificar indicadores de tensao presentes",
+    "Verificar ausencia de alarmes ativos",
+    "Verificar temperatura dos compartimentos (camara de AR)",
+    "Verificar condicao das barras e conexoes",
+    "Verificar sistema de bloqueio e intertravamento",
+    "Verificar sinalizacao de seguranca e EPI disponivel",
+    "Verificar limpeza interna do cubiculo",
+    "Verificar estado dos isoladores e buchas",
+    "Verificar registros de medicao (A, V, kW)",
+    "Verificar funcionamento das lampadas indicadoras",
+    "Verificar condicao da porta e vedacao do cubiculo"
+  ],
+  "Transformador TR-SE-01": [
+    "Registrar leitura do OTI (Termometro de Oleo) — max. elevacao 65C",
+    "Registrar leitura do WTI — Termometro de Enrolamento (TM1 Treetech) — max. elevacao 65C",
+    "Verificar nivel de oleo no conservador (visiglass) — nivel entre min. e max.",
+    "Verificar cor e aspecto do oleo (transparente/amarelo claro = normal)",
+    "Verificar ausencia de vazamentos de oleo no tanque, buchas e conservador",
+    "Verificar rele Buchholz — contatos de alarme e trip sem atuacao",
+    "Verificar DGPT2 (Detector de Gas, Pressao e Temperatura) — sem alarme ativo",
+    "Verificar valvula de alivio de pressao — sem atuacao recente",
+    "Verificar termostatos — alarme e desligamento sem atuacao",
+    "Verificar rele diferencial (87T) em servico no painel",
+    "Verificar rele de sobrecorrente (50/51) em servico",
+    "Verificar funcionamento dos ventiladores (ONAF) — acionar e confirmar rotacao",
+    "Verificar limpeza dos radiadores — sem entupimento ou sujidade excessiva",
+    "Verificar temperatura de comutacao automatica ONAN → ONAF",
+    "Registrar posicao atual do comutador (DETC) — tap em uso",
+    "Verificar ausencia de ruidos anormais no comutador",
+    "Verificar condicao das buchas AT (230kV) — sem trincas, vazamentos ou sujidade",
+    "Verificar condicao das buchas BT — sem trincas, sujidade ou arborescencias",
+    "Verificar integridade das conexoes de aterramento",
+    "Verificar conservador/expansor de oleo — nivel e estado da membrana",
+    "Verificar ausencia de alarmes no painel local do transformador",
+    "Verificar lampadas indicadoras do painel — todas operacionais",
+    "Verificar identificacao e cartoes de seguranca atualizados",
+    "Verificar limpeza e drenagem da bacia de contencao de oleo",
+    "Verificar ausencia de animais, ninhos ou objetos estranhos",
+    "Registrar temperatura ambiente no momento da inspecao"
+  ]
+};
+
+// ═════════════════════════════════════════════════════════════════
+// STORAGE
+// ═════════════════════════════════════════════════════════════════
+function getQueue()    { return JSON.parse(localStorage.getItem("gd_queue") || "[]"); }
+function saveQueue(q)  { localStorage.setItem("gd_queue", JSON.stringify(q)); }
+function getCache()    { return JSON.parse(localStorage.getItem("gd_cache") || "{}"); }
+function saveCache(c)  { localStorage.setItem("gd_cache", JSON.stringify(c)); }
+function getSessao()   { return JSON.parse(localStorage.getItem("gd_sessao") || "{}"); }
+function saveSessao()  {
+  const s = {
+    usuario: document.getElementById("cfgUsuario").value,
+    turno:   document.getElementById("cfgTurno").value,
+    data:    document.getElementById("cfgData").value,
+    temp:    document.getElementById("cfgTemp").value,
+    umid:    document.getElementById("cfgUmid").value
+  };
+  localStorage.setItem("gd_sessao", JSON.stringify(s));
+}
+
+// ═════════════════════════════════════════════════════════════════
+// SUPABASE API
+// ═════════════════════════════════════════════════════════════════
+async function supaGet(table, params = {}) {
+  const url = new URL(SUPA_URL + "/" + table);
+  for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+  const r = await fetch(url.toString(), {
+    headers: {"apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY,
+              "Range": "0-999", "Prefer": "count=none"}
+  });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+
+async function supaPost(table, body) {
+  const r = await fetch(SUPA_URL + "/" + table, {
+    method: "POST",
+    headers: {"apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY,
+              "Content-Type": "application/json", "Prefer": "return=minimal"},
+    body: JSON.stringify(body)
+  });
+  return r.ok;
+}
+
+async function supaPatch(table, filters, body) {
+  const url = new URL(SUPA_URL + "/" + table);
+  for (const [k, v] of Object.entries(filters)) url.searchParams.set(k, v);
+  const r = await fetch(url.toString(), {
+    method: "PATCH",
+    headers: {"apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY,
+              "Content-Type": "application/json", "Prefer": "return=minimal"},
+    body: JSON.stringify(body)
+  });
+  return r.ok;
+}
+
+// ═════════════════════════════════════════════════════════════════
+// UTILIDADES
+// ═════════════════════════════════════════════════════════════════
+function hoje() {
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function agora() {
+  const d = new Date();
+  return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")+":"+String(d.getSeconds()).padStart(2,"0");
+}
+function mesIni() {
+  const d = new Date();
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-01";
+}
+function toast(msg, err) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast" + (err ? " error" : "");
+  t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 3000);
+}
+function statusSF6(p, dj) {
+  const bl = dj ? dj.bl : 5.0;
+  const al = dj ? dj.al : 5.2;
+  if (p < bl) return {s:"BLOQUEIO", cor:"#ef4444"};
+  if (p < al) return {s:"ALARME",   cor:"#f59e0b"};
+  return {s:"NORMAL", cor:"#10b981"};
+}
+function kpi(n, lbl, cor) {
+  return `<div class="kpi" style="border-top-color:${cor}">
+    <div class="num" style="color:${cor}">${n}</div>
+    <div class="lbl">${lbl}</div></div>`;
+}
+async function processarFoto(file) {
+  return new Promise(resolve => {
+    createImageBitmap(file).then(bmp => {
+      const W=480, H=360, ratio=W/H;
+      let sx=0, sy=0, sw=bmp.width, sh=bmp.height;
+      if (sw/sh > ratio) { const nw=sh*ratio; sx=(sw-nw)/2; sw=nw; }
+      else { const nh=sw/ratio; sy=(sh-nh)/2; sh=nh; }
+      const c = document.createElement("canvas");
+      c.width=W; c.height=H;
+      c.getContext("2d").drawImage(bmp, sx,sy,sw,sh, 0,0,W,H);
+      resolve(c.toDataURL("image/jpeg", 0.82).split(",")[1]);
+    }).catch(() => resolve(null));
+  });
+}
+function getUsuario() { return document.getElementById("cfgUsuario").value.trim() || "jose"; }
+function getTurno()   { return document.getElementById("cfgTurno").value; }
+function getData()    { return document.getElementById("cfgData").value || hoje(); }
+
+// ═════════════════════════════════════════════════════════════════
+// AUTH
+// ═════════════════════════════════════════════════════════════════
+function checkLogin() {
+  const u = sessionStorage.getItem("gd_user");
+  if (u) {
+    document.getElementById("pg-login").style.display = "none";
+    document.getElementById("app").style.display      = "block";
+    document.getElementById("cfgUsuario").value = u;
+    restoreSessao();
+    return true;
+  }
+  return false;
+}
+function doLogin() {
+  const nome = document.getElementById("ln-nome").value;
+  const pin  = document.getElementById("ln-pin").value;
+  if (pin === (PINS[nome] || "")) {
+    sessionStorage.setItem("gd_user", nome);
+    document.getElementById("pg-login").style.display = "none";
+    document.getElementById("app").style.display      = "block";
+    document.getElementById("ln-err").style.display   = "none";
+    document.getElementById("cfgUsuario").value = nome;
+    restoreSessao();
+  } else {
+    document.getElementById("ln-err").style.display = "block";
+    document.getElementById("ln-pin").value = "";
+  }
+}
+function doLogout() {
+  sessionStorage.removeItem("gd_user");
+  document.getElementById("app").style.display      = "none";
+  document.getElementById("pg-login").style.display = "flex";
+  document.getElementById("ln-pin").value = "";
+}
+
+// ═════════════════════════════════════════════════════════════════
+// SESSAO — restaurar configuracoes salvas
+// ═════════════════════════════════════════════════════════════════
+function restoreSessao() {
+  const s = getSessao();
+  if (s.turno) {
+    const sel = document.getElementById("cfgTurno");
+    for (let i=0; i<sel.options.length; i++) {
+      if (sel.options[i].value === s.turno) { sel.selectedIndex = i; break; }
+    }
+  }
+  document.getElementById("cfgData").value = s.data || hoje();
+  document.getElementById("cfgTemp").value = s.temp || "31";
+  document.getElementById("cfgUmid").value = s.umid || "70";
+  document.getElementById("inspData").value = s.data || hoje();
+  document.getElementById("pfData").value   = hoje();
+  initSF6Sel();
+  initSecSel();
+  updateConnStatus();
+  renderPainel();
+  if (navigator.onLine) pullData().then(renderPainel);
+}
+
+// ═════════════════════════════════════════════════════════════════
+// NAVEGACAO
+// ═════════════════════════════════════════════════════════════════
+const PAGE_IDS = ["painel","sf6","sec","insp","pend","hist"];
+function showPage(id) {
+  PAGE_IDS.forEach(p => {
+    document.getElementById("pg-"+p).classList.toggle("active", p===id);
+  });
+  document.querySelectorAll(".tab").forEach((t,i) => {
+    t.classList.toggle("active", PAGE_IDS[i]===id);
+  });
+  if (id==="painel") renderPainel();
+  if (id==="hist")   renderHist("all");
+  if (id==="pend")   loadPend();
+  if (id==="insp")   { document.getElementById("inspData").value=getData(); syncTurno(); renderChecklist(); }
+}
+function syncTurno() {
+  const t = document.getElementById("cfgTurno").value;
+  const sel = document.getElementById("inspTurno");
+  for (let i=0; i<sel.options.length; i++) {
+    if (sel.options[i].value===t) { sel.selectedIndex=i; break; }
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════
+// STATUS DE CONEXAO
+// ═════════════════════════════════════════════════════════════════
+function updateConnStatus() {
+  const el = document.getElementById("connStatus");
+  if (navigator.onLine) { el.textContent="⬤ Online"; el.className="online"; }
+  else                  { el.textContent="⬤ Offline"; el.className="offline"; }
+  atualizarPendentes();
+}
+function atualizarPendentes() {
+  const q = getQueue();
+  const p = q.filter(r => !r.synced).length;
+  document.getElementById("pendCount").textContent = p > 0 ? `· ${p} pendente(s)` : "· Tudo ok";
+  document.getElementById("btnSync").disabled = p===0 || !navigator.onLine;
+}
+
+// ═════════════════════════════════════════════════════════════════
+// SYNC — enviar fila offline ao Supabase
+// ═════════════════════════════════════════════════════════════════
+async function syncQueue() {
+  if (!navigator.onLine) { toast("Sem internet", true); return; }
+  const btn = document.getElementById("btnSync");
+  btn.disabled = true; btn.textContent = "⏳...";
+  const q = getQueue();
+  let ok=0, erros=0;
+  for (const r of q.filter(r => !r.synced)) {
+    const body = {...r.data};
+    const sent = await supaPost(r.table, body).catch(()=>false);
+    if (sent) { r.synced=true; ok++; } else erros++;
+  }
+  saveQueue(q);
+  atualizarPendentes();
+  btn.textContent = "🔄 Sync";
+  if (erros===0) toast(`✅ ${ok} registro(s) sincronizado(s)!`);
+  else toast(`⚠️ ${ok} OK, ${erros} erro(s)`, true);
+  await pullData();
+  renderPainel();
+}
+
+// ═════════════════════════════════════════════════════════════════
+// PULL — buscar dados do Supabase e salvar em cache
+// ═════════════════════════════════════════════════════════════════
+async function pullData() {
+  if (!navigator.onLine) return;
+  try {
+    const ini = mesIni();
+    const cache = getCache();
+    const [sf6mes, secMes, pend, sf6last] = await Promise.all([
+      supaGet("sf6_leituras", {"data": "gte."+ini, "select": "disjuntor,polo,pressao_corrigida,status_sf6,data"}),
+      supaGet("inspecoes",    {"sistema": "eq.Seccionadora", "data": "gte."+ini, "select": "item,data"}),
+      supaGet("pendencias",   {"select": "id,data_abertura,sistema,descricao,nota_sap,prioridade,status,observacao,usuario", "order": "data_abertura.desc", "limit": "200"}),
+      supaGet("sf6_leituras", {"select": "disjuntor,polo,pressao_corrigida,status_sf6", "order": "created_at.desc", "limit": "60"})
+    ]);
+    cache.sf6mes    = sf6mes;
+    cache.secMes    = secMes;
+    cache.pend      = pend;
+    cache.sf6last   = sf6last;
+    cache.lastSync  = new Date().toISOString();
+    saveCache(cache);
+  } catch(e) {
+    console.warn("pullData error:", e);
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════
+// PAINEL — renderizar dashboard
+// ═════════════════════════════════════════════════════════════════
+async function renderPainel() {
+  const cache  = getCache();
+  const queue  = getQueue();
+  const sf6mes  = cache.sf6mes  || [];
+  const secMes  = cache.secMes  || [];
+  const sf6last = cache.sf6last || [];
+  const pend    = cache.pend    || [];
+
+  // Disjuntores feitos no mes
+  const mesAtual = getData().slice(0,7);
+  const djDone = new Set(sf6mes.filter(r=>r.data&&r.data.startsWith(mesAtual)).map(r=>r.disjuntor));
+  // Incluir registros locais nao sincronizados
+  const localSF6 = queue.filter(r=>r.table==="sf6_leituras"&&!r.synced&&r.data&&(r.data.data||"").startsWith(mesAtual));
+  localSF6.forEach(r => djDone.add(r.data.disjuntor));
+
+  const secDone = new Set(secMes.filter(r=>r.data&&r.data.startsWith(mesAtual)).map(r=>r.item));
+  const localSec = queue.filter(r=>r.table==="inspecoes"&&!r.synced&&r.data&&r.data.sistema==="Seccionadora"&&(r.data.data||"").startsWith(mesAtual));
+  localSec.forEach(r => secDone.add(r.data.item));
+
+  const djTot  = Object.keys(DISJUNTORES).length;
+  const secTot = SECCIONADORAS.length;
+  const pAberta = pend.filter(r=>r.status==="Aberta").length;
+  const pendentes = queue.filter(r=>!r.synced).length;
+
+  document.getElementById("kpiBar").innerHTML =
+    kpi(djDone.size+"/"+djTot, "DJ Mes",    djDone.size>=djTot?"#10b981":"#3b82f6") +
+    kpi(secDone.size+"/"+secTot,"SEC Mes",  secDone.size>=secTot?"#10b981":"#06b6d4") +
+    kpi(pAberta, "Pend.Ab.",               pAberta>0?"#ef4444":"#10b981") +
+    kpi(pendentes,"Nao Sync",              pendentes>0?"#f59e0b":"#10b981") +
+    kpi(navigator.onLine?"ON":"OFF","Internet",navigator.onLine?"#10b981":"#ef4444");
+
+  // Alertas SF6 — ultima leitura por DJ/polo
+  const lastMap = {};
+  [...sf6last].reverse().forEach(r => { lastMap[r.disjuntor+"_"+r.polo] = r; });
+  // Adicionar leituras locais nao sincronizadas
+  queue.filter(r=>r.table==="sf6_leituras"&&!r.synced).forEach(r => {
+    const k = r.data.disjuntor+"_"+r.data.polo;
+    if (!lastMap[k]) lastMap[k] = {disjuntor:r.data.disjuntor, polo:r.data.polo,
+      pressao_corrigida:r.data.pressao_corrigida, status_sf6:r.data.status_sf6};
+  });
+
+  const alertas = Object.values(lastMap).filter(r=>r.status_sf6!=="NORMAL");
+  let banner = "";
+  if (alertas.length > 0) {
+    const bloq = alertas.filter(r=>r.status_sf6==="BLOQUEIO");
+    const alarm = alertas.filter(r=>r.status_sf6==="ALARME");
+    const cor = bloq.length?"#ef4444": alarm.length?"#f59e0b":"#f97316";
+    const titulo = bloq.length?"🚨 BLOQUEIO SF6 — ACAO IMEDIATA":
+                   alarm.length?"⚠️ ALARME SF6 — MONITORAR":"🔔 PRE-ALARME SF6";
+    banner = `<div class="alert-banner" style="background:${cor}22;border-color:${cor}">
+      <div class="alert-title" style="color:${cor}">${titulo}</div>`;
+    alertas.forEach(r => {
+      banner += `<div class="alert-row">
+        <span style="color:#f1f5f9">${r.disjuntor} · ${r.polo}</span>
+        <span style="color:${cor};font-weight:700">${r.pressao_corrigida} bar — ${r.status_sf6}</span>
+      </div>`;
+    });
+    banner += "</div>";
+  }
+  document.getElementById("alertBanner").innerHTML = banner;
+
+  // Lista DJs
+  let djHtml = "";
+  for (const [tag, dj] of Object.entries(DISJUNTORES)) {
+    const done = djDone.has(tag);
+    // Pressao atual
+    const polos = dj.polos===3?["Polo A","Polo B","Polo V"]:["Camara Unica"];
+    let pressInfo = "";
+    polos.forEach(p => {
+      const lr = lastMap[tag+"_"+p];
+      if (lr) {
+        const st = statusSF6(lr.pressao_corrigida, dj);
+        pressInfo += `<span style="color:${st.cor};font-size:0.7rem;margin-left:4px">${p.replace("Polo ","")}: ${lr.pressao_corrigida}bar</span>`;
+      }
+    });
+    djHtml += `<div class="eq-item" onclick="showPage('sf6');document.getElementById('sf6Sel').value='${tag}';sf6Selecionou()">
+      <div>
+        <span class="tag">${tag}</span>&nbsp;
+        <span style="font-size:0.7rem;color:#64748b">${dj.desc}</span>
+        ${pressInfo ? `<div style="margin-top:2px">${pressInfo}</div>` : ""}
+      </div>
+      ${done ? '<span class="done-tag">Feito</span>' : '<span class="pend-tag">Pendente</span>'}
+    </div>`;
+  }
+  document.getElementById("djList").innerHTML = djHtml;
+
+  // Resumo SECs
+  document.getElementById("secResume").innerHTML =
+    `<div style="color:${secDone.size>=secTot?"#10b981":"#94a3b8"}">
+      ${secDone.size} / ${secTot} inspecionadas este mes
+      ${secDone.size<secTot ? ` &nbsp;·&nbsp; ${secTot-secDone.size} pendentes` : " ✅"}
+    </div>`;
+}
+
+// ═════════════════════════════════════════════════════════════════
+// SF6
+// ═════════════════════════════════════════════════════════════════
+function initSF6Sel() {
+  const sel = document.getElementById("sf6Sel");
+  sel.innerHTML = '<option value="">-- Selecionar --</option>';
+  for (const [tag, dj] of Object.entries(DISJUNTORES)) {
+    sel.innerHTML += `<option value="${tag}">${tag} — ${dj.desc}</option>`;
+  }
+  document.getElementById("sf6Form").style.display = "none";
+}
+function toggleOpTipo() {
+  const sim = document.getElementById("sf6HouveOp").value==="Sim";
+  document.getElementById("sf6OpTipoDiv").style.opacity = sim?"1":"0.4";
+  document.getElementById("sf6OpQtdDiv").style.display = sim?"block":"none";
+}
+function sf6Selecionou() {
+  const tag = document.getElementById("sf6Sel").value;
+  if (!tag) { document.getElementById("sf6Form").style.display="none"; return; }
+  document.getElementById("sf6Form").style.display = "block";
+  const dj = DISJUNTORES[tag];
+  const polos = dj.polos===3 ? ["Polo A","Polo B","Polo V"] : ["Camara Unica"];
+  let html = `<div class="sec-title" style="color:#3b82f6">📊 Pressao SF6 (bar)</div>
+    <div style="font-size:0.7rem;color:#64748b;margin-bottom:8px">
+      Nominal: ${dj.nom} · Alarme: ${dj.al} · Bloqueio: ${dj.bl}
+    </div>
+    <div class="grid-${polos.length}">`;
+  polos.forEach((p,i) => {
+    html += `<div><label>${p}</label>
+      <input type="number" id="sf6P${i}" value="${dj.nom}" step="0.01" min="0" max="10"></div>`;
+  });
+  html += "</div>";
+  document.getElementById("sf6Polos").innerHTML = html;
+  document.getElementById("sf6CntPolos").style.display = dj.polos===3?"grid":"none";
+
+  let visHtml = "";
+  ITENS_VISUAL_DJ.forEach((item, i) => {
+    visHtml += `<div class="insp-item">
+      <div class="insp-desc">${item}</div>
+      <div class="insp-opts">
+        <label><input type="radio" name="sf6v${i}" value="OK"><span>OK</span></label>
+        <label><input type="radio" name="sf6v${i}" value="NOK"><span>NOK</span></label>
+      </div></div>`;
+  });
+  document.getElementById("sf6Visual").innerHTML = visHtml;
+}
+async function salvarSF6() {
+  const tag = document.getElementById("sf6Sel").value;
+  if (!tag) { toast("Selecione um disjuntor", true); return; }
+  const dj = DISJUNTORES[tag];
+  const polos = dj.polos===3 ? ["Polo A","Polo B","Polo V"] : ["Camara Unica"];
+  const data = getData(), turno = getTurno(), hora = agora(), usuario = getUsuario();
+
+  const visual = {};
+  let allFilled = true;
+  ITENS_VISUAL_DJ.forEach((item,i) => {
+    const sel = document.querySelector(`input[name="sf6v${i}"]:checked`);
+    if (!sel) allFilled=false; else visual[item]=sel.value;
+  });
+  if (!allFilled) { toast("Preencha todos os itens visuais", true); return; }
+
+  const obsText = document.getElementById("sf6Obs").value;
+  const nNok = Object.values(visual).filter(v=>v==="NOK").length;
+  const queue = getQueue();
+
+  // Pressao por polo
+  polos.forEach((polo,i) => {
+    const pMed = parseFloat(document.getElementById("sf6P"+i).value);
+    const st = statusSF6(pMed, dj);
+    queue.push({table:"sf6_leituras", synced:false, id:Date.now()+"_sf6_"+i,
+      data:{data, hora, turno, disjuntor:tag, polo, pressao_medida:pMed,
+            temperatura:parseFloat(document.getElementById("cfgTemp").value),
+            pressao_corrigida:pMed, status_sf6:st.s, observacao:obsText, usuario}});
+  });
+
+  // Inspecao visual
+  queue.push({table:"inspecoes", synced:false, id:Date.now()+"_sf6vis",
+    data:{data, turno, sistema:"Disjuntor SF6", item:tag,
+          status:nNok>0?"NOK":"OK", observacao:JSON.stringify(visual)+(obsText?" | "+obsText:""), usuario}});
+
+  // Operacoes
+  if (document.getElementById("sf6HouveOp").value==="Sim") {
+    queue.push({table:"operacoes_dj", synced:false, id:Date.now()+"_op",
+      data:{data, disjuntor:tag,
+            tipo_operacao:document.getElementById("sf6OpTipo").value,
+            motivo:turno,
+            num_operacoes_total:parseInt(document.getElementById("sf6OpQtd").value)||1,
+            usuario}});
+  }
+
+  // Contadores
+  const cTrip=parseInt(document.getElementById("sf6CntTrip").value||0);
+  const cCC=parseInt(document.getElementById("sf6CntCC").value||0);
+  const cA=parseInt(document.getElementById("sf6CntA").value||0);
+  const cB=parseInt(document.getElementById("sf6CntB").value||0);
+  const cV=parseInt(document.getElementById("sf6CntV").value||0);
+  if (cTrip||cCC||cA||cB||cV) {
+    queue.push({table:"contadores_dj", synced:false, id:Date.now()+"_cnt",
+      data:{data, hora, turno, disjuntor:tag,
+            polo_a:cA, polo_b:cB, polo_v:cV, tripolar:cTrip, curto_circuito:cCC, usuario}});
+  }
+
+  // Foto
+  const fotoInp = document.getElementById("sf6Foto");
+  if (fotoInp.files.length>0) {
+    const b64 = await processarFoto(fotoInp.files[0]);
+    if (b64) {
+      queue.push({table:"fotos_inspecao", synced:false, id:Date.now()+"_foto",
+        data:{data, sistema:"SF6 — "+tag,
+              legenda:document.getElementById("sf6FotoLeg").value||tag,
+              foto_base64:b64, usuario}});
+    }
+  }
+
+  saveQueue(queue);
+  atualizarPendentes();
+  toast("✅ "+tag+" salvo!");
+  // Limpar
+  ["sf6Foto","sf6FotoLeg","sf6Obs"].forEach(id => document.getElementById(id).value="");
+  document.getElementById("sf6Sel").value="";
+  document.getElementById("sf6Form").style.display="none";
+  if (navigator.onLine) syncQueue().then(renderPainel);
+}
+
+// ═════════════════════════════════════════════════════════════════
+// SECCIONADORAS
+// ═════════════════════════════════════════════════════════════════
+function initSecSel() {
+  const sel = document.getElementById("secSel");
+  sel.innerHTML = '<option value="">-- Selecionar --</option>';
+  SECCIONADORAS.forEach(tag => sel.innerHTML += `<option value="${tag}">${tag}</option>`);
+  document.getElementById("secForm").style.display="none";
+}
+function secSelecionou() {
+  const tag = document.getElementById("secSel").value;
+  if (!tag) { document.getElementById("secForm").style.display="none"; return; }
+  document.getElementById("secForm").style.display="block";
+  const itens = tag.startsWith("PMCA") ? ITENS_SEC_PMCA : ITENS_SEC;
+  let html = "";
+  itens.forEach((item,i) => {
+    html += `<div class="insp-item">
+      <div class="insp-desc">${item}</div>
+      <div class="insp-opts">
+        <label><input type="radio" name="sec${i}" value="OK"><span>OK</span></label>
+        <label><input type="radio" name="sec${i}" value="NOK"><span>NOK</span></label>
+      </div></div>`;
+  });
+  document.getElementById("secItens").innerHTML = html;
+}
+async function salvarSec() {
+  const tag = document.getElementById("secSel").value;
+  if (!tag) { toast("Selecione uma seccionadora", true); return; }
+  const itens = tag.startsWith("PMCA") ? ITENS_SEC_PMCA : ITENS_SEC;
+  const data = getData(), turno = getTurno(), usuario = getUsuario();
+  const res = {};
+  let allFilled = true;
+  itens.forEach((item,i) => {
+    const sel = document.querySelector(`input[name="sec${i}"]:checked`);
+    if (!sel) allFilled=false; else res[item]=sel.value;
+  });
+  if (!allFilled) { toast("Preencha todos os itens", true); return; }
+
+  const nNok = Object.values(res).filter(v=>v==="NOK").length;
+  const obsText = document.getElementById("secObs").value;
+  const queue = getQueue();
+
+  queue.push({table:"inspecoes", synced:false, id:Date.now()+"_sec",
+    data:{data, turno, sistema:"Seccionadora", item:tag,
+          status:nNok>0?"NOK":"OK",
+          observacao:JSON.stringify(res)+(obsText?" | "+obsText:""), usuario}});
+
+  const fotoInp = document.getElementById("secFoto");
+  if (fotoInp.files.length>0) {
+    const b64 = await processarFoto(fotoInp.files[0]);
+    if (b64) {
+      queue.push({table:"fotos_inspecao", synced:false, id:Date.now()+"_sfoto",
+        data:{data, sistema:"Seccionadora — "+tag,
+              legenda:document.getElementById("secFotoLeg").value||tag,
+              foto_base64:b64, usuario}});
+    }
+  }
+
+  saveQueue(queue);
+  atualizarPendentes();
+  toast("✅ "+tag+" salvo!");
+  ["secFoto","secFotoLeg","secObs"].forEach(id => document.getElementById(id).value="");
+  document.getElementById("secSel").value="";
+  document.getElementById("secForm").style.display="none";
+  if (navigator.onLine) syncQueue().then(renderPainel);
+}
+
+// ═════════════════════════════════════════════════════════════════
+// INSPECAO DE CAMPO — Checklist
+// ═════════════════════════════════════════════════════════════════
+function renderChecklist() {
+  const sis = document.getElementById("inspSis").value;
+  const itens = CHECKLISTS[sis] || [];
+  const temp = document.getElementById("cfgTemp").value;
+  const umid = document.getElementById("cfgUmid").value;
+  let html = "";
+  itens.forEach((item,i) => {
+    const isTemp = item.toLowerCase().includes("temperatura") || item.includes("OTI") || item.includes("WTI");
+    const obsDefault = isTemp ? `T=${temp}°C | UR=${umid}%` : "";
+    html += `<div class="insp-item">
+      <div class="insp-desc">${i+1}. ${item}</div>
+      <div class="insp-opts">
+        <label><input type="radio" name="ci${i}" value="✅ OK"><span>OK</span></label>
+        <label><input type="radio" name="ci${i}" value="❌ NOK"><span>NOK</span></label>
+        <label><input type="radio" name="ci${i}" value="⚠️ Atenção"><span>Aten.</span></label>
+        <label><input type="radio" name="ci${i}" value="➖ N/A"><span>N/A</span></label>
+      </div>
+      <input class="insp-obs" type="text" id="iobs${i}" placeholder="Obs..." value="${obsDefault}">
+    </div>`;
+  });
+  document.getElementById("checklistItems").innerHTML = html || '<div style="color:#475569;padding:12px">Selecione um sistema.</div>';
+}
+async function salvarInsp() {
+  const sis = document.getElementById("inspSis").value;
+  const itens = CHECKLISTS[sis] || [];
+  if (itens.length===0) { toast("Selecione um sistema", true); return; }
+  const data = document.getElementById("inspData").value || hoje();
+  const turno = document.getElementById("inspTurno").value;
+  const usuario = getUsuario();
+  const sisDB = SIS_DISPLAY_TO_DB[sis] || sis;
+
+  const res = {};
+  let allFilled = true;
+  itens.forEach((item,i) => {
+    const sel = document.querySelector(`input[name="ci${i}"]:checked`);
+    if (!sel) allFilled=false;
+    else res[item] = {status:sel.value, obs:document.getElementById("iobs"+i).value};
+  });
+  if (!allFilled) { toast("Preencha todos os itens", true); return; }
+
+  const queue = getQueue();
+  const ts = Date.now();
+  itens.forEach((item,i) => {
+    queue.push({table:"inspecoes", synced:false, id:ts+"_ci"+i,
+      data:{data, turno, sistema:sisDB, item,
+            status:res[item].status, observacao:res[item].obs, usuario}});
+  });
+  saveQueue(queue);
+  atualizarPendentes();
+  const nok = itens.filter(item=>res[item].status==="❌ NOK").length;
+  toast(`✅ ${itens.length} itens salvos${nok>0?" · "+nok+" NOK":""}`);
+  document.querySelectorAll(`input[name^="ci"]`).forEach(el => el.checked=false);
+  document.querySelectorAll(".insp-obs").forEach(el => el.value="");
+  if (navigator.onLine) syncQueue();
+}
+
+// ═════════════════════════════════════════════════════════════════
+// PENDENCIAS
+// ═════════════════════════════════════════════════════════════════
+let _pendFiltro = "ab";
+function togglePendForm() {
+  const w = document.getElementById("pendFormWrap");
+  w.classList.toggle("open");
+}
+function filtrarPend(f) {
+  _pendFiltro = f;
+  ["filtAberta","filtTodas"].forEach(id => document.getElementById(id).style.background="#374151");
+  document.getElementById(f==="ab"?"filtAberta":"filtTodas").style.background="#3b82f6";
+  const cache = getCache();
+  renderPend(cache.pend || []);
+}
+async function loadPend() {
+  const cache = getCache();
+  renderPend(cache.pend || []);
+  if (navigator.onLine) {
+    try {
+      const data = await supaGet("pendencias", {
+        select:"id,data_abertura,sistema,descricao,nota_sap,prioridade,status,observacao,usuario",
+        order:"data_abertura.desc", limit:"200"
+      });
+      const c = getCache(); c.pend = data; saveCache(c);
+      renderPend(data);
+    } catch(e) {}
+  }
+  // Adicionar pendencias locais nao sincronizadas
+  const queue = getQueue();
+  const localPend = queue.filter(r=>r.table==="pendencias"&&!r.synced);
+  if (localPend.length>0) {
+    const c = getCache();
+    const existing = c.pend||[];
+    const localIds = localPend.map(r=>r.id);
+    const notInCache = localPend.filter(r=>!existing.find(e=>e._localId===r.id));
+    const merged = [...notInCache.map(r=>({...r.data, _localId:r.id, _local:true})), ...existing];
+    renderPend(merged);
+  }
+}
+function renderPend(data) {
+  const lista = _pendFiltro==="ab"
+    ? data.filter(r=>r.status==="Aberta"||r.status==="Em andamento")
+    : data;
+  if (lista.length===0) {
+    document.getElementById("pendList").innerHTML = '<div style="color:#475569;text-align:center;padding:20px;font-size:0.85rem">Nenhuma pendencia encontrada.</div>';
+    return;
+  }
+  const pMap = {"Alta":"🔴","Media":"🟡","Baixa":"🟢","Média":"🟡"};
+  const sClass = {"Aberta":"status-ab","Em andamento":"status-an","Concluida":"status-ok","Concluída":"status-ok","Cancelada":"status-ok"};
+  let html = "";
+  lista.forEach((r,idx) => {
+    const ico = pMap[r.prioridade]||"⚪";
+    const sc = sClass[r.status]||"";
+    const local = r._local ? ' <span style="color:#f59e0b;font-size:0.65rem">LOCAL</span>' : "";
+    html += `<div class="pend-card">
+      <div class="pend-header">
+        <div>
+          <div class="pend-desc">${ico} ${r.descricao||""}</div>
+          <div class="pend-meta">${r.sistema||""} ${r.nota_sap?"· SAP: "+r.nota_sap:""} · ${r.data_abertura||""}${local}</div>
+        </div>
+        <span class="${sc}">${r.status||""}</span>
+      </div>
+      ${r.observacao?`<div style="font-size:0.75rem;color:#475569;margin:2px 0 4px">${r.observacao}</div>`:""}
+      ${r.id&&!r._local?`<button class="btn-sm btn-gray" onclick="togglePendDetail(${idx})" style="font-size:0.72rem;margin-top:4px">Atualizar</button>
+      <div class="pend-detail" id="pd-${idx}">
+        <div class="grid-2" style="margin-top:8px">
+          <div>
+            <label>Novo status</label>
+            <select id="pdSt-${idx}">
+              <option>Em andamento</option><option>Concluida</option><option>Cancelada</option>
+            </select>
+          </div>
+          <div>
+            <label>Observacao</label>
+            <input type="text" id="pdObs-${idx}" placeholder="Ex: Concluido em 30/10">
+          </div>
+        </div>
+        <button class="btn-sm btn-green" onclick="updatePend(${r.id},'${idx}')" style="margin-top:8px">Salvar</button>
+      </div>`:""}
+    </div>`;
+  });
+  document.getElementById("pendList").innerHTML = html;
+}
+function togglePendDetail(idx) {
+  const el = document.getElementById("pd-"+idx);
+  if (el) el.classList.toggle("open");
+}
+async function salvarPend() {
+  const desc = document.getElementById("pfDesc").value.trim();
+  if (!desc) { toast("Informe a descricao", true); return; }
+  const sisDisplay = document.getElementById("pfSis").value;
+  const sisDB = SIS_DISPLAY_TO_DB[sisDisplay] || sisDisplay;
+  const data = {
+    data_abertura: document.getElementById("pfData").value || hoje(),
+    sistema:       sisDB,
+    descricao:     desc,
+    nota_sap:      document.getElementById("pfSap").value,
+    prioridade:    document.getElementById("pfPrio").value,
+    status:        document.getElementById("pfStatus").value,
+    observacao:    document.getElementById("pfObs").value,
+    usuario:       getUsuario()
+  };
+  if (navigator.onLine) {
+    const ok = await supaPost("pendencias", data).catch(()=>false);
+    if (ok) { toast("✅ Pendencia registrada!"); await loadPend(); }
+    else { toast("Erro ao salvar. Salvando offline.", true); saveLocalPend(data); }
+  } else {
+    saveLocalPend(data);
+    toast("Salvo offline — sincronize quando tiver internet");
+  }
+  document.getElementById("pfDesc").value="";
+  document.getElementById("pfSap").value="";
+  document.getElementById("pfObs").value="";
+  document.getElementById("pendFormWrap").classList.remove("open");
+}
+function saveLocalPend(data) {
+  const queue = getQueue();
+  queue.push({table:"pendencias", synced:false, id:Date.now()+"_pend", data});
+  saveQueue(queue);
+  atualizarPendentes();
+}
+async function updatePend(id, idx) {
+  const status = document.getElementById("pdSt-"+idx).value;
+  const obs    = document.getElementById("pdObs-"+idx).value;
+  const data_conclusao = hoje();
+  if (navigator.onLine) {
+    const ok = await supaPatch("pendencias", {"id":"eq."+id},
+      {status, data_conclusao, observacao:obs}).catch(()=>false);
+    if (ok) { toast("✅ Atualizado!"); await loadPend(); }
+    else toast("Erro ao atualizar", true);
+  } else {
+    toast("Sem internet — atualize quando online", true);
+  }
+}
+
+// ═════════════════════════════════════════════════════════════════
+// HISTORICO
+// ═════════════════════════════════════════════════════════════════
+let _histFiltro = "all";
+function filtHist(f) {
+  _histFiltro = f;
+  ["hFiltAll","hFiltPend","hFiltSync"].forEach(id => document.getElementById(id).style.background="#374151");
+  const activeId = f==="all"?"hFiltAll":f==="pend"?"hFiltPend":"hFiltSync";
+  document.getElementById(activeId).style.background="#3b82f6";
+  renderHist(f);
+}
+function renderHist(f) {
+  f = f || _histFiltro;
+  const queue = getQueue();
+  let items = [...queue];
+  if (f==="pend") items = items.filter(r=>!r.synced);
+  if (f==="sync") items = items.filter(r=>r.synced);
+  items.sort((a,b) => (b.id||"").localeCompare(a.id||""));
+  if (items.length===0) {
+    document.getElementById("histList").innerHTML = '<div style="color:#64748b;text-align:center;padding:20px;font-size:0.82rem">Nenhum registro.</div>';
+    return;
+  }
+  let html = "";
+  items.forEach(r => {
+    const d = r.data||{};
+    const tag = d.disjuntor||d.item||d.sistema||d.descricao||"";
+    const data = d.data||d.data_abertura||"";
+    html += `<div class="hist-item">
+      <div>
+        <span class="h-tag">${r.table}</span>
+        <span style="color:#94a3b8;font-size:0.78rem"> · ${(tag+"").substring(0,30)}</span>
+        <br><span class="h-date">${data}</span>
+      </div>
+      ${r.synced ? '<span class="synced-badge">Sync</span>' : '<span class="unsync-badge">Pendente</span>'}
+    </div>`;
+  });
+  document.getElementById("histList").innerHTML = html;
+}
+function limparSincronizados() {
+  const q = getQueue().filter(r=>!r.synced);
+  saveQueue(q);
+  renderHist(_histFiltro);
+  atualizarPendentes();
+  toast("Registros sincronizados removidos");
+}
+
+// ═════════════════════════════════════════════════════════════════
+// INIT
+// ═════════════════════════════════════════════════════════════════
+window.addEventListener("online",  () => { updateConnStatus(); syncQueue().then(renderPainel); });
+window.addEventListener("offline", updateConnStatus);
+setInterval(updateConnStatus, 8000);
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(e => console.warn("SW:", e));
+}
+
+if (!checkLogin()) {
+  document.getElementById("pg-login").style.display = "flex";
+}
+</script>
+</body>
+</html>
