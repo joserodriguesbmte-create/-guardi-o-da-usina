@@ -2405,7 +2405,8 @@ elif "Inspeção" in pagina:
     FREQ_SF6_DIAS = _freq_new.get("SF6 Gás", 7)
 
     # Calcular status de vencimento — últimos 12 meses são suficientes
-    _insp_ini_campo = date(_data_insp.year - 1, _data_insp.month, 1)
+    _hoje_campo = datetime.now(_TZ_BR).date()
+    _insp_ini_campo = date(_hoje_campo.year - 1, _hoje_campo.month, 1)
     df_insp_all = _carregar_inspecoes(data_ini=_insp_ini_campo)
     st.markdown("### 📅 Status das Inspeções")
     cw = st.columns(len(SISTEMAS) + 1)
