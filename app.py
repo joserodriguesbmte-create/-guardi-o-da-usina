@@ -25,43 +25,43 @@ st.set_page_config(page_title="Guardião da Usina", page_icon="🛡️",
                    layout="wide", initial_sidebar_state="auto")
 
 # Cache das consultas ao banco — evita reconectar a cada interação
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def _carregar_equipamentos(tipo=None, sistema=None, ativo_only=True):
     return carregar_equipamentos(tipo, sistema, ativo_only)
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def _carregar_sf6(disjuntor=None, data_ini=None, data_fim=None):
     return carregar_sf6(disjuntor, data_ini, data_fim)
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def _carregar_inspecoes(sistema=None, data_ini=None, data_fim=None):
     return carregar_inspecoes(sistema, data_ini, data_fim)
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def _carregar_pendencias(status=None):
     return carregar_pendencias(status)
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=600, show_spinner=False)
 def _buscar_equipamento_por_tag(tag):
     return buscar_equipamento_por_tag(tag)
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def _carregar_contadores(disjuntor=None, data_ini=None, data_fim=None):
     return carregar_contadores(disjuntor, data_ini, data_fim)
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def _carregar_temps(equipamento=None, data_ini=None, data_fim=None):
     return carregar_temps(equipamento, data_ini, data_fim)
 
-@st.cache_data(ttl=120, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def _carregar_operacoes(disjuntor=None):
     return carregar_operacoes(disjuntor)
 
-@st.cache_data(ttl=30, show_spinner=False)
+@st.cache_data(ttl=120, show_spinner=False)
 def _carregar_fotos(data_ini=None, data_fim=None, sem_base64=False):
     return carregar_fotos(data_ini=data_ini, data_fim=data_fim, sem_base64=sem_base64)
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=120, show_spinner=False)
 def _carregar_inspecoes_hoje(data):
     return carregar_inspecoes(data_ini=data, data_fim=data)
 
@@ -455,7 +455,8 @@ if "Painel" in pagina:
     st.markdown("<div style='border-bottom:1px solid #1e3a5f;margin:14px 0'></div>", unsafe_allow_html=True)
 
     # ══ DADOS COMUNS ═════════════════════════════════════════════════════════
-    df_sf6_all  = _carregar_sf6()
+    _sf6_hist_ini = date(_data_insp.year - 1, _data_insp.month, 1)
+    df_sf6_all  = _carregar_sf6(data_ini=_sf6_hist_ini)
     df_pend_all = _carregar_pendencias()
     df_djs_db   = _carregar_equipamentos("Disjuntor SF6")
     df_secs_db  = _carregar_equipamentos("Seccionadora")
@@ -2399,13 +2400,14 @@ elif "Inspeção" in pagina:
     FREQ = {s: _freq_new.get(s, 30) for s in SISTEMAS}
     FREQ_SF6_DIAS = _freq_new.get("SF6 Gás", 7)
 
-    # Calcular status de vencimento
-    df_insp_all = _carregar_inspecoes()
+    # Calcular status de vencimento — últimos 12 meses são suficientes
+    _insp_ini_campo = date(_data_insp.year - 1, _data_insp.month, 1)
+    df_insp_all = _carregar_inspecoes(data_ini=_insp_ini_campo)
     st.markdown("### 📅 Status das Inspeções")
     cw = st.columns(len(SISTEMAS) + 1)
 
-    # SF6
-    df_sf6_v = _carregar_sf6()
+    # SF6 — últimos 12 meses suficientes para verificar vencimento
+    df_sf6_v = _carregar_sf6(data_ini=_insp_ini_campo)
     ultima_sf6 = pd.to_datetime(df_sf6_v["data"].max()) if not df_sf6_v.empty else None
     dias_sf6   = (datetime.now(_TZ_BR).date() - ultima_sf6.date()).days if ultima_sf6 else 999
     cor_sf6    = "#10b981" if dias_sf6<=FREQ_SF6_DIAS else "#f59e0b" if dias_sf6<=FREQ_SF6_DIAS+3 else "#ef4444"
