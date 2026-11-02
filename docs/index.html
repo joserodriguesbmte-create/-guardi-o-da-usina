@@ -10,6 +10,7 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon.svg">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
 @media print{
   .sync-bar,.tabs,.btn-primary,.btn-sm,.btn-login,.login-wrap,.no-print{display:none!important}
@@ -2200,17 +2201,6 @@ function _renderChartSF6(sf6hist) {
     byDJ[r.disjuntor][dk]=Math.min(byDJ[r.disjuntor][dk]??99, p);
   });
 
-  const allDates=[...new Set(sf6hist.map(r=>(r.data||r.created_at||"").slice(0,10)))].filter(Boolean).sort();
-  if(!allDates.length){if(_chartSF6){_chartSF6.destroy();_chartSF6=null;} return;}
-
-  // Labels: DD/MMM se periodo > 60 dias, senao DD/MM
-  const diasTotal=(new Date(allDates[allDates.length-1])-new Date(allDates[0]))/(86400000);
-  const _MESES_ABREV=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
-  const labels=allDates.map(d=>{
-    if(diasTotal>60) return d.slice(8)+" "+_MESES_ABREV[parseInt(d.slice(5,7))-1];
-    return d.slice(8)+"/"+d.slice(5,7);
-  });
-
   // Y-axis dinamico: centrado nos dados reais
   const todosVals=Object.values(byDJ).flatMap(m=>Object.values(m)).filter(v=>v>0&&v<99);
   const vMin=todosVals.length?Math.min(...todosVals):5.0;
@@ -2218,31 +2208,40 @@ function _renderChartSF6(sf6hist) {
   const yMin=Math.max(4.5, Math.floor((vMin-0.3)*10)/10);
   const yMax=Math.min(7.5, Math.ceil((vMax+0.3)*10)/10);
 
-  // Detectar tema: print usa paleta escura sobre fundo branco
-  const isPrint=window.matchMedia("print").matches;
-  const textClr=isPrint?"#1e293b":"#94a3b8";
-  const gridClr=isPrint?"#e2e8f0":"#1e3a5f40";
+  // Range de datas para linhas de referencia
+  const allDatesStr=[...new Set(sf6hist.map(r=>(r.data||r.created_at||"").slice(0,10)))].filter(Boolean).sort();
+  if(!allDatesStr.length){if(_chartSF6){_chartSF6.destroy();_chartSF6=null;} return;}
+  const dtMin=new Date(allDatesStr[0]+"T12:00:00");
+  const dtMax=new Date(allDatesStr[allDatesStr.length-1]+"T12:00:00");
+
+  const textClr="#94a3b8";
+  const gridClr="#1e3a5f40";
 
   const colors=["#1d4ed8","#16a34a","#b45309","#7c3aed","#dc2626","#0891b2"];
   const tagsOrdenados=Object.keys(byDJ).sort();
-  const datasets=tagsOrdenados.map((tag,idx)=>({
-    label:tag,
-    data:allDates.map(d=>byDJ[tag][d]??null),
-    borderColor:colors[idx%colors.length],
-    backgroundColor:colors[idx%colors.length]+"28",
-    pointRadius:allDates.length<=30?4:2,
-    pointHoverRadius:6,
-    tension:0.25, spanGaps:true, borderWidth:2
-  }));
 
-  // Linhas de referencia
-  datasets.push({label:"Alarme 5,2",data:allDates.map(()=>5.2),borderColor:"#f59e0b",borderDash:[6,3],borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:10});
-  datasets.push({label:"Bloqueio 5,0",data:allDates.map(()=>5.0),borderColor:"#ef4444",borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,tension:0,order:10});
-  datasets.push({label:"Nominal 6,0",data:allDates.map(()=>6.0),borderColor:"#33415580",borderDash:[3,5],borderWidth:1,pointRadius:0,fill:false,tension:0,order:10});
+  // Dados como {x: Date, y: valor} para escala temporal
+  const datasets=tagsOrdenados.map((tag,idx)=>{
+    const pts=Object.entries(byDJ[tag]).map(([d,v])=>({x:new Date(d+"T12:00:00"),y:v}));
+    pts.sort((a,b)=>a.x-b.x);
+    return {
+      label:tag, data:pts,
+      borderColor:colors[idx%colors.length],
+      backgroundColor:colors[idx%colors.length]+"28",
+      pointRadius:4, pointHoverRadius:7,
+      tension:0.25, spanGaps:true, borderWidth:2.5
+    };
+  });
+
+  // Linhas de referencia (dois pontos: inicio e fim)
+  const refPts=(y)=>[{x:dtMin,y},{x:dtMax,y}];
+  datasets.push({label:"Alarme 5,2",data:refPts(5.2),borderColor:"#f59e0b",borderDash:[7,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:10});
+  datasets.push({label:"Bloqueio 5,0",data:refPts(5.0),borderColor:"#ef4444",borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,tension:0,order:10});
+  datasets.push({label:"Nominal 6,0",data:refPts(6.0),borderColor:"#47556970",borderDash:[3,5],borderWidth:1,pointRadius:0,fill:false,tension:0,order:10});
 
   if (_chartSF6) _chartSF6.destroy();
   _chartSF6=new Chart(ctx,{
-    type:"line", data:{labels,datasets},
+    type:"line", data:{datasets},
     options:{
       responsive:true, maintainAspectRatio:false,
       interaction:{mode:"index",intersect:false},
@@ -2252,28 +2251,34 @@ function _renderChartSF6(sf6hist) {
           text:"Pressão SF6 — bar a 20°C (mínimo por disjuntor)",
           color:textClr,
           font:{size:11,weight:"bold"},
-          padding:{bottom:10}
+          padding:{bottom:8}
         },
         legend:{
           position:"bottom",
-          labels:{color:textClr,font:{size:9.5},boxWidth:14,padding:10,
-            filter:item=>!["Nominal 6,0"].includes(item.text)||true}
+          labels:{color:textClr,font:{size:9.5},boxWidth:14,padding:8}
         },
         tooltip:{
           callbacks:{
+            title:items=>{
+              const d=new Date(items[0].parsed.x);
+              return d.toLocaleDateString("pt-BR",{day:"2-digit",month:"short",year:"numeric"});
+            },
             label:c=>` ${c.dataset.label}: ${c.parsed.y!=null?c.parsed.y.toFixed(3)+" bar":"—"}`
           }
         }
       },
       scales:{
         x:{
-          ticks:{color:textClr,font:{size:9},maxRotation:50,autoSkip:true,maxTicksLimit:allDates.length<=12?allDates.length:14},
-          grid:{color:gridClr}
+          type:"time",
+          time:{unit:"month",displayFormats:{month:"MMM/yy",week:"dd MMM",day:"dd MMM"}},
+          adapters:{date:{locale:{code:"pt-BR"}}},
+          ticks:{color:textClr,font:{size:9},maxRotation:0,maxTicksLimit:10},
+          grid:{color:gridClr},
+          title:{display:false}
         },
         y:{
           min:yMin, max:yMax,
-          ticks:{color:textClr,stepSize:0.1,font:{size:9.5},
-            callback:v=>(v%0.2<0.001||v%0.2>0.199)?v.toFixed(1):null},
+          ticks:{color:textClr,stepSize:0.2,font:{size:9.5},callback:v=>v.toFixed(1)},
           grid:{color:gridClr},
           title:{display:true,text:"Pressão (bar)",color:textClr,font:{size:9}}
         }
