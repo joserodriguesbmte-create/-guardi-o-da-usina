@@ -15,15 +15,21 @@
   .sync-bar,.tabs,.btn-primary,.btn-sm,.btn-login,.login-wrap,.no-print{display:none!important}
   .page{display:none!important}
   #pg-rel{display:block!important;padding:8px!important}
-  body{background:#fff!important;color:#000!important}
-  .card{border:1px solid #ccc!important;background:#fff!important;break-inside:avoid}
-  .card-title{color:#1e3a5f!important;border-color:#ccc!important}
+  body{background:#fff!important;color:#000!important;font-family:Arial,sans-serif!important}
+  .card{border:1px solid #ccc!important;background:#fff!important;break-inside:avoid;page-break-inside:avoid}
+  .card-title{color:#1e3a5f!important;border-color:#bbb!important;font-size:0.88rem!important}
   .kpi{background:#f0f4f8!important;border-top-color:#1e5a96!important}
   .kpi .num,.kpi .lbl{color:#000!important}
   canvas{max-width:100%!important}
   textarea{border:1px solid #ccc!important;background:#fff!important;color:#000!important;min-height:60px}
   .tbl th{background:#1e3a5f!important;color:#fff!important}
   .gauge-grid{display:flex!important;flex-wrap:wrap!important;gap:8px!important}
+  .chart-wrap{background:#fff!important;border:1px solid #ddd!important}
+  .sec-title{color:#1e3a5f!important;border-left-color:#1e5a96!important}
+  /* Capa */
+  #relCapa{display:block!important;page-break-after:always!important;min-height:96vh!important}
+  #relCabecalho-print{display:block!important;page-break-after:always!important}
+  #relCabRow{display:flex!important}
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh;overscroll-behavior:none}
@@ -470,6 +476,34 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
 
   <!-- ── RELATORIO ── -->
   <div class="page" id="pg-rel">
+    <!-- CAPA — visivel apenas no print/PDF -->
+    <div id="relCapa" style="display:none;text-align:center;padding:60px 40px 40px;background:#fff;color:#0c2340">
+      <div style="margin-bottom:28px">
+        <img src="./icon.svg" alt="Guardiao" style="width:90px;height:90px;opacity:0.9">
+      </div>
+      <div style="font-size:0.75rem;letter-spacing:0.18em;color:#64748b;text-transform:uppercase;margin-bottom:12px">
+        Norte Energia S.A. &nbsp;·&nbsp; Usina Hidrelétrica Pimental &nbsp;·&nbsp; Subestação 230kV
+      </div>
+      <div style="font-size:1.7rem;font-weight:900;color:#0c2340;line-height:1.25;margin-bottom:8px">
+        Relatório Mensal
+      </div>
+      <div style="font-size:1.1rem;font-weight:700;color:#1e5a96;margin-bottom:32px">
+        Guardião da Usina
+      </div>
+      <div style="width:60px;height:3px;background:#1e5a96;margin:0 auto 32px"></div>
+      <div style="font-size:0.95rem;color:#334155;margin-bottom:10px">
+        Referência: <strong id="capaRef" style="color:#0c2340"></strong>
+      </div>
+      <div style="font-size:0.9rem;color:#334155;margin-bottom:6px">
+        Operador responsável: <strong id="capaOp" style="color:#0c2340"></strong>
+      </div>
+      <div style="font-size:0.9rem;color:#334155">
+        Turno: <strong id="capaTurno" style="color:#0c2340"></strong>
+      </div>
+      <div style="margin-top:60px;font-size:0.78rem;color:#94a3b8">
+        Gerado em <span id="capaDataGer"></span> &nbsp;·&nbsp; Sistema automatizado de O&amp;M
+      </div>
+    </div>
     <!-- Cabecalho -->
     <div class="card" style="background:#0c2340;border-color:#1e5a96">
       <div style="font-size:1rem;font-weight:900;color:#f1f5f9">🛡️ Relatorio Mensal — Guardiao da Usina</div>
@@ -489,8 +523,8 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       <div class="card-title">⚡ 2. Disjuntores SF6</div>
       <div class="sec-title" style="margin-top:0">Pressao Atual — Velocimetros</div>
       <div id="relGauges"></div>
-      <div class="sec-title" style="margin-top:12px">Evolucao Historica (todas as leituras salvas)</div>
-      <div class="chart-wrap" style="height:230px">
+      <div class="sec-title" style="margin-top:12px">Evolução Histórica — Pressão SF6 (todas as leituras)</div>
+      <div class="chart-wrap" style="height:300px">
         <canvas id="chartSF6"></canvas>
       </div>
       <div id="relSF6vazio" style="display:none;color:#475569;text-align:center;padding:16px;font-size:0.82rem">
@@ -1726,10 +1760,18 @@ function renderRel() {
 
   // Cabecalho
   const sessao=getSessao();
+  const opNome=sessao.usuario||getUsuario();
+  const turnoNome=(sessao.turno||"—").split(" ")[0];
   document.getElementById("relCabRef").innerHTML=
-    `Operador: <strong style="color:#f1f5f9">${sessao.usuario||getUsuario()}</strong> &nbsp;·&nbsp; `+
+    `Operador: <strong style="color:#f1f5f9">${opNome}</strong> &nbsp;·&nbsp; `+
     `Referencia: <strong style="color:#60a5fa">${mesLabel}</strong> &nbsp;·&nbsp; `+
-    `Turno: <strong style="color:#f1f5f9">${(sessao.turno||"—").split(" ")[0]}</strong>`;
+    `Turno: <strong style="color:#f1f5f9">${turnoNome}</strong>`;
+  // Capa do PDF
+  const agora=new Date().toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});
+  document.getElementById("capaRef").textContent=mesLabel;
+  document.getElementById("capaOp").textContent=opNome;
+  document.getElementById("capaTurno").textContent=turnoNome;
+  document.getElementById("capaDataGer").textContent=agora;
 
   // --- dados do mes ---
   const sf6mes  =(cache.sf6mes||[]).filter(r=>r.data&&r.data.startsWith(mesAtual));
@@ -2146,8 +2188,7 @@ function _renderChartSF6(sf6hist) {
   document.getElementById("relSF6vazio").style.display="none";
   ctx.style.display="block";
 
-  // Agrupar por (DJ, data): manter pressao minima entre polos
-  // Usa data se disponivel, senao created_at como fallback
+  // Agrupar por (DJ, data): manter pressao minima entre polos na mesma data
   const byDJ={};
   sf6hist.forEach(r=>{
     if(!r.disjuntor||!r.pressao_corrigida) return;
@@ -2159,28 +2200,45 @@ function _renderChartSF6(sf6hist) {
     byDJ[r.disjuntor][dk]=Math.min(byDJ[r.disjuntor][dk]??99, p);
   });
 
-  // Todas as datas unicas ordenadas
   const allDates=[...new Set(sf6hist.map(r=>(r.data||r.created_at||"").slice(0,10)))].filter(Boolean).sort();
   if(!allDates.length){if(_chartSF6){_chartSF6.destroy();_chartSF6=null;} return;}
 
-  // Labels: DD/MM
-  const labels=allDates.map(d=>d.slice(8)+"/"+d.slice(5,7));
+  // Labels: DD/MMM se periodo > 60 dias, senao DD/MM
+  const diasTotal=(new Date(allDates[allDates.length-1])-new Date(allDates[0]))/(86400000);
+  const _MESES_ABREV=["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
+  const labels=allDates.map(d=>{
+    if(diasTotal>60) return d.slice(8)+" "+_MESES_ABREV[parseInt(d.slice(5,7))-1];
+    return d.slice(8)+"/"+d.slice(5,7);
+  });
 
-  const colors=["#1d4ed8","#16a34a","#d97706","#7c3aed","#dc2626","#0891b2"];
-  const datasets=Object.keys(byDJ).map((tag,idx)=>({
+  // Y-axis dinamico: centrado nos dados reais
+  const todosVals=Object.values(byDJ).flatMap(m=>Object.values(m)).filter(v=>v>0&&v<99);
+  const vMin=todosVals.length?Math.min(...todosVals):5.0;
+  const vMax=todosVals.length?Math.max(...todosVals):7.0;
+  const yMin=Math.max(4.5, Math.floor((vMin-0.3)*10)/10);
+  const yMax=Math.min(7.5, Math.ceil((vMax+0.3)*10)/10);
+
+  // Detectar tema: print usa paleta escura sobre fundo branco
+  const isPrint=window.matchMedia("print").matches;
+  const textClr=isPrint?"#1e293b":"#94a3b8";
+  const gridClr=isPrint?"#e2e8f0":"#1e3a5f40";
+
+  const colors=["#1d4ed8","#16a34a","#b45309","#7c3aed","#dc2626","#0891b2"];
+  const tagsOrdenados=Object.keys(byDJ).sort();
+  const datasets=tagsOrdenados.map((tag,idx)=>({
     label:tag,
     data:allDates.map(d=>byDJ[tag][d]??null),
     borderColor:colors[idx%colors.length],
-    backgroundColor:colors[idx%colors.length]+"40",
-    pointRadius:allDates.length<=20?5:3,
-    tension:0.3, spanGaps:true, borderWidth:2
+    backgroundColor:colors[idx%colors.length]+"28",
+    pointRadius:allDates.length<=30?4:2,
+    pointHoverRadius:6,
+    tension:0.25, spanGaps:true, borderWidth:2
   }));
 
-  // Anotacoes no ultimo ponto
   // Linhas de referencia
-  datasets.push({label:"Alarme 5,2",data:allDates.map(()=>5.2),borderColor:"#f59e0b",borderDash:[6,3],borderWidth:1.5,pointRadius:0,fill:false,tension:0});
-  datasets.push({label:"Bloqueio 5,0",data:allDates.map(()=>5.0),borderColor:"#ef4444",borderDash:[6,3],borderWidth:1.5,pointRadius:0,fill:false,tension:0});
-  datasets.push({label:"Nominal 6,0",data:allDates.map(()=>6.0),borderColor:"#47556990",borderDash:[4,4],borderWidth:1,pointRadius:0,fill:false,tension:0});
+  datasets.push({label:"Alarme 5,2",data:allDates.map(()=>5.2),borderColor:"#f59e0b",borderDash:[6,3],borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:10});
+  datasets.push({label:"Bloqueio 5,0",data:allDates.map(()=>5.0),borderColor:"#ef4444",borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,tension:0,order:10});
+  datasets.push({label:"Nominal 6,0",data:allDates.map(()=>6.0),borderColor:"#33415580",borderDash:[3,5],borderWidth:1,pointRadius:0,fill:false,tension:0,order:10});
 
   if (_chartSF6) _chartSF6.destroy();
   _chartSF6=new Chart(ctx,{
@@ -2189,13 +2247,36 @@ function _renderChartSF6(sf6hist) {
       responsive:true, maintainAspectRatio:false,
       interaction:{mode:"index",intersect:false},
       plugins:{
-        legend:{labels:{color:"#94a3b8",font:{size:10},boxWidth:12}},
-        tooltip:{callbacks:{label:ctx=>` ${ctx.dataset.label}: ${ctx.parsed.y?.toFixed(3)} bar`}}
+        title:{
+          display:true,
+          text:"Pressão SF6 — bar a 20°C (mínimo por disjuntor)",
+          color:textClr,
+          font:{size:11,weight:"bold"},
+          padding:{bottom:10}
+        },
+        legend:{
+          position:"bottom",
+          labels:{color:textClr,font:{size:9.5},boxWidth:14,padding:10,
+            filter:item=>!["Nominal 6,0"].includes(item.text)||true}
+        },
+        tooltip:{
+          callbacks:{
+            label:c=>` ${c.dataset.label}: ${c.parsed.y!=null?c.parsed.y.toFixed(3)+" bar":"—"}`
+          }
+        }
       },
       scales:{
-        x:{ticks:{color:"#64748b",font:{size:9},maxRotation:45,autoSkip:true,maxTicksLimit:12},grid:{color:"#1e3a5f30"}},
-        y:{min:4.8,max:6.5,ticks:{color:"#64748b",stepSize:0.2,font:{size:10}},grid:{color:"#1e3a5f"},
-           title:{display:true,text:"Pressao a 20°C (bar)",color:"#64748b",font:{size:9}}}
+        x:{
+          ticks:{color:textClr,font:{size:9},maxRotation:50,autoSkip:true,maxTicksLimit:allDates.length<=12?allDates.length:14},
+          grid:{color:gridClr}
+        },
+        y:{
+          min:yMin, max:yMax,
+          ticks:{color:textClr,stepSize:0.1,font:{size:9.5},
+            callback:v=>(v%0.2<0.001||v%0.2>0.199)?v.toFixed(1):null},
+          grid:{color:gridClr},
+          title:{display:true,text:"Pressão (bar)",color:textClr,font:{size:9}}
+        }
       }
     }
   });
