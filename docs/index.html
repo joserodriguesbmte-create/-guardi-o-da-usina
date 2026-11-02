@@ -9,7 +9,20 @@
 <title>Guardiao da Usina</title>
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon.svg">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
+@media print{
+  .sync-bar,.tabs,.btn-primary,.btn-sm,.btn-login,.login-wrap{display:none!important}
+  .page{display:block!important;padding:8px!important}
+  body{background:#fff!important;color:#000!important}
+  .card{border:1px solid #ccc!important;background:#fff!important;break-inside:avoid}
+  .card-title{color:#1e3a5f!important;border-color:#ccc!important}
+  .kpi{background:#f0f4f8!important;border-top-color:#1e5a96!important}
+  .kpi .num,.kpi .lbl{color:#000!important}
+  canvas{max-width:100%!important}
+  #pg-temp,#pg-cont,#pg-sf6,#pg-sec,#pg-insp,#pg-pend,#pg-hist,#pg-email{display:none!important}
+  #pg-rel{display:block!important}
+}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh;overscroll-behavior:none}
 /* ---- LOGIN ---- */
@@ -116,6 +129,17 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
 /* ---- PEND FORM ---- */
 .pend-form-wrap{display:none;background:#0f1e3a;border:1px solid #1e5a96;border-radius:10px;padding:14px;margin-bottom:12px}
 .pend-form-wrap.open{display:block}
+/* ---- GAUGE ---- */
+.gauge-wrap{display:inline-flex;flex-direction:column;align-items:center;padding:4px 6px}
+.gauge-tag{font-size:0.72rem;font-weight:700;color:#60a5fa;margin-bottom:2px;text-align:center}
+.gauge-lbl{font-size:0.65rem;color:#475569;margin-top:2px;text-align:center}
+.gauge-grid{display:flex;flex-wrap:wrap;justify-content:center;gap:4px}
+/* ---- CHART ---- */
+.chart-wrap{background:#0a1628;border-radius:8px;padding:8px;margin-bottom:0;position:relative}
+/* ---- TABLE ---- */
+.tbl{width:100%;border-collapse:collapse;font-size:0.78rem}
+.tbl th{padding:6px 5px;text-align:left;color:#64748b;border-bottom:1px solid #1e3a5f;font-weight:600}
+.tbl td{padding:5px 5px;border-bottom:1px solid #0f1e3a;color:#cbd5e1}
 </style>
 </head>
 <body>
@@ -164,6 +188,10 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
     <div class="tab" onclick="showPage('insp')">📋 Insp.</div>
     <div class="tab" onclick="showPage('pend')">⚠️ Pend.</div>
     <div class="tab" onclick="showPage('hist')">📜 Hist.</div>
+    <div class="tab" onclick="showPage('temp')">🌡️ Temp.</div>
+    <div class="tab" onclick="showPage('cont')">📟 Cont.</div>
+    <div class="tab" onclick="showPage('rel')">📊 Rel.</div>
+    <div class="tab" onclick="showPage('email')">📧 Email</div>
   </div>
 
   <!-- ── PAINEL ── -->
@@ -396,6 +424,89 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       </div>
       <div id="histList"></div>
       <button class="btn-primary btn-danger" onclick="limparSincronizados()" style="margin-top:8px">🗑️ Limpar Sincronizados</button>
+    </div>
+  </div>
+
+
+  <!-- ── TEMPERATURAS ── -->
+  <div class="page" id="pg-temp">
+    <div class="card">
+      <div class="card-title">🌡️ Temperatura do Transformador TR-SE-01</div>
+      <div class="grid-3">
+        <div>
+          <label>📅 Data</label>
+          <input type="date" id="tData">
+        </div>
+        <div>
+          <label>🌡️ OTI (°C)</label>
+          <input type="number" id="tOTI" step="0.1" min="0" max="120" placeholder="Ex: 55.5">
+        </div>
+        <div>
+          <label>🌡️ WTI (°C)</label>
+          <input type="number" id="tWTI" step="0.1" min="0" max="120" placeholder="Ex: 58.0">
+        </div>
+      </div>
+      <label>Observacao</label>
+      <input type="text" id="tObs" placeholder="Ex: Operacao normal, ONAF ativo">
+      <button class="btn-primary" onclick="salvarTemp()">💾 Registrar Temperatura</button>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 Historico</div>
+      <div style="font-size:0.72rem;color:#64748b;margin-bottom:8px">Alarme: 65°C · Trip: 75°C (OTI e WTI)</div>
+      <div id="tempHist"><div style="color:#475569;text-align:center;padding:16px">Carregando...</div></div>
+    </div>
+  </div>
+
+  <!-- ── CONTADORES ── -->
+  <div class="page" id="pg-cont">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:0.82rem;color:#94a3b8">Ultimas leituras de contadores. Manutencao recomendada ao atingir 5.000 operacoes tripolar.</div>
+      <button class="btn-sm btn-gray" onclick="renderCont()" style="white-space:nowrap;margin-left:8px">🔄</button>
+    </div>
+    <div id="contList"><div style="color:#475569;text-align:center;padding:20px">Carregando...</div></div>
+  </div>
+
+  <!-- ── RELATORIO ── -->
+  <div class="page" id="pg-rel">
+    <div class="kpi-bar" id="relKpis"></div>
+    <div class="card" id="relCardGauges">
+      <div class="card-title">⚡ Pressao SF6 — Leitura Atual</div>
+      <div id="relGauges"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📈 Evolucao SF6 — Ultimos 6 Meses</div>
+      <div class="chart-wrap" style="height:220px">
+        <canvas id="chartSF6"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 NC Seccionadoras — Ultimos 6 Meses</div>
+      <div class="chart-wrap" style="height:160px">
+        <canvas id="chartNC"></canvas>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="window.print()" style="margin-top:4px">🖨️ Imprimir / Salvar PDF</button>
+  </div>
+
+  <!-- ── EMAIL ── -->
+  <div class="page" id="pg-email">
+    <div class="card">
+      <div class="card-title">📧 Destinatarios Cadastrados</div>
+      <div id="emailDest"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📤 Envio do Relatorio Mensal</div>
+      <div style="font-size:0.82rem;color:#94a3b8;margin-bottom:12px">
+        O relatorio com PDF, gauges e graficos e enviado para os 3 destinatarios. Use o botao abaixo para solicitar o envio.
+      </div>
+      <div style="background:#162447;border-radius:8px;padding:10px 12px;margin-bottom:12px">
+        <span style="font-size:0.78rem;color:#60a5fa">📅 Mes de referencia:</span>
+        <span style="font-size:0.82rem;font-weight:700;color:#f1f5f9;margin-left:6px" id="emailMesRef"></span>
+      </div>
+      <button class="btn-primary" id="btnEnviarEmail" onclick="solicitarEnvioEmail()">📧 Solicitar Envio do Relatorio</button>
+      <div style="font-size:0.72rem;color:#475569;margin-top:8px;text-align:center">
+        A solicitacao e registrada e o envio ocorre automaticamente pelo sistema.
+      </div>
     </div>
   </div>
 
@@ -702,6 +813,7 @@ function restoreSessao() {
   document.getElementById("cfgUmid").value = s.umid || "70";
   document.getElementById("inspData").value = s.data || hoje();
   document.getElementById("pfData").value   = hoje();
+  document.getElementById("tData").value    = hoje();
   initSF6Sel();
   initSecSel();
   updateConnStatus();
@@ -712,7 +824,7 @@ function restoreSessao() {
 // ═════════════════════════════════════════════════════════════════
 // NAVEGACAO
 // ═════════════════════════════════════════════════════════════════
-const PAGE_IDS = ["painel","sf6","sec","insp","pend","hist"];
+const PAGE_IDS = ["painel","sf6","sec","insp","pend","hist","temp","cont","rel","email"];
 function showPage(id) {
   PAGE_IDS.forEach(p => {
     document.getElementById("pg-"+p).classList.toggle("active", p===id);
@@ -724,6 +836,10 @@ function showPage(id) {
   if (id==="hist")   renderHist("all");
   if (id==="pend")   loadPend();
   if (id==="insp")   { document.getElementById("inspData").value=getData(); syncTurno(); renderChecklist(); }
+  if (id==="temp")   { document.getElementById("tData").value=getData(); renderTemp(); }
+  if (id==="cont")   renderCont();
+  if (id==="rel")    renderRel();
+  if (id==="email")  { const m=getData().slice(0,7); const [y,mo]=m.split('-'); document.getElementById("emailMesRef").textContent=_MESES_PT[parseInt(mo)-1]+'/'+y; renderEmail(); }
 }
 function syncTurno() {
   const t = document.getElementById("cfgTurno").value;
@@ -779,17 +895,31 @@ async function pullData() {
   if (!navigator.onLine) return;
   try {
     const ini = mesIni();
+    const d12 = new Date(); d12.setMonth(d12.getMonth()-12);
+    const ini12 = d12.getFullYear()+"-"+String(d12.getMonth()+1).padStart(2,"0")+"-01";
+    const d6 = new Date(); d6.setMonth(d6.getMonth()-6);
+    const ini6 = d6.getFullYear()+"-"+String(d6.getMonth()+1).padStart(2,"0")+"-01";
     const cache = getCache();
-    const [sf6mes, secMes, pend, sf6last] = await Promise.all([
-      supaGet("sf6_leituras", {"data": "gte."+ini, "select": "disjuntor,polo,pressao_corrigida,status_sf6,data"}),
-      supaGet("inspecoes",    {"sistema": "eq.Seccionadora", "data": "gte."+ini, "select": "item,data"}),
-      supaGet("pendencias",   {"select": "id,data_abertura,sistema,descricao,nota_sap,prioridade,status,observacao,usuario", "order": "data_abertura.desc", "limit": "200"}),
-      supaGet("sf6_leituras", {"select": "disjuntor,polo,pressao_corrigida,status_sf6", "order": "created_at.desc", "limit": "60"})
+    const [sf6mes, secMes, pend, sf6last, temps, contadores, operacoes, sf6hist, secHist] = await Promise.all([
+      supaGet("sf6_leituras", {"data":"gte."+ini, "select":"disjuntor,polo,pressao_corrigida,status_sf6,data"}),
+      supaGet("inspecoes",    {"sistema":"eq.Seccionadora","data":"gte."+ini,"select":"item,data"}),
+      supaGet("pendencias",   {"select":"id,data_abertura,sistema,descricao,nota_sap,prioridade,status,observacao,usuario","order":"data_abertura.desc","limit":"200"}),
+      supaGet("sf6_leituras", {"select":"disjuntor,polo,pressao_corrigida,status_sf6,data","order":"created_at.desc","limit":"60"}),
+      supaGet("temperaturas", {"order":"data.desc","limit":"50","select":"data,turno,temperatura_oleo,temperatura_enrol,observacao"}),
+      supaGet("contadores_dj",{"order":"data.desc","limit":"100","select":"data,disjuntor,polo_a,polo_b,polo_v,tripolar,curto_circuito"}),
+      supaGet("operacoes_dj", {"select":"disjuntor,num_operacoes_total"}),
+      supaGet("sf6_leituras", {"data":"gte."+ini12,"select":"disjuntor,polo,pressao_corrigida,data","order":"data.asc"}),
+      supaGet("inspecoes",    {"sistema":"eq.Seccionadora","data":"gte."+ini6,"select":"item,data,status"})
     ]);
     cache.sf6mes    = sf6mes;
     cache.secMes    = secMes;
     cache.pend      = pend;
     cache.sf6last   = sf6last;
+    cache.temperaturas = temps;
+    cache.contadores   = contadores;
+    cache.operacoes    = operacoes;
+    cache.sf6hist      = sf6hist;
+    cache.secHist      = secHist;
     cache.lastSync  = new Date().toISOString();
     saveCache(cache);
   } catch(e) {
@@ -1324,6 +1454,353 @@ function limparSincronizados() {
   renderHist(_histFiltro);
   atualizarPendentes();
   toast("Registros sincronizados removidos");
+}
+
+// ═════════════════════════════════════════════════════════════════
+// CONSTANTES COMPARTILHADAS
+// ═════════════════════════════════════════════════════════════════
+const _MESES_PT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+function _dataBR(iso) {
+  if (!iso) return "";
+  return (iso||"").split("-").reverse().join("/");
+}
+
+function _mesBR(ym) {
+  if (!ym) return "";
+  const [y,mo] = ym.split("-");
+  return _MESES_PT[parseInt(mo)-1]+"/"+y.slice(2);
+}
+
+// ═════════════════════════════════════════════════════════════════
+// TEMPERATURAS
+// ═════════════════════════════════════════════════════════════════
+async function renderTemp() {
+  const cache = getCache();
+  renderTempHist(cache.temperaturas || []);
+  if (navigator.onLine) {
+    try {
+      const rows = await supaGet("temperaturas",{order:"data.desc",limit:"50",select:"data,turno,temperatura_oleo,temperatura_enrol,observacao"});
+      const c = getCache(); c.temperaturas=rows; saveCache(c);
+      renderTempHist(rows);
+    } catch(e) {}
+  }
+}
+
+function renderTempHist(data) {
+  if (!data.length) {
+    document.getElementById("tempHist").innerHTML='<div style="color:#475569;text-align:center;padding:16px;font-size:0.82rem">Sem registros</div>';
+    return;
+  }
+  const sorted = [...data].sort((a,b)=>(b.data||"").localeCompare(a.data||""));
+  let html=`<table class="tbl"><thead><tr>
+    <th>Data</th><th style="text-align:center">OTI °C</th><th style="text-align:center">WTI °C</th><th>Obs</th>
+  </tr></thead><tbody>`;
+  sorted.slice(0,30).forEach(r => {
+    const otiCor = r.temperatura_oleo>75?"#ef4444":r.temperatura_oleo>65?"#f59e0b":"#10b981";
+    const wtiCor = r.temperatura_enrol>75?"#ef4444":r.temperatura_enrol>65?"#f59e0b":"#10b981";
+    html+=`<tr>
+      <td>${_dataBR(r.data)}</td>
+      <td style="text-align:center;color:${otiCor};font-weight:700">${r.temperatura_oleo??"-"}</td>
+      <td style="text-align:center;color:${wtiCor};font-weight:700">${r.temperatura_enrol??"-"}</td>
+      <td style="color:#64748b">${r.observacao||""}</td>
+    </tr>`;
+  });
+  html+="</tbody></table>";
+  document.getElementById("tempHist").innerHTML=html;
+}
+
+async function salvarTemp() {
+  const data=document.getElementById("tData").value||hoje();
+  const oti=parseFloat(document.getElementById("tOTI").value);
+  const wti=parseFloat(document.getElementById("tWTI").value);
+  if (isNaN(oti)||isNaN(wti)) { toast("Informe OTI e WTI",true); return; }
+  const obs=document.getElementById("tObs").value;
+  const record={data, turno:getTurno(), temperatura_oleo:oti, temperatura_enrol:wti, observacao:obs, usuario:getUsuario()};
+  if (navigator.onLine) {
+    const ok=await supaPost("temperaturas",record).catch(()=>false);
+    if (ok) {
+      toast("✅ Temperatura salva!");
+      const rows=await supaGet("temperaturas",{order:"data.desc",limit:"50",select:"data,turno,temperatura_oleo,temperatura_enrol,observacao"}).catch(()=>[]);
+      const c=getCache(); c.temperaturas=rows; saveCache(c); renderTempHist(rows);
+    } else {
+      const q=getQueue(); q.push({table:"temperaturas",synced:false,id:Date.now()+"_temp",data:record}); saveQueue(q);
+      atualizarPendentes(); toast("Erro. Salvo offline.",true);
+    }
+  } else {
+    const q=getQueue(); q.push({table:"temperaturas",synced:false,id:Date.now()+"_temp",data:record}); saveQueue(q);
+    atualizarPendentes(); toast("Salvo offline");
+  }
+  document.getElementById("tOTI").value="";
+  document.getElementById("tWTI").value="";
+  document.getElementById("tObs").value="";
+}
+
+// ═════════════════════════════════════════════════════════════════
+// CONTADORES
+// ═════════════════════════════════════════════════════════════════
+function renderCont() {
+  const cache=getCache();
+  const contadores=cache.contadores||[];
+  const operacoes=cache.operacoes||[];
+
+  const latest={};
+  [...contadores].sort((a,b)=>(a.data||"").localeCompare(b.data||"")).forEach(r=>{latest[r.disjuntor]=r;});
+
+  const opsTotal={};
+  operacoes.forEach(r=>{opsTotal[r.disjuntor]=(opsTotal[r.disjuntor]||0)+(r.num_operacoes_total||0);});
+
+  let html="";
+  for (const [tag,dj] of Object.entries(DISJUNTORES)) {
+    const cnt=latest[tag];
+    const ops=opsTotal[tag]||0;
+    const alrt=ops>=5000;
+    html+=`<div class="card" style="${alrt?"border-color:#f59e0b":""}">
+      <div class="card-title" style="${alrt?"color:#f59e0b":""}">${alrt?"⚠️ ":""}${tag} — ${dj.desc}</div>
+      ${alrt?'<div style="color:#f59e0b;font-size:0.8rem;margin-bottom:8px">Manutencao recomendada (≥ 5.000 op. tripolar)</div>':""}
+      <div class="grid-2">
+        <div>
+          <div style="font-size:0.72rem;color:#94a3b8">Tripolar (P1LT)</div>
+          <div style="font-size:1.2rem;font-weight:900;color:${alrt?"#f59e0b":"#f1f5f9"}">${cnt?cnt.tripolar??0:"—"}</div>
+        </div>
+        <div>
+          <div style="font-size:0.72rem;color:#94a3b8">Curto-Circ. (P2)</div>
+          <div style="font-size:1.2rem;font-weight:900;color:#f1f5f9">${cnt?cnt.curto_circuito??0:"—"}</div>
+        </div>
+      </div>
+      ${dj.polos===3?`<div class="grid-3" style="margin-top:8px">
+        <div><div style="font-size:0.72rem;color:#94a3b8">Polo A</div><div style="font-size:0.95rem;color:#e2e8f0">${cnt?cnt.polo_a??0:"—"}</div></div>
+        <div><div style="font-size:0.72rem;color:#94a3b8">Polo B</div><div style="font-size:0.95rem;color:#e2e8f0">${cnt?cnt.polo_b??0:"—"}</div></div>
+        <div><div style="font-size:0.72rem;color:#94a3b8">Polo V</div><div style="font-size:0.95rem;color:#e2e8f0">${cnt?cnt.polo_v??0:"—"}</div></div>
+      </div>`:""}
+      <div style="font-size:0.75rem;color:#475569;margin-top:6px">Ops. registradas no banco: ${ops}${cnt?" &nbsp;·&nbsp; Ultimo: "+_dataBR(cnt.data):""}</div>
+    </div>`;
+  }
+  document.getElementById("contList").innerHTML=html||'<div style="color:#475569;padding:16px;text-align:center">Sem dados de contadores. Sincronize ou registre via aba SF6.</div>';
+}
+
+// ═════════════════════════════════════════════════════════════════
+// GAUGE SF6 (Canvas)
+// ═════════════════════════════════════════════════════════════════
+function drawGauge(canvas, val, nom, al, bl, hasData) {
+  const ctx=canvas.getContext("2d");
+  const W=canvas.width, H=canvas.height;
+  const cx=W/2, cy=Math.round(H*0.80);
+  const r=Math.min(W*0.40, H*0.65);
+  const max=nom*1.25;
+  ctx.clearRect(0,0,W,H);
+
+  // Arco fundo
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,2*Math.PI);
+  ctx.lineWidth=15; ctx.lineCap="round"; ctx.strokeStyle="#1e3a5f"; ctx.stroke();
+
+  if (!hasData) {
+    ctx.font="bold 11px Arial"; ctx.fillStyle="#475569"; ctx.textAlign="center";
+    ctx.fillText("Sem dados",cx,cy-10); return;
+  }
+
+  const ang=v=>Math.PI+(Math.min(v,max)/max)*Math.PI;
+
+  // Zona vermelha: 0 a bl
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,ang(bl));
+  ctx.strokeStyle="#ef4444"; ctx.stroke();
+  // Zona amarela: bl a al
+  ctx.beginPath(); ctx.arc(cx,cy,r,ang(bl),ang(al));
+  ctx.strokeStyle="#f59e0b"; ctx.stroke();
+  // Zona verde: al a max
+  ctx.beginPath(); ctx.arc(cx,cy,r,ang(al),2*Math.PI);
+  ctx.strokeStyle="#10b981"; ctx.stroke();
+
+  // Agulha
+  const na=ang(Math.min(val,max));
+  const nl=r*0.68;
+  ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+nl*Math.cos(na),cy+nl*Math.sin(na));
+  ctx.lineWidth=2.5; ctx.strokeStyle="#f1f5f9"; ctx.lineCap="round"; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx,cy,4,0,2*Math.PI); ctx.fillStyle="#f1f5f9"; ctx.fill();
+
+  // Marcas de limite
+  ctx.font="8px Arial"; ctx.fillStyle="#94a3b8"; ctx.textAlign="center";
+  const markBL=ang(bl); const markAL=ang(al);
+  ctx.fillText(bl.toFixed(1), cx+(r+12)*Math.cos(markBL), cy+(r+12)*Math.sin(markBL));
+  ctx.fillText(al.toFixed(1), cx+(r+12)*Math.cos(markAL), cy+(r+12)*Math.sin(markAL));
+
+  // Valor e status
+  const cor=val<bl?"#ef4444":val<al?"#f59e0b":"#10b981";
+  const st =val<bl?"BLOQUEIO":val<al?"ALARME":"NORMAL";
+  ctx.font="bold 15px Arial"; ctx.fillStyle=cor; ctx.textAlign="center";
+  ctx.fillText(val.toFixed(2),cx,cy-16);
+  ctx.font="9px Arial"; ctx.fillStyle="#94a3b8"; ctx.fillText("bar",cx,cy-5);
+  ctx.font="bold 10px Arial"; ctx.fillStyle=cor; ctx.fillText(st,cx,cy+8);
+}
+
+// ═════════════════════════════════════════════════════════════════
+// RELATORIO
+// ═════════════════════════════════════════════════════════════════
+let _chartSF6=null, _chartNC=null;
+
+function renderRel() {
+  const cache=getCache();
+  const mesAtual=getData().slice(0,7);
+
+  // KPIs
+  const sf6mes=(cache.sf6mes||[]).filter(r=>r.data&&r.data.startsWith(mesAtual));
+  const djDone=new Set(sf6mes.map(r=>r.disjuntor));
+  const secMes=(cache.secMes||[]).filter(r=>r.data&&r.data.startsWith(mesAtual));
+  const secDone=new Set(secMes.map(r=>r.item));
+  const pAberta=(cache.pend||[]).filter(r=>r.status==="Aberta").length;
+
+  document.getElementById("relKpis").innerHTML=
+    kpi(djDone.size+"/"+Object.keys(DISJUNTORES).length,"DJ Insp.",djDone.size>=Object.keys(DISJUNTORES).length?"#10b981":"#3b82f6")+
+    kpi(secDone.size+"/"+SECCIONADORAS.length,"Secc.",secDone.size>=SECCIONADORAS.length?"#10b981":"#06b6d4")+
+    kpi(pAberta,"Pend.Ab.",pAberta>0?"#ef4444":"#10b981");
+
+  // Gauges
+  _renderGaugesSF6(cache.sf6last||[]);
+  // Charts (async — espera DOM render)
+  setTimeout(()=>{ _renderChartSF6(cache.sf6hist||[]); _renderChartNC(cache.secHist||[]); }, 60);
+}
+
+function _renderGaugesSF6(sf6last) {
+  const lm={};
+  [...sf6last].reverse().forEach(r=>{ lm[r.disjuntor+"_"+r.polo]=r; });
+
+  let html="";
+  for (const [tag,dj] of Object.entries(DISJUNTORES)) {
+    const polos=dj.polos===3?["Polo A","Polo B","Polo V"]:["Camara Unica"];
+    html+=`<div class="card" style="margin-bottom:8px">
+      <div style="font-size:0.8rem;font-weight:700;color:#60a5fa;margin-bottom:6px">${tag} — ${dj.desc}</div>
+      <div class="gauge-grid">`;
+    polos.forEach(polo=>{
+      const lr=lm[tag+"_"+polo];
+      const cid="g_"+tag.replace(/\W/g,"")+"_"+polo.replace(/\W/g,"");
+      const lbl=lr?_dataBR(lr.data):"sem dados";
+      html+=`<div class="gauge-wrap">
+        <div class="gauge-tag">${polo==="Camara Unica"?"Cam. Unica":polo}</div>
+        <canvas id="${cid}" width="130" height="78"></canvas>
+        <div class="gauge-lbl">${lbl}</div>
+      </div>`;
+    });
+    html+="</div></div>";
+  }
+  document.getElementById("relGauges").innerHTML=html;
+
+  // Desenha após inserir no DOM
+  for (const [tag,dj] of Object.entries(DISJUNTORES)) {
+    const polos=dj.polos===3?["Polo A","Polo B","Polo V"]:["Camara Unica"];
+    polos.forEach(polo=>{
+      const lr=lm[tag+"_"+polo];
+      const cid="g_"+tag.replace(/\W/g,"")+"_"+polo.replace(/\W/g,"");
+      const c=document.getElementById(cid);
+      if (c) drawGauge(c, lr?lr.pressao_corrigida:dj.nom, dj.nom, dj.al, dj.bl, !!lr);
+    });
+  }
+}
+
+function _renderChartSF6(sf6hist) {
+  const ctx=document.getElementById("chartSF6");
+  if (!ctx||typeof Chart==="undefined") return;
+
+  // Ultimos 6 meses
+  const months=[];
+  for (let i=5;i>=0;i--){
+    const d=new Date(); d.setMonth(d.getMonth()-i);
+    months.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"));
+  }
+  const labels=months.map(_mesBR);
+  const colors=["#3b82f6","#10b981","#f59e0b","#a78bfa","#f472b6","#22d3ee"];
+  const datasets=Object.keys(DISJUNTORES).map((tag,idx)=>({
+    label:tag,
+    data:months.map(m=>{
+      const rows=sf6hist.filter(r=>r.disjuntor===tag&&r.data&&r.data.startsWith(m));
+      return rows.length?Math.min(...rows.map(r=>parseFloat(r.pressao_corrigida))):null;
+    }),
+    borderColor:colors[idx%colors.length],
+    backgroundColor:colors[idx%colors.length]+"33",
+    pointRadius:4, tension:0.3, spanGaps:true, borderWidth:2
+  }));
+
+  // Linhas de referencia
+  const refData=months.map(()=>null);
+  datasets.push({label:"Alarme 5,2",data:months.map(()=>5.2),borderColor:"#f59e0b80",borderDash:[6,3],borderWidth:1.5,pointRadius:0,fill:false,tension:0});
+  datasets.push({label:"Bloqueio 5,0",data:months.map(()=>5.0),borderColor:"#ef444480",borderDash:[6,3],borderWidth:1.5,pointRadius:0,fill:false,tension:0});
+
+  if (_chartSF6) _chartSF6.destroy();
+  _chartSF6=new Chart(ctx,{
+    type:"line", data:{labels,datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:"#94a3b8",font:{size:10},boxWidth:12}}},
+      scales:{
+        x:{ticks:{color:"#64748b",font:{size:10}},grid:{color:"#1e3a5f"}},
+        y:{min:4.6,max:6.4,ticks:{color:"#64748b",stepSize:0.2,font:{size:10}},grid:{color:"#1e3a5f"},
+           title:{display:true,text:"bar",color:"#64748b",font:{size:9}}}
+      }
+    }
+  });
+}
+
+function _renderChartNC(secHist) {
+  const ctx=document.getElementById("chartNC");
+  if (!ctx||typeof Chart==="undefined") return;
+
+  const months=[];
+  for (let i=5;i>=0;i--){
+    const d=new Date(); d.setMonth(d.getMonth()-i);
+    months.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"));
+  }
+  const labels=months.map(_mesBR);
+  const counts=months.map(m=>secHist.filter(r=>r.data&&r.data.startsWith(m)&&r.status&&r.status.includes("NOK")).length);
+  const bgColors=counts.map(n=>n>0?"#ef444480":"#10b98180");
+  const borderColors=counts.map(n=>n>0?"#ef4444":"#10b981");
+
+  if (_chartNC) _chartNC.destroy();
+  _chartNC=new Chart(ctx,{
+    type:"bar",
+    data:{labels,datasets:[{label:"NC por mes",data:counts,backgroundColor:bgColors,borderColor:borderColors,borderWidth:2,borderRadius:4}]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:"#94a3b8",font:{size:10},boxWidth:12}}},
+      scales:{
+        x:{ticks:{color:"#64748b",font:{size:10}},grid:{color:"#1e3a5f"}},
+        y:{min:0,ticks:{color:"#64748b",stepSize:1,font:{size:10}},grid:{color:"#1e3a5f"},
+           title:{display:true,text:"NC",color:"#64748b",font:{size:9}}}
+      }
+    }
+  });
+}
+
+// ═════════════════════════════════════════════════════════════════
+// EMAIL
+// ═════════════════════════════════════════════════════════════════
+const EMAIL_DEST=[
+  {nome:"Jose Santos",      email:"josesantos@norteenergiasa.com.br"},
+  {nome:"Luan Santos (Engenharia)",  email:"luansantos@norteenergiasa.com.br"},
+  {nome:"Vitor Bernardes (Engenharia)", email:"vitorbernardes@norteenergiasa.com.br"}
+];
+
+function renderEmail() {
+  const html=EMAIL_DEST.map(d=>`
+    <div style="background:#0b1120;border:1px solid #1e3a5f;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:1.2rem">✉️</span>
+      <div>
+        <div style="font-size:0.88rem;font-weight:700;color:#f1f5f9">${d.nome}</div>
+        <div style="font-size:0.75rem;color:#64748b">${d.email}</div>
+      </div>
+    </div>`).join("");
+  document.getElementById("emailDest").innerHTML=html;
+}
+
+async function solicitarEnvioEmail() {
+  if (!navigator.onLine) { toast("Sem internet",true); return; }
+  const btn=document.getElementById("btnEnviarEmail");
+  btn.disabled=true; btn.textContent="⏳ Solicitando...";
+  const mes=getData().slice(0,7);
+  const val=JSON.stringify({solicitado_em:new Date().toISOString(),mes,usuario:getUsuario()});
+  let ok=await supaPatch("config_app",{"chave":"eq.email_solicitar_pwa"},{valor:val}).catch(()=>false);
+  if (!ok) ok=await supaPost("config_app",{chave:"email_solicitar_pwa",valor:val}).catch(()=>false);
+  btn.disabled=false; btn.textContent="📧 Solicitar Envio do Relatorio";
+  if (ok) toast("✅ Solicitacao registrada! Relatorio sera enviado em breve.");
+  else toast("Erro ao registrar solicitacao",true);
 }
 
 // ═════════════════════════════════════════════════════════════════
