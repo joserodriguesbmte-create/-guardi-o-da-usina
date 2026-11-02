@@ -14,33 +14,77 @@
 <style>
 @media print{
   @page{margin:14mm 12mm}
-  .sync-bar,.tabs,.btn-primary,.btn-sm,.btn-login,.login-wrap,.no-print{display:none!important}
+
+  /* ── Elementos de UI: suprimir ── */
+  .header,.sync-bar,.tabs,.btn-primary,.btn-sm,.btn-login,
+  .login-wrap,.no-print,#relCabInterno,#relAlertas{display:none!important}
   .page{display:none!important}
   #pg-rel{display:block!important;padding:0!important}
-  body{background:#fff!important;color:#000!important;font-family:Arial,sans-serif!important;font-size:11pt}
-  /* Capa — sem min-height para nao criar pagina em branco */
-  #relCapa{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
-           height:230mm!important;page-break-after:always!important;border-bottom:2px solid #1e5a96}
-  /* Cards de conteudo */
-  .card{border:1px solid #cbd5e1!important;background:#fff!important;break-inside:avoid;page-break-inside:avoid;
-        margin-bottom:6px!important;padding:8px!important}
-  .card-title{color:#1e3a5f!important;border-color:#94a3b8!important;font-size:0.9rem!important;font-weight:bold}
-  .kpi{background:#f0f4f8!important;border-top-color:#1e5a96!important;padding:6px!important}
-  .kpi .num{color:#0c2340!important;font-size:1.1rem!important}
-  .kpi .lbl{color:#334155!important;font-size:0.7rem!important}
-  canvas{max-width:100%!important}
-  textarea{border:1px solid #ccc!important;background:#fff!important;color:#000!important;min-height:50px}
-  .tbl{font-size:0.78rem!important}
-  .tbl th{background:#1e3a5f!important;color:#fff!important}
-  .tbl td{color:#1e293b!important;border-color:#e2e8f0!important}
-  /* Gauges: 2 colunas para compactar pagina */
+
+  /* ── Base ── */
+  body{background:#fff!important;color:#000!important;font-family:Arial,sans-serif!important;
+       font-size:10.5pt;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+
+  /* ── Capa: pag. 1 isolada ── */
+  #relCapa{display:flex!important;flex-direction:column!important;align-items:center!important;
+           justify-content:center!important;min-height:240mm!important;
+           page-break-after:always!important;break-after:always!important;
+           border-bottom:2px solid #1e5a96}
+
+  /* ── Cards gerais ── */
+  .card{border:1px solid #cbd5e1!important;background:#fff!important;
+        break-inside:avoid;page-break-inside:avoid;
+        margin-bottom:8px!important;padding:8px 10px!important}
+  .card-title{color:#1e3a5f!important;border-color:#94a3b8!important;
+              font-size:0.88rem!important;font-weight:bold;
+              padding-bottom:5px!important;margin-bottom:6px!important}
+
+  /* ── KPIs ── */
+  .kpi-bar{display:grid!important;grid-template-columns:repeat(6,1fr)!important;gap:5px!important;margin-bottom:8px!important}
+  .kpi{background:#f0f4f8!important;border-top-color:#1e5a96!important;
+       padding:5px!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+       border-radius:4px!important;text-align:center!important}
+  .kpi .num{color:#0c2340!important;font-size:0.95rem!important;font-weight:900!important}
+  .kpi .lbl{color:#334155!important;font-size:0.62rem!important}
+
+  /* ── Resumo Executivo: nova pag. apos ── */
+  #relSumCard{page-break-after:always!important;break-after:always!important;
+              break-inside:avoid!important}
+
+  /* ── Card SF6: permite quebrar; sub-elementos nao ── */
+  #relSF6Card{break-inside:auto!important;page-break-inside:auto!important}
+
+  /* ── Gauges: grid 2 colunas ── */
   #relGauges{display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important}
-  #relGauges .card{margin-bottom:0!important}
-  .gauge-grid{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:6px!important}
-  .chart-wrap{background:#fff!important;border:1px solid #cbd5e1!important;padding:4px!important}
-  .sec-title{color:#1e3a5f!important;border-left-color:#1e5a96!important;font-size:0.82rem!important}
-  /* Secao de fotos */
-  #relFotos img{max-height:90mm!important;object-fit:contain!important}
+  #relGauges .card{margin-bottom:0!important;break-inside:avoid!important}
+  .gauge-grid{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:4px!important}
+
+  /* ── Gráficos: nao quebrar ── */
+  .chart-wrap{background:#fff!important;border:1px solid #cbd5e1!important;
+              padding:4px!important;break-inside:avoid!important;page-break-inside:avoid!important}
+  canvas{max-width:100%!important}
+
+  /* ── Tabelas ── */
+  .tbl{font-size:0.76rem!important;width:100%!important}
+  .tbl th{background:#1e3a5f!important;color:#fff!important;
+          -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .tbl td{color:#1e293b!important;border-color:#e2e8f0!important}
+  .sec-title{color:#1e3a5f!important;border-left-color:#1e5a96!important;font-size:0.8rem!important}
+
+  /* ── Fotos: pagina isolada ── */
+  #relFotosCard{page-break-before:always!important;break-before:always!important;
+                page-break-after:always!important;break-after:always!important;
+                break-inside:auto!important;page-break-inside:auto!important}
+  #relFotos img{max-height:88mm!important;object-fit:contain!important;display:block;margin:4px 0}
+  #relFotos>div{break-inside:avoid!important;page-break-inside:avoid!important}
+
+  /* ── Observacoes: textareas sem placeholder visivel ── */
+  textarea{border:1px solid #ccc!important;background:#fff!important;
+           color:#000!important;min-height:60px!important;width:100%!important}
+  textarea::placeholder{color:transparent!important;opacity:0!important}
+
+  /* ── Assinatura: exibir somente no print ── */
+  #relAssinatura{display:block!important;break-inside:avoid!important}
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh;overscroll-behavior:none}
@@ -514,14 +558,14 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
         Gerado em <span id="capaDataGer"></span> &nbsp;·&nbsp; Sistema automatizado de O&amp;M
       </div>
     </div>
-    <!-- Cabecalho -->
-    <div class="card" style="background:#0c2340;border-color:#1e5a96">
+    <!-- Cabecalho (oculto no print) -->
+    <div id="relCabInterno" class="card" style="background:#0c2340;border-color:#1e5a96">
       <div style="font-size:1rem;font-weight:900;color:#f1f5f9">🛡️ Relatorio Mensal — Guardiao da Usina</div>
       <div style="font-size:0.75rem;color:#60a5fa;margin-top:2px">Norte Energia S.A. · UHE Pimental · SE 230kV</div>
       <div style="margin-top:8px;font-size:0.78rem;color:#94a3b8" id="relCabRef"></div>
     </div>
     <!-- 1. Resumo -->
-    <div class="card">
+    <div class="card" id="relSumCard">
       <div class="card-title">📊 1. Resumo Executivo</div>
       <div class="kpi-bar" id="relKpis"></div>
       <div id="relStatusEquip" style="margin-top:8px"></div>
@@ -529,7 +573,7 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
     <!-- Alertas SF6 -->
     <div id="relAlertas"></div>
     <!-- 2. SF6 -->
-    <div class="card">
+    <div class="card" id="relSF6Card">
       <div class="card-title">⚡ 2. Disjuntores SF6</div>
       <div class="sec-title" style="margin-top:0">Pressao Atual — Velocimetros</div>
       <div id="relGauges"></div>
@@ -575,7 +619,7 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       <div id="relPend"></div>
     </div>
     <!-- 7. Registro Fotografico -->
-    <div class="card">
+    <div class="card" id="relFotosCard">
       <div class="card-title">📷 7. Registro Fotografico</div>
       <div id="relFotos"></div>
       <div class="no-print" style="margin-top:12px">
@@ -596,6 +640,24 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       <textarea id="relObs" placeholder="Ex: SF6 estavel, sem alarmes ativos..."></textarea>
       <label style="margin-top:8px">Acoes corretivas / preventivas tomadas</label>
       <textarea id="relAcoes" placeholder="Ex: Realizada lubrificacao das seccionadoras..."></textarea>
+    </div>
+    <!-- 9. Assinatura (apenas no print) -->
+    <div class="card no-screen" id="relAssinatura" style="display:none">
+      <div class="card-title">✍️ 9. Assinatura</div>
+      <table style="margin-top:10px;border-collapse:collapse">
+        <tr>
+          <td style="padding-right:48px">
+            <div style="border-bottom:1px solid #94a3b8;width:220px;height:40px;margin-bottom:6px"></div>
+            <div id="assinaturaOp" style="font-size:0.85rem;font-weight:700;color:#1e293b"></div>
+            <div style="font-size:0.72rem;color:#64748b">Operador de O&amp;M — SE 230kV</div>
+          </td>
+          <td>
+            <div style="border-bottom:1px solid #94a3b8;width:160px;height:40px;margin-bottom:6px"></div>
+            <div style="font-size:0.85rem;font-weight:700;color:#1e293b">Data</div>
+            <div id="assinaturaData" style="font-size:0.72rem;color:#64748b"></div>
+          </td>
+        </tr>
+      </table>
     </div>
     <button class="btn-primary no-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
   </div>
@@ -1839,6 +1901,12 @@ function renderRel() {
 
   // Fotos
   _renderRelFotos(cache.fotosRel||[]);
+
+  // Assinatura
+  const elOp = document.getElementById("assinaturaOp");
+  const elDt = document.getElementById("assinaturaData");
+  if(elOp) elOp.textContent = opNome;
+  if(elDt) elDt.textContent = new Date().toLocaleDateString("pt-BR");
 
   // Charts com timeout para garantir DOM pronto
   setTimeout(()=>{
