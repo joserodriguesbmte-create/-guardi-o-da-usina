@@ -1726,7 +1726,7 @@ function renderRel() {
     kpi(pConc,"Pend. Conc.","#10b981");
 
   // Tabela status por equipamento
-  _renderRelStatusEquip(djDone, secDone, secMes, insp, temps, mesAtual);
+  _renderRelStatusEquip(djDone, secDone, secMes, insp, temps, mesAtual, sf6mes);
 
   // Alertas SF6
   _renderRelAlertas(cache.sf6last||[]);
@@ -1759,7 +1759,7 @@ function renderRel() {
   }, 80);
 }
 
-function _renderRelStatusEquip(djDone, secDone, secMes, insp, temps, mesAtual) {
+function _renderRelStatusEquip(djDone, secDone, secMes, insp, temps, mesAtual, sf6mes) {
   const djT=Object.keys(DISJUNTORES).length;
   const secNok=secMes.filter(r=>r.status&&r.status.includes("NOK")).length;
   const tempMes=temps.filter(r=>r.data&&r.data.startsWith(mesAtual));
