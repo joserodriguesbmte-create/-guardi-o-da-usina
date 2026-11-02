@@ -525,9 +525,24 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       <div class="card-title">⚠️ 6. Pendencias em Aberto</div>
       <div id="relPend"></div>
     </div>
-    <!-- 7. Observacoes -->
+    <!-- 7. Registro Fotografico -->
     <div class="card">
-      <div class="card-title">📝 7. Observacoes e Acoes</div>
+      <div class="card-title">📷 7. Registro Fotografico</div>
+      <div id="relFotos"></div>
+      <div class="no-print" style="margin-top:12px">
+        <div style="background:#0d1b2e;border:1px dashed #2563eb;border-radius:8px;padding:12px">
+          <div style="font-size:0.8rem;color:#60a5fa;font-weight:700;margin-bottom:8px">Adicionar foto ao relatorio (max. 6 fotos)</div>
+          <input type="text" id="fotoLegenda" placeholder="Legenda da foto..." style="width:100%;box-sizing:border-box;margin-bottom:8px;background:#162447;color:#f1f5f9;border:1px solid #1e3a5f;border-radius:6px;padding:7px 10px;font-size:0.85rem">
+          <label for="fotoInput" style="display:block;text-align:center;cursor:pointer;background:#1d4ed8;color:#fff;font-weight:700;font-size:0.85rem;padding:9px;border-radius:8px">📷 Tirar / Escolher Foto</label>
+          <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display:none" onchange="previewFotoRel(this)">
+          <div id="fotoPreview" style="margin-top:8px"></div>
+          <button id="btnSalvarFoto" class="btn-primary" style="width:100%;margin-top:8px;display:none" onclick="salvarFotoRel()">💾 Salvar Foto no Relatorio</button>
+        </div>
+      </div>
+    </div>
+    <!-- 8. Observacoes -->
+    <div class="card">
+      <div class="card-title">📝 8. Observacoes e Acoes</div>
       <label>Observacoes gerais do periodo</label>
       <textarea id="relObs" placeholder="Ex: SF6 estavel, sem alarmes ativos..."></textarea>
       <label style="margin-top:8px">Acoes corretivas / preventivas tomadas</label>
@@ -757,6 +772,17 @@ async function supaPatch(table, filters, body) {
   return r.ok;
 }
 
+async function supaDelete(table, filters) {
+  const url = new URL(SUPA_URL + "/" + table);
+  for (const [k, v] of Object.entries(filters)) url.searchParams.set(k, v);
+  const r = await fetch(url.toString(), {
+    method: "DELETE",
+    headers: {"apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY,
+              "Prefer": "return=minimal"}
+  });
+  return r.ok;
+}
+
 // ═════════════════════════════════════════════════════════════════
 // UTILIDADES
 // ═════════════════════════════════════════════════════════════════
@@ -948,17 +974,18 @@ async function pullData() {
     const d6 = new Date(); d6.setMonth(d6.getMonth()-6);
     const ini6 = d6.getFullYear()+"-"+String(d6.getMonth()+1).padStart(2,"0")+"-01";
     const cache = getCache();
-    const [sf6mes, secMes, pend, sf6last, temps, contadores, operacoes, sf6hist, secHist, insp_mes] = await Promise.all([
-      supaGet("sf6_leituras", {"data":"gte."+ini, "select":"disjuntor,polo,pressao_medida,temperatura,pressao_corrigida,status_sf6,data,hora","order":"data.asc,hora.asc"}),
-      supaGet("inspecoes",    {"sistema":"eq.Seccionadora","data":"gte."+ini,"select":"item,data,status,observacao"}),
-      supaGet("pendencias",   {"select":"id,data_abertura,sistema,descricao,nota_sap,prioridade,status,observacao,usuario","order":"data_abertura.desc","limit":"200"}),
-      supaGet("sf6_leituras", {"select":"disjuntor,polo,pressao_corrigida,status_sf6,data,created_at","order":"created_at.desc","limit":"60"}),
-      supaGet("temperaturas", {"order":"data.desc","limit":"50","select":"data,turno,temperatura_oleo,temperatura_enrol,observacao"}),
-      supaGet("contadores_dj",{"order":"data.desc","limit":"100","select":"data,disjuntor,polo_a,polo_b,polo_v,tripolar,curto_circuito"}),
-      supaGet("operacoes_dj", {"select":"disjuntor,num_operacoes_total"}),
-      supaGet("sf6_leituras", {"created_at":"gte."+ini12+"T00:00:00","select":"disjuntor,polo,pressao_corrigida,data,created_at","order":"created_at.asc","limit":"500"}),
-      supaGet("inspecoes",    {"sistema":"eq.Seccionadora","data":"gte."+ini6,"select":"item,data,status"}),
-      supaGet("inspecoes",    {"data":"gte."+ini,"select":"sistema,item,status,observacao,data","order":"data.asc","limit":"500"})
+    const [sf6mes, secMes, pend, sf6last, temps, contadores, operacoes, sf6hist, secHist, insp_mes, fotos_rel] = await Promise.all([
+      supaGet("sf6_leituras",  {"data":"gte."+ini, "select":"disjuntor,polo,pressao_medida,temperatura,pressao_corrigida,status_sf6,data,hora","order":"data.asc,hora.asc"}),
+      supaGet("inspecoes",     {"sistema":"eq.Seccionadora","data":"gte."+ini,"select":"item,data,status,observacao"}),
+      supaGet("pendencias",    {"select":"id,data_abertura,sistema,descricao,nota_sap,prioridade,status,observacao,usuario","order":"data_abertura.desc","limit":"200"}),
+      supaGet("sf6_leituras",  {"select":"disjuntor,polo,pressao_corrigida,status_sf6,data,created_at","order":"created_at.desc","limit":"60"}),
+      supaGet("temperaturas",  {"order":"data.desc","limit":"50","select":"data,turno,temperatura_oleo,temperatura_enrol,observacao"}),
+      supaGet("contadores_dj", {"order":"data.desc","limit":"100","select":"data,disjuntor,polo_a,polo_b,polo_v,tripolar,curto_circuito"}),
+      supaGet("operacoes_dj",  {"select":"disjuntor,num_operacoes_total"}),
+      supaGet("sf6_leituras",  {"created_at":"gte."+ini12+"T00:00:00","select":"disjuntor,polo,pressao_corrigida,data,created_at","order":"created_at.asc","limit":"500"}),
+      supaGet("inspecoes",     {"sistema":"eq.Seccionadora","data":"gte."+ini6,"select":"item,data,status"}),
+      supaGet("inspecoes",     {"data":"gte."+ini,"select":"sistema,item,status,observacao,data","order":"data.asc","limit":"500"}),
+      supaGet("fotos_inspecao",{"sistema":"eq.Relatorio Mensal","data":"gte."+ini,"select":"id,data,legenda,foto_base64,usuario","order":"data.asc","limit":"6"})
     ]);
     cache.sf6mes    = sf6mes;
     cache.secMes    = secMes;
@@ -970,6 +997,7 @@ async function pullData() {
     cache.sf6hist      = sf6hist;
     cache.secHist      = secHist;
     cache.inspecoesMes = insp_mes;
+    cache.fotosRel     = fotos_rel;
     cache.lastSync  = new Date().toISOString();
     saveCache(cache);
   } catch(e) {
@@ -1752,6 +1780,9 @@ function renderRel() {
   // Pendencias
   _renderRelPend(pend);
 
+  // Fotos
+  _renderRelFotos(cache.fotosRel||[]);
+
   // Charts com timeout para garantir DOM pronto
   setTimeout(()=>{
     _renderChartSF6(sf6hist);
@@ -1980,6 +2011,89 @@ function _renderRelPend(pend) {
   });
   html+="</tbody></table>";
   document.getElementById("relPend").innerHTML=html;
+}
+
+// ── FOTOS DO RELATORIO ────────────────────────────────────────────
+let _fotoBase64 = null;
+
+function _renderRelFotos(fotos) {
+  const el = document.getElementById("relFotos");
+  if (!el) return;
+  if (!fotos.length) {
+    el.innerHTML = '<div style="color:#475569;font-size:0.82rem;padding:6px 0">Nenhuma foto adicionada. Use o campo abaixo para tirar ou escolher uma foto.</div>';
+    return;
+  }
+  let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">';
+  fotos.forEach((f, i) => {
+    html += `<div style="background:#0d1b2e;border-radius:8px;overflow:hidden;position:relative">
+      <img src="data:image/jpeg;base64,${f.foto_base64}" style="width:100%;display:block;border-radius:6px 6px 0 0" onerror="this.style.display='none'">
+      <div style="padding:6px 8px;font-size:0.75rem;color:#cbd5e1"><b>Foto ${i+1}:</b> ${f.legenda||"—"}</div>
+      <div style="padding:0 8px 6px;font-size:0.68rem;color:#475569">${_dataBR(f.data)} · ${f.usuario||""}</div>
+      <button class="no-print" onclick="deletarFotoRel(${f.id})" style="position:absolute;top:4px;right:4px;background:#ef444499;border:none;color:#fff;border-radius:4px;padding:2px 7px;cursor:pointer;font-size:0.75rem">✕</button>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+}
+
+function previewFotoRel(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const MAX = 1024;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+        else { w = Math.round(w * MAX / h); h = MAX; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      _fotoBase64 = canvas.toDataURL("image/jpeg", 0.82).split(",")[1];
+      document.getElementById("fotoPreview").innerHTML =
+        `<img src="data:image/jpeg;base64,${_fotoBase64}" style="width:100%;border-radius:6px;max-height:220px;object-fit:cover">`;
+      document.getElementById("btnSalvarFoto").style.display = "block";
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function salvarFotoRel() {
+  if (!_fotoBase64) { toast("Escolha uma foto primeiro", true); return; }
+  const leg = (document.getElementById("fotoLegenda").value||"").trim();
+  const btn = document.getElementById("btnSalvarFoto");
+  btn.disabled = true; btn.textContent = "Salvando...";
+  const ok = await supaPost("fotos_inspecao", {
+    data: hoje(), sistema: "Relatorio Mensal",
+    legenda: leg, foto_base64: _fotoBase64,
+    usuario: getUsuario()
+  });
+  btn.disabled = false; btn.textContent = "💾 Salvar Foto no Relatorio";
+  if (ok) {
+    toast("Foto salva!");
+    _fotoBase64 = null;
+    document.getElementById("fotoInput").value = "";
+    document.getElementById("fotoLegenda").value = "";
+    document.getElementById("fotoPreview").innerHTML = "";
+    document.getElementById("btnSalvarFoto").style.display = "none";
+    if (navigator.onLine) { await pullData(); renderRel(); }
+  } else {
+    toast("Erro ao salvar foto", true);
+  }
+}
+
+async function deletarFotoRel(id) {
+  const ok = await supaDelete("fotos_inspecao", {"id": "eq." + id});
+  if (ok) {
+    toast("Foto removida");
+    if (navigator.onLine) { await pullData(); renderRel(); }
+  } else {
+    toast("Erro ao remover", true);
+  }
 }
 
 function _renderGaugesSF6(sf6last) {
