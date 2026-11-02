@@ -12,16 +12,18 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 @media print{
-  .sync-bar,.tabs,.btn-primary,.btn-sm,.btn-login,.login-wrap{display:none!important}
-  .page{display:block!important;padding:8px!important}
+  .sync-bar,.tabs,.btn-primary,.btn-sm,.btn-login,.login-wrap,.no-print{display:none!important}
+  .page{display:none!important}
+  #pg-rel{display:block!important;padding:8px!important}
   body{background:#fff!important;color:#000!important}
   .card{border:1px solid #ccc!important;background:#fff!important;break-inside:avoid}
   .card-title{color:#1e3a5f!important;border-color:#ccc!important}
   .kpi{background:#f0f4f8!important;border-top-color:#1e5a96!important}
   .kpi .num,.kpi .lbl{color:#000!important}
   canvas{max-width:100%!important}
-  #pg-temp,#pg-cont,#pg-sf6,#pg-sec,#pg-insp,#pg-pend,#pg-hist,#pg-email{display:none!important}
-  #pg-rel{display:block!important}
+  textarea{border:1px solid #ccc!important;background:#fff!important;color:#000!important;min-height:60px}
+  .tbl th{background:#1e3a5f!important;color:#fff!important}
+  .gauge-grid{display:flex!important;flex-wrap:wrap!important;gap:8px!important}
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh;overscroll-behavior:none}
@@ -548,7 +550,7 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       <label style="margin-top:8px">Acoes corretivas / preventivas tomadas</label>
       <textarea id="relAcoes" placeholder="Ex: Realizada lubrificacao das seccionadoras..."></textarea>
     </div>
-    <button class="btn-primary" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+    <button class="btn-primary no-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
   </div>
 
   <!-- ── EMAIL ── -->
