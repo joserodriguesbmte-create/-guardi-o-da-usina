@@ -56,9 +56,11 @@
 
   /* ── Gauges + Evolucao: manter na mesma pagina ── */
   #relGaugesEvolucao{break-inside:avoid!important;page-break-inside:avoid!important}
-  #relGauges{display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important}
-  #relGauges .card{margin-bottom:0!important;break-inside:avoid!important}
-  .gauge-grid{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:4px!important}
+  #relGauges{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:5px!important}
+  #relGauges .card{margin-bottom:0!important;break-inside:avoid!important;padding:5px 6px!important}
+  #relGauges canvas{max-height:62px!important}
+  .gauge-grid{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:3px!important}
+  #relGaugesEvolucao .chart-wrap{height:240px!important}
 
   /* ── Gráficos: nao quebrar ── */
   .chart-wrap{background:#fff!important;border:1px solid #cbd5e1!important;
