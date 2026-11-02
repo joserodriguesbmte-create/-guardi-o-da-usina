@@ -47,15 +47,15 @@
   .kpi .num{color:#0c2340!important;font-size:0.95rem!important;font-weight:900!important}
   .kpi .lbl{color:#334155!important;font-size:0.62rem!important}
 
-  /* ── Resumo Executivo: nova pag. apos ── */
-  #relSumCard{page-break-after:always!important;break-after:always!important;
-              break-inside:avoid!important}
+  /* ── Resumo Executivo: nao quebrar internamente ── */
+  #relSumCard{break-inside:avoid!important}
 
-  /* ── Card SF6: permite quebrar; sub-elementos nao ── */
-  #relSF6Card{break-inside:auto!important;page-break-inside:auto!important}
+  /* ── Card SF6: inicia em pagina propria ── */
+  #relSF6Card{break-inside:auto!important;page-break-inside:auto!important;
+              page-break-before:always!important;break-before:always!important}
 
-  /* ── Gauges + Evolucao: manter na mesma pagina ── */
-  #relGaugesEvolucao{break-inside:avoid!important;page-break-inside:avoid!important}
+  /* ── Gauges: 3 colunas, cada card protegido ── */
+  #relGaugesEvolucao{break-inside:auto!important;page-break-inside:auto!important}
   #relGauges{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:5px!important}
   #relGauges .card{margin-bottom:0!important;break-inside:avoid!important;padding:5px 6px!important}
   #relGauges canvas{max-height:62px!important}
