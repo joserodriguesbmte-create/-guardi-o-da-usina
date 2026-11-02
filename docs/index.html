@@ -569,6 +569,7 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       <div class="card-title">📊 1. Resumo Executivo</div>
       <div class="kpi-bar" id="relKpis"></div>
       <div id="relStatusEquip" style="margin-top:8px"></div>
+      <div id="relCondAmb" style="margin-top:8px"></div>
     </div>
     <!-- Alertas SF6 -->
     <div id="relAlertas"></div>
@@ -590,6 +591,10 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       <div class="sec-title" style="margin-top:12px">Leituras do Mes</div>
       <div id="relSF6Table" style="overflow-x:auto"></div>
       <div id="relComparativo" style="margin-top:8px"></div>
+      <div class="sec-title" style="margin-top:12px">Inspecao Visual por Disjuntor</div>
+      <div id="relSF6Visual"></div>
+      <div class="sec-title" style="margin-top:12px">Contadores de Operacoes</div>
+      <div id="relContadores"></div>
     </div>
     <!-- 3. Seccionadoras -->
     <div class="card">
@@ -613,14 +618,19 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       <div class="card-title">📋 5. Checklists de Inspecao de Campo</div>
       <div id="relChecklists"></div>
     </div>
-    <!-- 6. Pendencias -->
+    <!-- 6. Inspecoes Complementares -->
     <div class="card">
-      <div class="card-title">⚠️ 6. Pendencias em Aberto</div>
+      <div class="card-title">🔍 6. Inspecoes Complementares</div>
+      <div id="relInspCompl"></div>
+    </div>
+    <!-- 7. Pendencias -->
+    <div class="card">
+      <div class="card-title">⚠️ 7. Pendencias em Aberto</div>
       <div id="relPend"></div>
     </div>
-    <!-- 7. Registro Fotografico -->
+    <!-- 8. Registro Fotografico -->
     <div class="card" id="relFotosCard">
-      <div class="card-title">📷 7. Registro Fotografico</div>
+      <div class="card-title">📷 8. Registro Fotografico</div>
       <div id="relFotos"></div>
       <div class="no-print" style="margin-top:12px">
         <div style="background:#0d1b2e;border:1px dashed #2563eb;border-radius:8px;padding:12px">
@@ -633,17 +643,17 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
         </div>
       </div>
     </div>
-    <!-- 8. Observacoes -->
+    <!-- 9. Observacoes -->
     <div class="card">
-      <div class="card-title">📝 8. Observacoes e Acoes</div>
+      <div class="card-title">📝 9. Observacoes e Acoes</div>
       <label>Observacoes gerais do periodo</label>
       <textarea id="relObs" placeholder="Ex: SF6 estavel, sem alarmes ativos..."></textarea>
       <label style="margin-top:8px">Acoes corretivas / preventivas tomadas</label>
       <textarea id="relAcoes" placeholder="Ex: Realizada lubrificacao das seccionadoras..."></textarea>
     </div>
-    <!-- 9. Assinatura (apenas no print) -->
+    <!-- 10. Assinatura (apenas no print) -->
     <div class="card no-screen" id="relAssinatura" style="display:none">
-      <div class="card-title">✍️ 9. Assinatura</div>
+      <div class="card-title">✍️ 10. Assinatura</div>
       <table style="margin-top:10px;border-collapse:collapse">
         <tr>
           <td style="padding-right:48px">
@@ -1085,7 +1095,7 @@ async function pullData() {
     const d6 = new Date(); d6.setMonth(d6.getMonth()-6);
     const ini6 = d6.getFullYear()+"-"+String(d6.getMonth()+1).padStart(2,"0")+"-01";
     const cache = getCache();
-    const [sf6mes, secMes, pend, sf6last, temps, contadores, operacoes, sf6hist, secHist, insp_mes, fotos_rel] = await Promise.all([
+    const [sf6mes, secMes, pend, sf6last, temps, contadores, operacoes, sf6hist, secHist, insp_mes, fotos_rel, inspCompl] = await Promise.all([
       supaGet("sf6_leituras",  {"data":"gte."+ini, "select":"disjuntor,polo,pressao_medida,temperatura,pressao_corrigida,status_sf6,data,hora","order":"data.asc,hora.asc"}),
       supaGet("inspecoes",     {"sistema":"eq.Seccionadora","data":"gte."+ini,"select":"item,data,status,observacao"}),
       supaGet("pendencias",    {"select":"id,data_abertura,sistema,descricao,nota_sap,prioridade,status,observacao,usuario","order":"data_abertura.desc","limit":"200"}),
@@ -1096,7 +1106,8 @@ async function pullData() {
       supaGet("sf6_leituras",  {"created_at":"gte."+ini12+"T00:00:00","select":"disjuntor,polo,pressao_corrigida,data,created_at","order":"created_at.asc","limit":"500"}),
       supaGet("inspecoes",     {"sistema":"eq.Seccionadora","data":"gte."+ini6,"select":"item,data,status"}),
       supaGet("inspecoes",     {"data":"gte."+ini,"select":"sistema,item,status,observacao,data","order":"data.asc","limit":"500"}),
-      supaGet("fotos_inspecao",{"sistema":"eq.Relatorio Mensal","data":"gte."+ini,"select":"id,data,legenda,foto_base64,usuario","order":"data.asc","limit":"6"})
+      supaGet("fotos_inspecao",{"sistema":"eq.Relatorio Mensal","data":"gte."+ini,"select":"id,data,legenda,foto_base64,usuario","order":"data.asc","limit":"6"}),
+      supaGet("inspecoes",     {"sistema":"in.(Subestação 230kV,Sala Elétrica da SE,Cúbilo de 13.8kV da SE,Disjuntor SF6)","data":"gte."+ini6,"select":"sistema,item,status,observacao,data","order":"data.desc","limit":"300"})
     ]);
     cache.sf6mes    = sf6mes;
     cache.secMes    = secMes;
@@ -1109,6 +1120,7 @@ async function pullData() {
     cache.secHist      = secHist;
     cache.inspecoesMes = insp_mes;
     cache.fotosRel     = fotos_rel;
+    cache.inspCompl    = inspCompl;
     cache.lastSync  = new Date().toISOString();
     saveCache(cache);
   } catch(e) {
@@ -1881,11 +1893,20 @@ function renderRel() {
   // Gauges
   _renderGaugesSF6(cache.sf6last||[]);
 
+  // Condicoes ambientais no resumo
+  _renderCondAmb();
+
   // Tabela SF6 do mes
   _renderRelSF6Table(sf6mes);
 
   // Comparativo mes a mes
   _renderRelComparativo(sf6hist);
+
+  // Inspecao visual SF6
+  _renderSF6Visual(cache.inspCompl||[], mesAtual);
+
+  // Contadores de operacoes
+  _renderContadores(cache.contadores||[], mesAtual);
 
   // Seccionadoras
   _renderRelSecao(secMes, secDone, cache.secHist||[]);
@@ -1895,6 +1916,9 @@ function renderRel() {
 
   // Checklists
   _renderRelChecklists(insp, mesAtual);
+
+  // Inspecoes Complementares
+  _renderInspCompl(cache.inspCompl||[]);
 
   // Pendencias
   _renderRelPend(pend);
@@ -2112,6 +2136,122 @@ function _renderRelChecklists(insp, mesAtual) {
   });
   html+="</tbody></table>";
   document.getElementById("relChecklists").innerHTML=html;
+}
+
+function _renderCondAmb() {
+  const s=getSessao();
+  const el=document.getElementById("relCondAmb");
+  if(!el)return;
+  const temp=s&&s.temp?s.temp+"°C":"—";
+  const umid=s&&s.umid?s.umid+"%":"—";
+  el.innerHTML=`<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px">
+    <div style="font-size:0.8rem;color:#94a3b8">
+      <span style="color:#60a5fa;font-weight:700">Temperatura ambiente:</span> ${temp}
+    </div>
+    <div style="font-size:0.8rem;color:#94a3b8">
+      <span style="color:#60a5fa;font-weight:700">Umidade relativa:</span> ${umid}
+    </div>
+  </div>`;
+}
+
+function _renderSF6Visual(inspCompl, mesAtual) {
+  const el=document.getElementById("relSF6Visual");
+  if(!el)return;
+  const visuais=inspCompl.filter(r=>r.sistema==="Disjuntor SF6"&&r.data&&r.data.startsWith(mesAtual));
+  if(!visuais.length){
+    el.innerHTML='<div style="color:#475569;font-size:0.8rem;padding:4px 0">Sem registros de inspecao visual no mes.</div>';
+    return;
+  }
+  const djs={};
+  visuais.forEach(r=>{
+    if(!djs[r.item]||r.data>djs[r.item].data) djs[r.item]=r;
+  });
+  let html=`<table class="tbl"><thead><tr>
+    <th>Disjuntor</th><th>Data</th><th>Status</th><th>Itens NC</th>
+  </tr></thead><tbody>`;
+  Object.values(djs).sort((a,b)=>a.item.localeCompare(b.item)).forEach(r=>{
+    let ncItens="—";
+    try{
+      const obs=JSON.parse(r.observacao||"{}");
+      const ncs=Object.entries(obs).filter(([,v])=>v!=="OK").map(([k])=>k);
+      ncItens=ncs.length?ncs.join("; "):"Nenhum";
+    }catch(e){ncItens=r.observacao||"—";}
+    const cor=r.status==="OK"?"#10b981":"#ef4444";
+    html+=`<tr>
+      <td style="font-weight:700;color:#60a5fa">${r.item}</td>
+      <td>${_dataBR(r.data)}</td>
+      <td style="color:${cor};font-weight:700">${r.status}</td>
+      <td style="font-size:0.75rem;color:#94a3b8">${ncItens}</td>
+    </tr>`;
+  });
+  html+="</tbody></table>";
+  el.innerHTML=html;
+}
+
+function _renderContadores(contadores, mesAtual) {
+  const el=document.getElementById("relContadores");
+  if(!el)return;
+  const mesCont=contadores.filter(r=>r.data&&r.data.startsWith(mesAtual));
+  if(!mesCont.length){
+    el.innerHTML='<div style="color:#475569;font-size:0.8rem;padding:4px 0">Sem registros de contadores no mes.</div>';
+    return;
+  }
+  let html=`<table class="tbl"><thead><tr>
+    <th>Data</th><th>Disjuntor</th><th>Tripolar</th><th>Curto-circuito</th><th>Polo A</th><th>Polo B</th><th>Polo V</th>
+  </tr></thead><tbody>`;
+  mesCont.sort((a,b)=>a.data<b.data?1:-1).forEach(r=>{
+    const triCor=(r.tripolar||0)>=5000?"#ef4444":(r.tripolar||0)>=3000?"#f59e0b":"#10b981";
+    html+=`<tr>
+      <td>${_dataBR(r.data)}</td>
+      <td style="font-weight:700;color:#60a5fa">${r.disjuntor}</td>
+      <td style="text-align:center;color:${triCor};font-weight:700">${r.tripolar??"—"}</td>
+      <td style="text-align:center">${r.curto_circuito??"—"}</td>
+      <td style="text-align:center">${r.polo_a??"—"}</td>
+      <td style="text-align:center">${r.polo_b??"—"}</td>
+      <td style="text-align:center">${r.polo_v??"—"}</td>
+    </tr>`;
+  });
+  html+="</tbody></table>";
+  el.innerHTML=html;
+}
+
+function _renderInspCompl(inspCompl) {
+  const el=document.getElementById("relInspCompl");
+  if(!el)return;
+  const sistemas=["Subestação 230kV","Sala Elétrica da SE","Cúbilo de 13.8kV da SE"];
+  const labels=["Subestação 230kV","Sala Elétrica da SE","Cúbilo 13.8kV"];
+  const temSistema=sistemas.some(s=>inspCompl.some(r=>r.sistema===s));
+  if(!temSistema){
+    el.innerHTML='<div style="color:#475569;font-size:0.8rem;padding:4px 0">Sem dados de inspecoes complementares. Sincronize o app.</div>';
+    return;
+  }
+  let html=`<table class="tbl"><thead><tr>
+    <th>Sistema</th><th>Ultima Insp.</th><th>Total Itens</th><th>NC</th><th>Status</th>
+  </tr></thead><tbody>`;
+  sistemas.forEach((sis,i)=>{
+    const items=inspCompl.filter(r=>r.sistema===sis);
+    if(!items.length){
+      html+=`<tr>
+        <td style="font-weight:700;color:#60a5fa">${labels[i]}</td>
+        <td colspan="4" style="color:#475569">Sem registro</td>
+      </tr>`;
+      return;
+    }
+    const ultima=items.reduce((a,b)=>a.data>b.data?a:b);
+    const itensDaData=items.filter(r=>r.data===ultima.data);
+    const nok=itensDaData.filter(r=>r.status&&r.status!=="OK").length;
+    const cor=nok>0?"#ef4444":"#10b981";
+    const st=nok>0?nok+" NC":"OK";
+    html+=`<tr>
+      <td style="font-weight:700;color:#60a5fa">${labels[i]}</td>
+      <td>${_dataBR(ultima.data)}</td>
+      <td style="text-align:center">${itensDaData.length}</td>
+      <td style="text-align:center;color:${nok>0?"#ef4444":"#10b981"}">${nok}</td>
+      <td style="color:${cor};font-weight:700">${st}</td>
+    </tr>`;
+  });
+  html+="</tbody></table>";
+  el.innerHTML=html;
 }
 
 function _renderRelPend(pend) {
