@@ -537,6 +537,9 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       <div class="chart-wrap" style="height:300px">
         <canvas id="chartSF6"></canvas>
       </div>
+      <div style="font-size:0.72rem;color:#475569;text-align:right;padding:2px 4px 0;margin-top:2px">
+        Ref: Alarme 5,2 bar &nbsp;|&nbsp; Bloqueio 5,0 bar &nbsp;|&nbsp; Nominal 6,0 bar
+      </div>
       <div id="relSF6vazio" style="display:none;color:#475569;text-align:center;padding:16px;font-size:0.82rem">
         Sincronize para carregar o historico de leituras SF6.
       </div>
@@ -2210,12 +2213,11 @@ function _renderChartSF6(sf6hist) {
     byDJ[r.disjuntor][dk]=Math.min(byDJ[r.disjuntor][dk]??99, p);
   });
 
-  // Y-axis dinamico: centrado nos dados reais
+  // Y-axis dinamico: centralizado nos dados reais, com margem de 0.3 para cima e baixo
   const todosVals=Object.values(byDJ).flatMap(m=>Object.values(m)).filter(v=>v>0&&v<99);
   const vMin=todosVals.length?Math.min(...todosVals):5.0;
   const vMax=todosVals.length?Math.max(...todosVals):7.0;
-  // yMin sempre <= 4.8 para que as linhas de Alarme (5.2) e Bloqueio (5.0) apareçam
-  const yMin=Math.min(4.8, Math.floor((vMin-0.2)*10)/10);
+  const yMin=Math.floor((vMin-0.3)*10)/10;
   const yMax=Math.min(7.5, Math.ceil((vMax+0.3)*10)/10);
 
   // Range de datas para linhas de referencia
@@ -2243,11 +2245,11 @@ function _renderChartSF6(sf6hist) {
     };
   });
 
-  // Linhas de referencia (dois pontos: inicio e fim)
+  // Linhas de referencia: mostrar so se estiverem dentro da faixa visivel
   const refPts=(y)=>[{x:dtMin,y},{x:dtMax,y}];
-  datasets.push({label:"Alarme 5,2",data:refPts(5.2),borderColor:"#f59e0b",borderDash:[7,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:10});
-  datasets.push({label:"Bloqueio 5,0",data:refPts(5.0),borderColor:"#ef4444",borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,tension:0,order:10});
-  datasets.push({label:"Nominal 6,0",data:refPts(6.0),borderColor:"#47556970",borderDash:[3,5],borderWidth:1,pointRadius:0,fill:false,tension:0,order:10});
+  if(yMin<=5.3) datasets.push({label:"Alarme 5,2",data:refPts(5.2),borderColor:"#f59e0b",borderDash:[7,4],borderWidth:1.5,pointRadius:0,fill:false,tension:0,order:10});
+  if(yMin<=5.1) datasets.push({label:"Bloqueio 5,0",data:refPts(5.0),borderColor:"#ef4444",borderDash:[5,4],borderWidth:2,pointRadius:0,fill:false,tension:0,order:10});
+  if(yMin<=6.1&&yMax>=5.9) datasets.push({label:"Nominal 6,0",data:refPts(6.0),borderColor:"#47556970",borderDash:[3,5],borderWidth:1,pointRadius:0,fill:false,tension:0,order:10});
 
   if (_chartSF6) _chartSF6.destroy();
   _chartSF6=new Chart(ctx,{
@@ -2280,8 +2282,7 @@ function _renderChartSF6(sf6hist) {
       scales:{
         x:{
           type:"time",
-          time:{unit:"month",displayFormats:{month:"MMM/yy",week:"dd MMM",day:"dd MMM"}},
-          adapters:{date:{locale:{code:"pt-BR"}}},
+          time:{unit:"month",displayFormats:{month:"MMM/yy",week:"dd/MM",day:"dd/MM"}},
           ticks:{color:textClr,font:{size:9},maxRotation:0,maxTicksLimit:10},
           grid:{color:gridClr},
           title:{display:false}
