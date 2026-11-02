@@ -555,7 +555,7 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       <div class="chart-wrap" style="height:140px">
         <canvas id="chartNC"></canvas>
       </div>
-      <div class="sec-title" style="margin-top:10px">Registros NOK no Mes</div>
+      <div class="sec-title" style="margin-top:10px">Registros NC no Mes</div>
       <div id="relSecNok"></div>
     </div>
     <!-- 4. Transformador -->
@@ -1849,7 +1849,7 @@ function renderRel() {
 
 function _renderRelStatusEquip(djDone, secDone, secMes, insp, temps, mesAtual, sf6mes) {
   const djT=Object.keys(DISJUNTORES).length;
-  const secNok=secMes.filter(r=>r.status&&r.status.includes("NOK")).length;
+  const secNok=secMes.filter(r=>r.status&&r.status!=="OK").length;
   const tempMes=temps.filter(r=>r.data&&r.data.startsWith(mesAtual));
   const ultimaTemp=tempMes.length?_dataBR(tempMes[tempMes.length-1].data):"Sem registro";
   const inspTrafo=insp.filter(r=>r.sistema&&r.sistema.includes("Transformador"));
@@ -1874,13 +1874,13 @@ function _renderRelStatusEquip(djDone, secDone, secMes, insp, temps, mesAtual, s
   </tr></thead><tbody>`;
   html+=row("⚡","SF6 Disjuntores",djDone.size+"/"+djT+" insp.",sf6status,sf6mes.length?_dataBR([...sf6mes].sort((a,b)=>b.data.localeCompare(a.data))[0].data):"—",sf6cor);
   const secCor=secNok>0?"#ef4444":secDone.size>=27?"#10b981":"#f59e0b";
-  html+=row("🔌","Seccionadoras",secDone.size+"/27 insp.",secNok>0?secNok+" NOK":"NORMAL",secDone.size?_dataBR([...secMes].sort((a,b)=>b.data.localeCompare(a.data))[0].data):"—",secCor);
+  html+=row("🔌","Seccionadoras",secDone.size+"/27 insp.",secNok>0?secNok+" NC":"NORMAL",secDone.size?_dataBR([...secMes].sort((a,b)=>b.data.localeCompare(a.data))[0].data):"—",secCor);
   const trafoCor=tempMes.length?"#10b981":"#f59e0b";
   html+=row("🔄","Transformador",tempMes.length+" temp. reg.",tempMes.length?"OK":"Sem registro",ultimaTemp,trafoCor);
-  if(inspSE.length) html+=row("🏗️","Subestacao 230kV",inspSE.length+" itens",inspSE.some(r=>r.status&&r.status.includes("NOK"))?"COM NOK":"OK",_dataBR(inspSE[0].data),inspSE.some(r=>r.status&&r.status.includes("NOK"))?"#ef4444":"#10b981");
-  if(inspSala.length) html+=row("💡","Sala Eletrica",inspSala.length+" itens",inspSala.some(r=>r.status&&r.status.includes("NOK"))?"COM NOK":"OK",_dataBR(inspSala[0].data),inspSala.some(r=>r.status&&r.status.includes("NOK"))?"#ef4444":"#10b981");
-  if(inspCub.length) html+=row("🔌","Cubilo 13.8kV",inspCub.length+" itens",inspCub.some(r=>r.status&&r.status.includes("NOK"))?"COM NOK":"OK",_dataBR(inspCub[0].data),inspCub.some(r=>r.status&&r.status.includes("NOK"))?"#ef4444":"#10b981");
-  if(inspTrafo.length) html+=row("🔄","Insp. Trafo",inspTrafo.length+" itens",inspTrafo.some(r=>r.status&&r.status.includes("NOK"))?"COM NOK":"OK",_dataBR(inspTrafo[0].data),inspTrafo.some(r=>r.status&&r.status.includes("NOK"))?"#ef4444":"#10b981");
+  if(inspSE.length) html+=row("🏗️","Subestacao 230kV",inspSE.length+" itens",inspSE.some(r=>r.status&&r.status!=="OK")?"COM NC":"OK",_dataBR(inspSE[0].data),inspSE.some(r=>r.status&&r.status!=="OK")?"#ef4444":"#10b981");
+  if(inspSala.length) html+=row("💡","Sala Eletrica",inspSala.length+" itens",inspSala.some(r=>r.status&&r.status!=="OK")?"COM NC":"OK",_dataBR(inspSala[0].data),inspSala.some(r=>r.status&&r.status!=="OK")?"#ef4444":"#10b981");
+  if(inspCub.length) html+=row("🔌","Cubilo 13.8kV",inspCub.length+" itens",inspCub.some(r=>r.status&&r.status!=="OK")?"COM NC":"OK",_dataBR(inspCub[0].data),inspCub.some(r=>r.status&&r.status!=="OK")?"#ef4444":"#10b981");
+  if(inspTrafo.length) html+=row("🔄","Insp. Trafo",inspTrafo.length+" itens",inspTrafo.some(r=>r.status&&r.status!=="OK")?"COM NC":"OK",_dataBR(inspTrafo[0].data),inspTrafo.some(r=>r.status&&r.status!=="OK")?"#ef4444":"#10b981");
   html+="</tbody></table>";
   document.getElementById("relStatusEquip").innerHTML=html;
 }
@@ -1975,7 +1975,7 @@ function _renderRelSecao(secMes, secDone, secHist) {
       <div style="width:${pct}%;height:100%;background:${cor};border-radius:20px;transition:width 0.5s"></div>
     </div>`;
 
-  const nok=secMes.filter(r=>r.status&&r.status.includes("NOK"));
+  const nok=secMes.filter(r=>r.status&&r.status!=="OK");
   if(!nok.length){
     document.getElementById("relSecNok").innerHTML='<div style="color:#10b981;font-size:0.82rem">Todas as seccionadoras OK no mes.</div>';
     return;
@@ -2026,14 +2026,14 @@ function _renderRelChecklists(insp, mesAtual) {
   const sistemas=["Subestacao 230kV","Sala Eletrica da SE","Cubilo de 13.8kV da SE","Transformador TR-SE-01 (Toshiba 10/12.5 MVA)"];
   const labels=["Subestacao 230kV","Sala Eletrica","Cubilo 13.8kV","Transformador"];
   let html=`<table class="tbl"><thead><tr>
-    <th>Sistema</th><th>Ultima Insp.</th><th>Total Itens</th><th>NOK</th><th>Status</th>
+    <th>Sistema</th><th>Ultima Insp.</th><th>Total Itens</th><th>NC</th><th>Status</th>
   </tr></thead><tbody>`;
   sistemas.forEach((sis,i)=>{
     const items=insp.filter(r=>r.sistema===sis&&r.data&&r.data.startsWith(mesAtual));
-    const nok=items.filter(r=>r.status&&r.status.includes("NOK")).length;
+    const nok=items.filter(r=>r.status&&r.status!=="OK").length;
     const ultima=items.length?_dataBR(items[items.length-1].data):"—";
     const cor=!items.length?"#475569":nok>0?"#ef4444":"#10b981";
-    const st=!items.length?"Sem registro":nok>0?nok+" NOK":"OK";
+    const st=!items.length?"Sem registro":nok>0?nok+" NC":"OK";
     html+=`<tr>
       <td style="font-weight:700;color:#60a5fa">${labels[i]}</td>
       <td>${ultima}</td>
@@ -2308,7 +2308,7 @@ function _renderChartNC(secHist) {
     months.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"));
   }
   const labels=months.map(_mesBR);
-  const counts=months.map(m=>secHist.filter(r=>r.data&&r.data.startsWith(m)&&r.status&&r.status.includes("NOK")).length);
+  const counts=months.map(m=>secHist.filter(r=>r.data&&r.data.startsWith(m)&&r.status&&r.status!=="OK").length);
   const bgColors=counts.map(n=>n>0?"#ef444480":"#10b98180");
   const borderColors=counts.map(n=>n>0?"#ef4444":"#10b981");
 
