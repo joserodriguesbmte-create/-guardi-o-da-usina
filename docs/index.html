@@ -13,24 +13,34 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <style>
 @media print{
+  @page{margin:14mm 12mm}
   .sync-bar,.tabs,.btn-primary,.btn-sm,.btn-login,.login-wrap,.no-print{display:none!important}
   .page{display:none!important}
-  #pg-rel{display:block!important;padding:8px!important}
-  body{background:#fff!important;color:#000!important;font-family:Arial,sans-serif!important}
-  .card{border:1px solid #ccc!important;background:#fff!important;break-inside:avoid;page-break-inside:avoid}
-  .card-title{color:#1e3a5f!important;border-color:#bbb!important;font-size:0.88rem!important}
-  .kpi{background:#f0f4f8!important;border-top-color:#1e5a96!important}
-  .kpi .num,.kpi .lbl{color:#000!important}
+  #pg-rel{display:block!important;padding:0!important}
+  body{background:#fff!important;color:#000!important;font-family:Arial,sans-serif!important;font-size:11pt}
+  /* Capa — sem min-height para nao criar pagina em branco */
+  #relCapa{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+           height:230mm!important;page-break-after:always!important;border-bottom:2px solid #1e5a96}
+  /* Cards de conteudo */
+  .card{border:1px solid #cbd5e1!important;background:#fff!important;break-inside:avoid;page-break-inside:avoid;
+        margin-bottom:6px!important;padding:8px!important}
+  .card-title{color:#1e3a5f!important;border-color:#94a3b8!important;font-size:0.9rem!important;font-weight:bold}
+  .kpi{background:#f0f4f8!important;border-top-color:#1e5a96!important;padding:6px!important}
+  .kpi .num{color:#0c2340!important;font-size:1.1rem!important}
+  .kpi .lbl{color:#334155!important;font-size:0.7rem!important}
   canvas{max-width:100%!important}
-  textarea{border:1px solid #ccc!important;background:#fff!important;color:#000!important;min-height:60px}
+  textarea{border:1px solid #ccc!important;background:#fff!important;color:#000!important;min-height:50px}
+  .tbl{font-size:0.78rem!important}
   .tbl th{background:#1e3a5f!important;color:#fff!important}
-  .gauge-grid{display:flex!important;flex-wrap:wrap!important;gap:8px!important}
-  .chart-wrap{background:#fff!important;border:1px solid #ddd!important}
-  .sec-title{color:#1e3a5f!important;border-left-color:#1e5a96!important}
-  /* Capa */
-  #relCapa{display:block!important;page-break-after:always!important;min-height:96vh!important}
-  #relCabecalho-print{display:block!important;page-break-after:always!important}
-  #relCabRow{display:flex!important}
+  .tbl td{color:#1e293b!important;border-color:#e2e8f0!important}
+  /* Gauges: 2 colunas para compactar pagina */
+  #relGauges{display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important}
+  #relGauges .card{margin-bottom:0!important}
+  .gauge-grid{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:6px!important}
+  .chart-wrap{background:#fff!important;border:1px solid #cbd5e1!important;padding:4px!important}
+  .sec-title{color:#1e3a5f!important;border-left-color:#1e5a96!important;font-size:0.82rem!important}
+  /* Secao de fotos */
+  #relFotos img{max-height:90mm!important;object-fit:contain!important}
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;background:#0b1120;color:#e2e8f0;min-height:100vh;overscroll-behavior:none}
@@ -478,30 +488,29 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
   <!-- ── RELATORIO ── -->
   <div class="page" id="pg-rel">
     <!-- CAPA — visivel apenas no print/PDF -->
-    <div id="relCapa" style="display:none;text-align:center;padding:60px 40px 40px;background:#fff;color:#0c2340">
-      <div style="margin-bottom:28px">
-        <img src="./icon.svg" alt="Guardiao" style="width:90px;height:90px;opacity:0.9">
+    <div id="relCapa" style="display:none;text-align:center;background:#fff;color:#0c2340">
+      <div style="margin-bottom:24px">
+        <img src="./icon.svg" alt="Guardiao" style="width:80px;height:80px;opacity:0.9">
       </div>
-      <div style="font-size:0.75rem;letter-spacing:0.18em;color:#64748b;text-transform:uppercase;margin-bottom:12px">
+      <div style="font-size:0.72rem;letter-spacing:0.15em;color:#64748b;text-transform:uppercase;margin-bottom:10px">
         Norte Energia S.A. &nbsp;·&nbsp; Usina Hidrelétrica Pimental &nbsp;·&nbsp; Subestação 230kV
       </div>
-      <div style="font-size:1.7rem;font-weight:900;color:#0c2340;line-height:1.25;margin-bottom:8px">
+      <div style="font-size:1.6rem;font-weight:900;color:#0c2340;line-height:1.25;margin-bottom:6px">
         Relatório Mensal
       </div>
-      <div style="font-size:1.1rem;font-weight:700;color:#1e5a96;margin-bottom:32px">
+      <div style="font-size:1.05rem;font-weight:700;color:#1e5a96;margin-bottom:24px">
         Guardião da Usina
       </div>
-      <div style="width:60px;height:3px;background:#1e5a96;margin:0 auto 32px"></div>
-      <div style="font-size:0.95rem;color:#334155;margin-bottom:10px">
-        Referência: <strong id="capaRef" style="color:#0c2340"></strong>
-      </div>
-      <div style="font-size:0.9rem;color:#334155;margin-bottom:6px">
-        Operador responsável: <strong id="capaOp" style="color:#0c2340"></strong>
-      </div>
-      <div style="font-size:0.9rem;color:#334155">
-        Turno: <strong id="capaTurno" style="color:#0c2340"></strong>
-      </div>
-      <div style="margin-top:60px;font-size:0.78rem;color:#94a3b8">
+      <div style="width:50px;height:3px;background:#1e5a96;margin:0 auto 24px"></div>
+      <table style="margin:0 auto;border-collapse:collapse;font-size:0.9rem;color:#334155">
+        <tr><td style="padding:4px 12px;text-align:right;color:#64748b">Referência:</td>
+            <td style="padding:4px 12px;font-weight:700;color:#0c2340" id="capaRef"></td></tr>
+        <tr><td style="padding:4px 12px;text-align:right;color:#64748b">Operador:</td>
+            <td style="padding:4px 12px;font-weight:700;color:#0c2340" id="capaOp"></td></tr>
+        <tr><td style="padding:4px 12px;text-align:right;color:#64748b">Turno:</td>
+            <td style="padding:4px 12px;font-weight:700;color:#0c2340" id="capaTurno"></td></tr>
+      </table>
+      <div style="margin-top:32px;font-size:0.75rem;color:#94a3b8">
         Gerado em <span id="capaDataGer"></span> &nbsp;·&nbsp; Sistema automatizado de O&amp;M
       </div>
     </div>
@@ -2065,7 +2074,7 @@ function _renderRelFotos(fotos) {
   const el = document.getElementById("relFotos");
   if (!el) return;
   if (!fotos.length) {
-    el.innerHTML = '<div style="color:#475569;font-size:0.82rem;padding:6px 0">Nenhuma foto adicionada. Use o campo abaixo para tirar ou escolher uma foto.</div>';
+    el.innerHTML = '<div style="color:#64748b;font-size:0.82rem;padding:6px 0;font-style:italic">Nenhuma foto registrada neste mês.</div>';
     return;
   }
   let html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">';
@@ -2205,7 +2214,8 @@ function _renderChartSF6(sf6hist) {
   const todosVals=Object.values(byDJ).flatMap(m=>Object.values(m)).filter(v=>v>0&&v<99);
   const vMin=todosVals.length?Math.min(...todosVals):5.0;
   const vMax=todosVals.length?Math.max(...todosVals):7.0;
-  const yMin=Math.max(4.5, Math.floor((vMin-0.3)*10)/10);
+  // yMin sempre <= 4.8 para que as linhas de Alarme (5.2) e Bloqueio (5.0) apareçam
+  const yMin=Math.min(4.8, Math.floor((vMin-0.2)*10)/10);
   const yMax=Math.min(7.5, Math.ceil((vMax+0.3)*10)/10);
 
   // Range de datas para linhas de referencia
