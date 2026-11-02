@@ -50,9 +50,8 @@
   /* ── Resumo Executivo: nao quebrar internamente ── */
   #relSumCard{break-inside:avoid!important}
 
-  /* ── Card SF6: inicia em pagina propria ── */
-  #relSF6Card{break-inside:auto!important;page-break-inside:auto!important;
-              page-break-before:always!important;break-before:always!important}
+  /* ── Card SF6: grande, pode quebrar internamente ── */
+  #relSF6Card{break-inside:auto!important;page-break-inside:auto!important}
 
   /* ── Gauges: 3 colunas, cada card protegido ── */
   #relGaugesEvolucao{break-inside:auto!important;page-break-inside:auto!important}
@@ -74,10 +73,8 @@
   .tbl td{color:#1e293b!important;border-color:#e2e8f0!important}
   .sec-title{color:#1e3a5f!important;border-left-color:#1e5a96!important;font-size:0.8rem!important}
 
-  /* ── Fotos: pagina isolada ── */
-  #relFotosCard{page-break-before:always!important;break-before:always!important;
-                page-break-after:always!important;break-after:always!important;
-                break-inside:auto!important;page-break-inside:auto!important}
+  /* ── Fotos: flui normalmente ── */
+  #relFotosCard{break-inside:auto!important;page-break-inside:auto!important}
   #relFotos img{max-height:88mm!important;object-fit:contain!important;display:block;margin:4px 0}
   #relFotos>div{break-inside:avoid!important;page-break-inside:avoid!important}
 
