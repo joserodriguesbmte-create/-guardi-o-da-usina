@@ -54,10 +54,13 @@
   /* ── Card SF6: permite quebrar; sub-elementos nao ── */
   #relSF6Card{break-inside:auto!important;page-break-inside:auto!important}
 
-  /* ── Gauges: grid 2 colunas ── */
+  /* ── Gauges + Evolucao: manter na mesma pagina ── */
+  #relGaugesEvolucao{break-inside:avoid!important;page-break-inside:avoid!important}
   #relGauges{display:grid!important;grid-template-columns:1fr 1fr!important;gap:6px!important}
   #relGauges .card{margin-bottom:0!important;break-inside:avoid!important}
   .gauge-grid{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:4px!important}
+  /* ── Reduz altura do grafico no print para caber com gauges ── */
+  #relGaugesEvolucao .chart-wrap{height:180px!important}
 
   /* ── Gráficos: nao quebrar ── */
   .chart-wrap{background:#fff!important;border:1px solid #cbd5e1!important;
@@ -576,17 +579,19 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
     <!-- 2. SF6 -->
     <div class="card" id="relSF6Card">
       <div class="card-title">⚡ 2. Disjuntores SF6</div>
-      <div class="sec-title" style="margin-top:0">Pressao Atual — Velocimetros</div>
-      <div id="relGauges"></div>
-      <div class="sec-title" style="margin-top:12px">Evolução Histórica — Pressão SF6 (todas as leituras)</div>
-      <div class="chart-wrap" style="height:300px">
-        <canvas id="chartSF6"></canvas>
-      </div>
-      <div style="font-size:0.72rem;color:#475569;text-align:right;padding:2px 4px 0;margin-top:2px">
-        Ref: Alarme 5,2 bar &nbsp;|&nbsp; Bloqueio 5,0 bar &nbsp;|&nbsp; Nominal 6,0 bar
-      </div>
-      <div id="relSF6vazio" style="display:none;color:#475569;text-align:center;padding:16px;font-size:0.82rem">
-        Sincronize para carregar o historico de leituras SF6.
+      <div id="relGaugesEvolucao">
+        <div class="sec-title" style="margin-top:0">Pressao Atual — Velocimetros</div>
+        <div id="relGauges"></div>
+        <div class="sec-title" style="margin-top:12px">Evolução Histórica — Pressão SF6 (todas as leituras)</div>
+        <div class="chart-wrap" style="height:300px">
+          <canvas id="chartSF6"></canvas>
+        </div>
+        <div style="font-size:0.72rem;color:#475569;text-align:right;padding:2px 4px 0;margin-top:2px">
+          Ref: Alarme 5,2 bar &nbsp;|&nbsp; Bloqueio 5,0 bar &nbsp;|&nbsp; Nominal 6,0 bar
+        </div>
+        <div id="relSF6vazio" style="display:none;color:#475569;text-align:center;padding:16px;font-size:0.82rem">
+          Sincronize para carregar o historico de leituras SF6.
+        </div>
       </div>
       <div class="sec-title" style="margin-top:12px">Leituras do Mes</div>
       <div id="relSF6Table" style="overflow-x:auto"></div>
