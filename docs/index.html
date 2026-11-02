@@ -952,11 +952,11 @@ async function pullData() {
       supaGet("sf6_leituras", {"data":"gte."+ini, "select":"disjuntor,polo,pressao_medida,temperatura,pressao_corrigida,status_sf6,data,hora","order":"data.asc,hora.asc"}),
       supaGet("inspecoes",    {"sistema":"eq.Seccionadora","data":"gte."+ini,"select":"item,data,status,observacao"}),
       supaGet("pendencias",   {"select":"id,data_abertura,sistema,descricao,nota_sap,prioridade,status,observacao,usuario","order":"data_abertura.desc","limit":"200"}),
-      supaGet("sf6_leituras", {"select":"disjuntor,polo,pressao_corrigida,status_sf6,data","order":"created_at.desc","limit":"60"}),
+      supaGet("sf6_leituras", {"select":"disjuntor,polo,pressao_corrigida,status_sf6,data,created_at","order":"created_at.desc","limit":"60"}),
       supaGet("temperaturas", {"order":"data.desc","limit":"50","select":"data,turno,temperatura_oleo,temperatura_enrol,observacao"}),
       supaGet("contadores_dj",{"order":"data.desc","limit":"100","select":"data,disjuntor,polo_a,polo_b,polo_v,tripolar,curto_circuito"}),
       supaGet("operacoes_dj", {"select":"disjuntor,num_operacoes_total"}),
-      supaGet("sf6_leituras", {"data":"gte."+ini12,"select":"disjuntor,polo,pressao_corrigida,data","order":"data.asc"}),
+      supaGet("sf6_leituras", {"created_at":"gte."+ini12+"T00:00:00","select":"disjuntor,polo,pressao_corrigida,data,created_at","order":"created_at.asc","limit":"500"}),
       supaGet("inspecoes",    {"sistema":"eq.Seccionadora","data":"gte."+ini6,"select":"item,data,status"}),
       supaGet("inspecoes",    {"data":"gte."+ini,"select":"sistema,item,status,observacao,data","order":"data.asc","limit":"500"})
     ]);
@@ -1843,8 +1843,9 @@ function _renderRelComparativo(sf6hist) {
   if(!sf6hist.length){document.getElementById("relComparativo").innerHTML="";return;}
   const porMesDj={};
   sf6hist.forEach(r=>{
-    const dj=r.disjuntor; if(!dj||!r.data) return;
-    const mk=r.data.slice(0,7);
+    const dj=r.disjuntor; if(!dj) return;
+    const dt=(r.data||r.created_at||""); if(!dt) return;
+    const mk=dt.slice(0,7);
     const p=parseFloat(r.pressao_corrigida||0);
     if(p>0){
       const k=dj+"__"+mk;
@@ -1987,18 +1988,18 @@ function _renderGaugesSF6(sf6last) {
 
   let html="";
   for (const [tag,dj] of Object.entries(DISJUNTORES)) {
-    const polos=dj.polos===3?["Polo A","Polo B","Polo V"]:["Camara Unica"];
+    const polos=dj.polos===3?["Polo A","Polo B","Polo V"]:["Câmara Única"];
     html+=`<div class="card" style="margin-bottom:8px">
       <div style="font-size:0.8rem;font-weight:700;color:#60a5fa;margin-bottom:6px">${tag} — ${dj.desc}</div>
       <div class="gauge-grid">`;
     polos.forEach(polo=>{
       const lr=lm[tag+"_"+polo];
       const cid="g_"+tag.replace(/\W/g,"")+"_"+polo.replace(/\W/g,"");
-      const lbl=lr?_dataBR(lr.data):"sem dados";
+      const dt=lr?(lr.data?_dataBR(lr.data):_dataBR((lr.created_at||"").slice(0,10))):"sem dados";
       html+=`<div class="gauge-wrap">
-        <div class="gauge-tag">${polo==="Camara Unica"?"Cam. Unica":polo}</div>
+        <div class="gauge-tag">${polo==="Câmara Única"?"Cam. Única":polo}</div>
         <canvas id="${cid}" width="130" height="78"></canvas>
-        <div class="gauge-lbl">${lbl}</div>
+        <div class="gauge-lbl">${dt}</div>
       </div>`;
     });
     html+="</div></div>";
@@ -2007,7 +2008,7 @@ function _renderGaugesSF6(sf6last) {
 
   // Desenha após inserir no DOM
   for (const [tag,dj] of Object.entries(DISJUNTORES)) {
-    const polos=dj.polos===3?["Polo A","Polo B","Polo V"]:["Camara Unica"];
+    const polos=dj.polos===3?["Polo A","Polo B","Polo V"]:["Câmara Única"];
     polos.forEach(polo=>{
       const lr=lm[tag+"_"+polo];
       const cid="g_"+tag.replace(/\W/g,"")+"_"+polo.replace(/\W/g,"");
@@ -2030,10 +2031,12 @@ function _renderChartSF6(sf6hist) {
   ctx.style.display="block";
 
   // Agrupar por (DJ, data): manter pressao minima entre polos
+  // Usa data se disponivel, senao created_at como fallback
   const byDJ={};
   sf6hist.forEach(r=>{
-    if(!r.disjuntor||!r.data||!r.pressao_corrigida) return;
-    const dk=r.data.slice(0,10);
+    if(!r.disjuntor||!r.pressao_corrigida) return;
+    const dk=(r.data||r.created_at||"").slice(0,10);
+    if(!dk) return;
     if(!byDJ[r.disjuntor]) byDJ[r.disjuntor]={};
     const p=parseFloat(r.pressao_corrigida);
     if(isNaN(p)||p<=0) return;
@@ -2041,7 +2044,7 @@ function _renderChartSF6(sf6hist) {
   });
 
   // Todas as datas unicas ordenadas
-  const allDates=[...new Set(sf6hist.map(r=>r.data.slice(0,10)))].filter(Boolean).sort();
+  const allDates=[...new Set(sf6hist.map(r=>(r.data||r.created_at||"").slice(0,10)))].filter(Boolean).sort();
   if(!allDates.length){if(_chartSF6){_chartSF6.destroy();_chartSF6=null;} return;}
 
   // Labels: DD/MM
