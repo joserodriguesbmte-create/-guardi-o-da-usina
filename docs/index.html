@@ -53,13 +53,13 @@
   /* ── Card SF6: grande, pode quebrar internamente ── */
   #relSF6Card{break-inside:auto!important;page-break-inside:auto!important}
 
-  /* ── Gauges: 3 colunas, cada card protegido ── */
+  /* ── Gauges: 6 colunas (1 linha), cada card protegido ── */
   #relGaugesEvolucao{break-inside:auto!important;page-break-inside:auto!important}
-  #relGauges{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:5px!important}
-  #relGauges .card{margin-bottom:0!important;break-inside:avoid!important;padding:5px 6px!important}
-  #relGauges canvas{max-height:62px!important}
-  .gauge-grid{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:3px!important}
-  #relGaugesEvolucao .chart-wrap{height:240px!important}
+  #relGauges{display:grid!important;grid-template-columns:repeat(6,1fr)!important;gap:4px!important}
+  #relGauges .card{margin-bottom:0!important;break-inside:avoid!important;padding:4px 5px!important}
+  #relGauges canvas{max-height:55px!important}
+  .gauge-grid{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:2px!important}
+  #relGaugesEvolucao .chart-wrap{height:220px!important}
 
   /* ── Gráficos: nao quebrar ── */
   .chart-wrap{background:#fff!important;border:1px solid #cbd5e1!important;
@@ -579,12 +579,14 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       <div id="relGaugesEvolucao">
         <div class="sec-title" style="margin-top:0">Pressao Atual — Velocimetros</div>
         <div id="relGauges"></div>
-        <div class="sec-title" style="margin-top:12px">Evolução Histórica — Pressão SF6 (todas as leituras)</div>
-        <div class="chart-wrap" style="height:300px">
-          <canvas id="chartSF6"></canvas>
-        </div>
-        <div style="font-size:0.72rem;color:#475569;text-align:right;padding:2px 4px 0;margin-top:2px">
-          Ref: Alarme 5,2 bar &nbsp;|&nbsp; Bloqueio 5,0 bar &nbsp;|&nbsp; Nominal 6,0 bar
+        <div style="break-inside:avoid;page-break-inside:avoid">
+          <div class="sec-title" style="margin-top:12px">Evolução Histórica — Pressão SF6 (todas as leituras)</div>
+          <div class="chart-wrap" style="height:300px">
+            <canvas id="chartSF6"></canvas>
+          </div>
+          <div style="font-size:0.72rem;color:#475569;text-align:right;padding:2px 4px 0;margin-top:2px">
+            Ref: Alarme 5,2 bar &nbsp;|&nbsp; Bloqueio 5,0 bar &nbsp;|&nbsp; Nominal 6,0 bar
+          </div>
         </div>
         <div id="relSF6vazio" style="display:none;color:#475569;text-align:center;padding:16px;font-size:0.82rem">
           Sincronize para carregar o historico de leituras SF6.
@@ -1914,7 +1916,7 @@ function renderRel() {
   _renderRelSecao(secMes, secDone, cache.secHist||[]);
 
   // Trafo
-  _renderRelTrafo(temps);
+  _renderRelTrafo(temps, insp, mesAtual);
 
   // Checklists
   _renderRelChecklists(insp, mesAtual);
@@ -2092,27 +2094,54 @@ function _renderRelSecao(secMes, secDone, secHist) {
   document.getElementById("relSecNok").innerHTML=html;
 }
 
-function _renderRelTrafo(temps) {
-  if(!temps.length){
-    document.getElementById("relTrafo").innerHTML='<div style="color:#475569;font-size:0.8rem">Sem registros de temperatura.</div>';
-    return;
+function _renderRelTrafo(temps, insp, mesAtual) {
+  let html="";
+
+  // Temperaturas do mes
+  const tempMes=mesAtual?(temps||[]).filter(r=>r.data&&r.data.startsWith(mesAtual)):temps||[];
+  if(tempMes.length){
+    const sorted=[...tempMes].sort((a,b)=>b.data.localeCompare(a.data));
+    html+=`<div class="sec-title" style="margin-top:0">Temperaturas do Mês</div>
+    <table class="tbl"><thead><tr>
+      <th>Data</th><th>Turno</th><th style="text-align:center">OTI °C</th><th style="text-align:center">WTI °C</th><th>Obs</th>
+    </tr></thead><tbody>`;
+    sorted.slice(0,15).forEach(r=>{
+      const otiC=r.temperatura_oleo>75?"#ef4444":r.temperatura_oleo>65?"#f59e0b":"#10b981";
+      const wtiC=r.temperatura_enrol>75?"#ef4444":r.temperatura_enrol>65?"#f59e0b":"#10b981";
+      html+=`<tr>
+        <td>${_dataBR(r.data)}</td>
+        <td style="color:#64748b">${(r.turno||"").split(" ")[0]}</td>
+        <td style="text-align:center;color:${otiC};font-weight:700">${r.temperatura_oleo??"-"}</td>
+        <td style="text-align:center;color:${wtiC};font-weight:700">${r.temperatura_enrol??"-"}</td>
+        <td style="color:#64748b;font-size:0.72rem">${r.observacao||""}</td>
+      </tr>`;
+    });
+    html+="</tbody></table>";
+  } else {
+    html+='<div style="color:#475569;font-size:0.8rem;margin-bottom:8px">Sem registros de temperatura no mês.</div>';
   }
-  const sorted=[...temps].sort((a,b)=>b.data.localeCompare(a.data));
-  let html=`<table class="tbl"><thead><tr>
-    <th>Data</th><th>Turno</th><th style="text-align:center">OTI °C</th><th style="text-align:center">WTI °C</th><th>Obs</th>
-  </tr></thead><tbody>`;
-  sorted.slice(0,15).forEach(r=>{
-    const otiC=r.temperatura_oleo>75?"#ef4444":r.temperatura_oleo>65?"#f59e0b":"#10b981";
-    const wtiC=r.temperatura_enrol>75?"#ef4444":r.temperatura_enrol>65?"#f59e0b":"#10b981";
-    html+=`<tr>
-      <td>${_dataBR(r.data)}</td>
-      <td style="color:#64748b">${(r.turno||"").split(" ")[0]}</td>
-      <td style="text-align:center;color:${otiC};font-weight:700">${r.temperatura_oleo??"-"}</td>
-      <td style="text-align:center;color:${wtiC};font-weight:700">${r.temperatura_enrol??"-"}</td>
-      <td style="color:#64748b;font-size:0.72rem">${r.observacao||""}</td>
-    </tr>`;
-  });
-  html+="</tbody></table>";
+
+  // Checklist de inspeção do transformador
+  const trafoInsp=(insp||[]).filter(r=>r.sistema&&r.sistema.includes("Transformador")&&(!mesAtual||r.data&&r.data.startsWith(mesAtual)));
+  if(trafoInsp.length){
+    const nok=trafoInsp.filter(r=>r.status&&r.status!=="OK").length;
+    const ultima=_dataBR([...trafoInsp].sort((a,b)=>b.data.localeCompare(a.data))[0].data);
+    html+=`<div class="sec-title" style="margin-top:10px">Inspeção Visual — ${trafoInsp.length} itens &nbsp;·&nbsp; ${nok>0?'<span style="color:#ef4444">'+nok+' NC</span>':'<span style="color:#10b981">OK</span>'} &nbsp;·&nbsp; ${ultima}</div>
+    <table class="tbl"><thead><tr>
+      <th>Item</th><th>Status</th><th>Obs</th>
+    </tr></thead><tbody>`;
+    [...trafoInsp].sort((a,b)=>a.item.localeCompare(b.item)).forEach(r=>{
+      const c=r.status==="OK"?"#10b981":r.status?"#ef4444":"#94a3b8";
+      html+=`<tr>
+        <td style="font-size:0.72rem">${r.item||""}</td>
+        <td style="color:${c};font-weight:700;white-space:nowrap">${r.status||"—"}</td>
+        <td style="color:#64748b;font-size:0.72rem">${r.observacao||""}</td>
+      </tr>`;
+    });
+    html+="</tbody></table>";
+  }
+
+  if(!html) html='<div style="color:#475569;font-size:0.8rem">Sem registros no mês.</div>';
   document.getElementById("relTrafo").innerHTML=html;
 }
 
