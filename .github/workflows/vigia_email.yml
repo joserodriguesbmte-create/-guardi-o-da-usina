@@ -2,7 +2,7 @@ name: Vigia do relatorio (envio imediato)
 
 # Fica ligado olhando o banco a cada 20 s. Quando o botao "Solicitar envio do
 # relatorio" e tocado no app, gera o PDF e manda o e-mail em cerca de 1 minuto.
-# Cada rodada dura ~5h45 e, no fim, religa a si mesma.
+# Cada rodada dura ~5h45 e, no fim, religa a si mesma (concurrency cancela a anterior).
 on:
   push:
     branches: [main]
