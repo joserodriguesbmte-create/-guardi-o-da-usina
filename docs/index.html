@@ -974,6 +974,22 @@ async function supaPost(table, body) {
   return r.ok;
 }
 
+// Busca todas as linhas em partes de 1000 (o banco devolve no maximo 1000 por vez)
+async function supaGetTodos(table, params = {}, maximo = 10000) {
+  let todos = [];
+  for (let ini = 0; ini < maximo; ini += 1000) {
+    const url = new URL(SUPA_URL + "/" + table);
+    for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
+    url.searchParams.set("limit", "1000");
+    url.searchParams.set("offset", String(ini));
+    const r = await fetch(url.toString(), {headers: {"apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY}});
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const parte = await r.json();
+    todos = todos.concat(parte);
+    if (parte.length < 1000) break;
+  }
+  return todos;
+}
 async function supaUpsert(table, body, conflito) {
   const r = await fetch(SUPA_URL + "/" + table + "?on_conflict=" + encodeURIComponent(conflito), {
     method: "POST",
@@ -1213,7 +1229,7 @@ async function pullData() {
       carregarTempsDB(),
       supaGet("contadores_dj", {"order":"data.desc","limit":"100","select":"data,disjuntor,polo_a,polo_b,polo_v,tripolar,curto_circuito"}),
       supaGet("operacoes_dj",  {"select":"disjuntor,num_operacoes_total"}),
-      supaGet("sf6_leituras",  {"created_at":"gte."+ini12+"T00:00:00","select":"disjuntor,polo,pressao_corrigida,data,created_at","order":"created_at.asc","limit":"500"}),
+      supaGetTodos("sf6_leituras", {"created_at":"gte."+ini12+"T00:00:00","select":"disjuntor,polo,pressao_corrigida,data,created_at","order":"created_at.asc"}),
       supaGet("inspecoes",     {"sistema":"eq.Seccionadora","data":"gte."+ini6,"select":"item,data,status"}),
       supaGet("inspecoes",     {"data":"gte."+ini,"select":"sistema,item,status,observacao,data","order":"data.asc","limit":"500"}),
       supaGet("fotos_inspecao",{"sistema":"eq.Relatorio Mensal","data":"gte."+ini,"select":"id,data,legenda,foto_base64,usuario","order":"data.asc","limit":"6"}),
