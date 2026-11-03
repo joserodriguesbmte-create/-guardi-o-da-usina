@@ -59,12 +59,17 @@
   #relGauges .card{margin-bottom:0!important;break-inside:avoid!important;padding:4px 5px!important}
   #relGauges canvas{max-height:55px!important}
   .gauge-grid{display:flex!important;flex-wrap:wrap!important;justify-content:center!important;gap:2px!important}
-  #relGaugesEvolucao .chart-wrap{height:220px!important}
-
-  /* ── Gráficos: nao quebrar ── */
-  .chart-wrap{background:#fff!important;border:1px solid #cbd5e1!important;
-              padding:4px!important;break-inside:avoid!important;page-break-inside:avoid!important}
+  /* ── Gráficos: nao quebrar ──
+     O canvas e redesenhado no tamanho exato abaixo antes de imprimir
+     (ver _prepararGraficosPrint). Altura do wrap automatica para o
+     grafico nunca vazar por cima do texto seguinte. */
+  .chart-wrap{background:#fff!important;border:1px solid #cbd5e1!important;height:auto!important;
+              padding:4px!important;break-inside:avoid!important;page-break-inside:avoid!important;
+              overflow:hidden!important}
+  #chartSF6{width:640px!important;height:250px!important;max-width:100%!important}
+  #chartNC{width:640px!important;height:130px!important;max-width:100%!important}
   canvas{max-width:100%!important}
+  .sec-title{break-after:avoid!important;page-break-after:avoid!important}
 
   /* ── Tabelas ── */
   .tbl{font-size:0.76rem!important;width:100%!important}
@@ -673,7 +678,7 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
         </tr>
       </table>
     </div>
-    <button class="btn-primary no-print" onclick="window.print()">🖨️ Imprimir / Salvar PDF</button>
+    <button class="btn-primary no-print" onclick="imprimirRelatorio()">🖨️ Imprimir / Salvar PDF</button>
   </div>
 
   <!-- ── EMAIL ── -->
@@ -2604,6 +2609,53 @@ async function solicitarEnvioEmail() {
 // ═════════════════════════════════════════════════════════════════
 window.addEventListener("online",  () => { updateConnStatus(); syncQueue().then(renderPainel); });
 window.addEventListener("offline", updateConnStatus);
+
+// ═════════════════════════════════════════════════════════════════
+// IMPRESSAO / PDF — redesenha os graficos no tamanho da folha A4.
+// Sem isso o canvas fica com o tamanho da tela e, na folha, a legenda
+// e o eixo X caem por cima do texto que vem depois do grafico.
+// Os tamanhos aqui tem que ser iguais aos do @media print (#chartSF6, #chartNC).
+// ═════════════════════════════════════════════════════════════════
+const _PRINT_SIZES = {sf6:[640,250], nc:[640,130]};
+let _emImpressao = false;
+function _prepararGraficosPrint() {
+  if (_emImpressao) return;
+  _emImpressao = true;
+  const pares = [[_chartSF6,_PRINT_SIZES.sf6],[_chartNC,_PRINT_SIZES.nc]];
+  pares.forEach(([ch,[w,h]]) => {
+    if (!ch) return;
+    ch.options.responsive = false;          // impede o ResizeObserver de desfazer
+    ch.options.devicePixelRatio = 3;        // nitidez no PDF
+    ch.options.animation = false;
+    ch.resize(w, h);
+    ch.update("none");
+  });
+}
+function _restaurarGraficosTela() {
+  if (!_emImpressao) return;
+  _emImpressao = false;
+  [_chartSF6,_chartNC].forEach(ch => {
+    if (!ch) return;
+    ch.options.responsive = true;
+    ch.options.devicePixelRatio = window.devicePixelRatio || 1;
+    ch.options.animation = undefined;
+    ch.canvas.style.width = ""; ch.canvas.style.height = "";
+    ch.resize();
+    ch.update("none");
+  });
+}
+function imprimirRelatorio() {
+  _prepararGraficosPrint();
+  // pequena espera para o canvas terminar de redesenhar antes da folha
+  setTimeout(() => window.print(), 150);
+}
+window.addEventListener("beforeprint", _prepararGraficosPrint);
+window.addEventListener("afterprint",  _restaurarGraficosTela);
+if (window.matchMedia) {
+  const mq = window.matchMedia("print");
+  const fn = e => e.matches ? _prepararGraficosPrint() : _restaurarGraficosTela();
+  if (mq.addEventListener) mq.addEventListener("change", fn); else if (mq.addListener) mq.addListener(fn);
+}
 setInterval(updateConnStatus, 8000);
 
 if ("serviceWorker" in navigator) {
