@@ -22,7 +22,7 @@ from database import (carregar_sf6, carregar_temps, carregar_pendencias,
                       carregar_inspecoes, carregar_equipamentos,
                       carregar_operacoes, carregar_contadores, carregar_fotos,
                       carregar_config, salvar_config)
-from email_report import (gerar_html_relatorio, enviar_relatorio,
+from email_report import (enviar_relatorio,
                           carregar_config_email)
 
 CHAVE = "email_solicitar_pwa"
@@ -172,6 +172,35 @@ def montar_dados(d_ini: date, d_fim: date, mes: str, operador: str) -> dict:
     }
 
 
+def corpo_email(dados: dict, mes: str, operador: str) -> str:
+    """Texto curto do e-mail. O relatorio completo vai so no PDF anexo
+    (mesmo layout do app), para nao aparecer duas versoes diferentes."""
+    r = dados.get("resumo", {})
+    sec = dados.get("sec_resumo", {})
+    linhas = [
+        ("Leituras de SF6", r.get("leituras_sf6", 0)),
+        ("Alarmes de SF6", r.get("alarmes_sf6", 0)),
+        ("Registros de temperatura do trafo", r.get("temp_registradas", 0)),
+        ("Seccionadoras inspecionadas", f"{sec.get('inspecionadas', 0)} de {sec.get('total', 0)}"),
+        ("Pendências em aberto", r.get("pendencias_abertas", 0)),
+    ]
+    tabela = "".join(
+        f'<tr><td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;color:#334155">{k}</td>'
+        f'<td style="padding:6px 12px;border-bottom:1px solid #e2e8f0;font-weight:bold;color:#0c2340;text-align:right">{v}</td></tr>'
+        for k, v in linhas)
+    gerado = datetime.now(TZ_BR).strftime("%d/%m/%Y %H:%M")
+    return f"""<html><body style="font-family:Arial,sans-serif;color:#1e293b;font-size:14px">
+<p>Prezados,</p>
+<p>Segue em anexo o Relatório Mensal do Guardião da Usina, referente a <b>{mes}</b>
+(Subestação 230 kV, UHE Pimental).</p>
+<table style="border-collapse:collapse;margin:12px 0">{tabela}</table>
+<p>O relatório completo, com velocímetros e gráfico de SF6, tabelas, pendências,
+fotos e assinatura, está no PDF anexo.</p>
+<p>Atenciosamente,<br>{operador}<br>Operador de O&amp;M, SE 230 kV</p>
+<p style="color:#94a3b8;font-size:11px">Enviado pelo sistema Guardião da Usina em {gerado}.</p>
+</body></html>"""
+
+
 def enviar_mes(mes_iso: str, operador: str) -> tuple:
     d_ini, d_fim, mes = periodo_do_mes(mes_iso)
     print(f"Relatorio {mes} ({d_ini} a {d_fim})")
@@ -183,7 +212,7 @@ def enviar_mes(mes_iso: str, operador: str) -> tuple:
         return False, "Nenhum destinatario cadastrado em email_config."
 
     dados = montar_dados(d_ini, d_fim, mes, operador)
-    html = gerar_html_relatorio(dados, usar_cid=bool(dados["fotos"]))
+    html = corpo_email(dados, mes, operador)
 
     # PDF igual ao do app (mesmo layout do botao Imprimir / Salvar PDF).
     # Se falhar, o e-mail NAO e enviado: o erro fica gravado e aparece no app.
@@ -201,9 +230,7 @@ def enviar_mes(mes_iso: str, operador: str) -> tuple:
     anexos = [(nome_pdf, pdf)]
 
     assunto = f"Relatorio Guardiao da Usina — {mes} | {operador}"
-    ok, msg = enviar_relatorio(cfg, html, assunto,
-                               fotos=dados["fotos"] or None,
-                               anexos=anexos or None)
+    ok, msg = enviar_relatorio(cfg, html, assunto, anexos=anexos)
     if ok:
         salvar_config("relatorio_enviado_mes", mes)
         salvar_config("relatorio_enviado_em", str(datetime.now(TZ_BR).date()))
