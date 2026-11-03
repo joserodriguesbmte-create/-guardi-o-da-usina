@@ -10,6 +10,7 @@ on:
       - '.github/workflows/vigia_email.yml'
       - 'processar_solicitacao_email.py'
       - 'pdf_do_app.py'
+      - 'diag_banco.py'
       - 'docs/index.html'
   workflow_dispatch:
   schedule:
@@ -39,6 +40,12 @@ jobs:
         run: |
           pip install pandas psycopg2-binary Pillow matplotlib xhtml2pdf plotly playwright
           python -m playwright install --with-deps chromium
+
+      - name: Diagnostico do banco
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python diag_banco.py
 
       - name: Vigiar pedidos do app
         env:
