@@ -34,6 +34,7 @@ jobs:
       - name: Processar pedido de envio
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
         run: |
           if [ -n "${{ github.event.inputs.mes }}" ]; then
             python processar_solicitacao_email.py --mes "${{ github.event.inputs.mes }}"

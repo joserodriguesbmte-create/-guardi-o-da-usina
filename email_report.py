@@ -40,8 +40,10 @@ def _db_carregar(chave: str) -> str | None:
         return None
 
 def salvar_config_email(cfg: dict):
-    """Salva no banco (Streamlit Cloud) E no arquivo local (desenvolvimento)."""
-    _db_salvar("email_config", json.dumps(cfg, ensure_ascii=False))
+    """Salva no banco (Streamlit Cloud) E no arquivo local (desenvolvimento).
+    senha_app nunca e gravada no banco — fica so no arquivo local."""
+    cfg_db = {k: v for k, v in cfg.items() if k != "senha_app"}
+    _db_salvar("email_config", json.dumps(cfg_db, ensure_ascii=False))
     try:
         with open(CFG_PATH, "w", encoding="utf-8") as f:
             json.dump(cfg, f, indent=2, ensure_ascii=False)
@@ -49,20 +51,35 @@ def salvar_config_email(cfg: dict):
         pass
 
 def carregar_config_email() -> dict:
-    """Tenta banco primeiro (Streamlit Cloud), depois arquivo local."""
+    """Tenta banco primeiro (Streamlit Cloud), depois arquivo local.
+    Injeta senha_app do environment (EMAIL_SENHA_APP) ou do arquivo local."""
     v = _db_carregar("email_config")
     if v:
         try:
-            return json.loads(v)
+            cfg = json.loads(v)
         except Exception:
-            pass
-    if os.path.exists(CFG_PATH):
+            cfg = dict(_CFG_PADRAO)
+    elif os.path.exists(CFG_PATH):
         try:
             with open(CFG_PATH, encoding="utf-8") as f:
-                return json.load(f)
+                cfg = json.load(f)
+        except Exception:
+            cfg = dict(_CFG_PADRAO)
+    else:
+        cfg = dict(_CFG_PADRAO)
+
+    # Prioridade: variavel de ambiente (GitHub Actions) > st.secrets (Streamlit) > arquivo local
+    senha = os.environ.get("EMAIL_SENHA_APP", "")
+    if not senha:
+        try:
+            import streamlit as st
+            senha = st.secrets.get("EMAIL_SENHA_APP", "")
         except Exception:
             pass
-    return dict(_CFG_PADRAO)
+    if not senha:
+        senha = cfg.get("senha_app", "")
+    cfg["senha_app"] = senha
+    return cfg
 
 def fig_para_base64(fig) -> str:
     # Tentar kaleido primeiro

@@ -684,13 +684,48 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
   <!-- ── EMAIL ── -->
   <div class="page" id="pg-email">
     <div class="card">
-      <div class="card-title">📧 Destinatarios Cadastrados</div>
-      <div id="emailDest"></div>
+      <div class="card-title">⚙️ Configuracao de E-mail</div>
+      <div id="emailOfflineAviso" style="display:none;background:#1e3a5f;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:0.82rem;color:#fbbf24">
+        ⚠️ Sem conexao — configuracao desabilitada enquanto offline.
+      </div>
+      <div style="font-size:0.82rem;color:#94a3b8;margin-bottom:12px">
+        Remetente, SMTP e destinatarios sao salvos no banco. A senha de app e configurada no servidor (nunca exibida aqui).
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:0.78rem;color:#94a3b8;display:block;margin-bottom:4px">E-mail remetente</label>
+        <input type="email" id="cfgRem" style="width:100%;background:#0b1120;border:1px solid #1e3a5f;border-radius:6px;padding:7px 10px;color:#f1f5f9;font-size:0.85rem;box-sizing:border-box" placeholder="seu@gmail.com">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 90px;gap:8px;margin-bottom:14px">
+        <div>
+          <label style="font-size:0.78rem;color:#94a3b8;display:block;margin-bottom:4px">Servidor SMTP</label>
+          <select id="cfgSmtp" style="width:100%;background:#0b1120;border:1px solid #1e3a5f;border-radius:6px;padding:7px 10px;color:#f1f5f9;font-size:0.85rem">
+            <option value="smtp.gmail.com">smtp.gmail.com</option>
+            <option value="smtp.office365.com">smtp.office365.com</option>
+            <option value="smtp.mail.yahoo.com">smtp.mail.yahoo.com</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.78rem;color:#94a3b8;display:block;margin-bottom:4px">Porta</label>
+          <input type="number" id="cfgPort" value="587" style="width:100%;background:#0b1120;border:1px solid #1e3a5f;border-radius:6px;padding:7px 10px;color:#f1f5f9;font-size:0.85rem;box-sizing:border-box">
+        </div>
+      </div>
+      <div style="font-size:0.82rem;color:#94a3b8;margin-bottom:8px">Destinatarios</div>
+      <div id="cfgDestList" style="margin-bottom:10px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <input type="email" id="cfgNovoEmail" placeholder="novo@email.com" style="flex:1;background:#0b1120;border:1px solid #1e3a5f;border-radius:6px;padding:7px 10px;color:#f1f5f9;font-size:0.85rem">
+        <button class="btn-sm" onclick="adicionarDestinatario()" style="white-space:nowrap">+ Adicionar</button>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="password" id="cfgPinEmail" placeholder="PIN (confirmar)" maxlength="6" inputmode="numeric"
+               style="width:140px;background:#0b1120;border:1px solid #1e3a5f;border-radius:6px;padding:7px 10px;color:#f1f5f9;font-size:0.85rem">
+        <button class="btn-primary" id="btnSalvarCfgEmail" onclick="salvarConfigEmail()">💾 Salvar</button>
+      </div>
+      <div id="cfgEmailMsg" style="margin-top:10px;font-size:0.82rem"></div>
     </div>
     <div class="card">
       <div class="card-title">📤 Envio do Relatorio Mensal</div>
       <div style="font-size:0.82rem;color:#94a3b8;margin-bottom:12px">
-        O relatorio com PDF, gauges e graficos e enviado para os 3 destinatarios. Use o botao abaixo para solicitar o envio.
+        O relatorio com PDF, gauges e graficos e enviado para os destinatarios cadastrados. Use o botao abaixo para solicitar o envio.
       </div>
       <div style="background:#162447;border-radius:8px;padding:10px 12px;margin-bottom:12px">
         <span style="font-size:0.78rem;color:#60a5fa">📅 Mes de referencia:</span>
@@ -2649,22 +2684,107 @@ function _renderChartNC(secHist) {
 // ═════════════════════════════════════════════════════════════════
 // EMAIL
 // ═════════════════════════════════════════════════════════════════
-const EMAIL_DEST=[
-  {nome:"Jose Santos",      email:"josesantos@norteenergiasa.com.br"}
-];
+let _cfgEmail = null;
 
-function renderEmail() {
-  const html=EMAIL_DEST.map(d=>`
-    <div style="background:#0b1120;border:1px solid #1e3a5f;border-radius:8px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
-      <span style="font-size:1.2rem">✉️</span>
-      <div>
-        <div style="font-size:0.88rem;font-weight:700;color:#f1f5f9">${d.nome}</div>
-        <div style="font-size:0.75rem;color:#64748b">${d.email}</div>
-      </div>
-    </div>`).join("");
-  document.getElementById("emailDest").innerHTML=html;
+async function renderEmail() {
+  const aviso  = document.getElementById("emailOfflineAviso");
+  const btnSalvar = document.getElementById("btnSalvarCfgEmail");
+  if (!navigator.onLine) {
+    if (aviso) aviso.style.display = "block";
+    if (btnSalvar) btnSalvar.disabled = true;
+  } else {
+    if (aviso) aviso.style.display = "none";
+    if (btnSalvar) btnSalvar.disabled = false;
+    try {
+      const rows = await supaGet("config_app", {"chave":"eq.email_config","select":"valor"});
+      if (rows && rows.length) _cfgEmail = JSON.parse(rows[0].valor || "{}");
+    } catch(e) {}
+  }
+  _preencherFormEmail();
   carregarStatusEmail();
 }
+
+function _preencherFormEmail() {
+  const cfg = _cfgEmail || {};
+  const rem  = document.getElementById("cfgRem");
+  const smtp = document.getElementById("cfgSmtp");
+  const port = document.getElementById("cfgPort");
+  if (rem)  rem.value  = cfg.email_remetente || "";
+  if (smtp && cfg.smtp_server) smtp.value = cfg.smtp_server;
+  if (port) port.value = cfg.smtp_port || 587;
+  _renderDestList(cfg.destinatarios || []);
+}
+
+function _renderDestList(lista) {
+  const el = document.getElementById("cfgDestList");
+  if (!el) return;
+  if (!lista.length) {
+    el.innerHTML = '<div style="font-size:0.82rem;color:#475569;font-style:italic">Nenhum destinatario cadastrado.</div>';
+    return;
+  }
+  el.innerHTML = lista.map((e, i) => `
+    <div style="background:#0b1120;border:1px solid #1e3a5f;border-radius:6px;padding:8px 10px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+      <span style="font-size:1rem">✉️</span>
+      <span style="flex:1;font-size:0.85rem;color:#f1f5f9">${e}</span>
+      <button class="btn-sm" style="background:#7f1d1d;border-color:#991b1b;font-size:0.72rem;padding:3px 8px" onclick="_removerDestinatario(${i})">✕</button>
+    </div>`).join("");
+}
+
+function _removerDestinatario(idx) {
+  const lista = [...((_cfgEmail || {}).destinatarios || [])];
+  lista.splice(idx, 1);
+  if (!_cfgEmail) _cfgEmail = {};
+  _cfgEmail.destinatarios = lista;
+  _renderDestList(lista);
+}
+
+function adicionarDestinatario() {
+  const inp = document.getElementById("cfgNovoEmail");
+  const email = (inp.value || "").trim().toLowerCase();
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!re.test(email)) { toast("E-mail invalido", true); return; }
+  if (!_cfgEmail) _cfgEmail = {};
+  const lista = [...(_cfgEmail.destinatarios || [])];
+  if (lista.includes(email)) { toast("E-mail ja cadastrado", true); return; }
+  lista.push(email);
+  _cfgEmail.destinatarios = lista;
+  _renderDestList(lista);
+  inp.value = "";
+}
+
+async function salvarConfigEmail() {
+  if (!navigator.onLine) { toast("Sem conexao — operacao indisponivel offline", true); return; }
+  const pin  = (document.getElementById("cfgPinEmail").value || "").trim();
+  const nome = getUsuario();
+  if (pin !== (PINS[nome] || "")) { toast("PIN incorreto", true); return; }
+  const rem  = (document.getElementById("cfgRem").value || "").trim();
+  const smtp = document.getElementById("cfgSmtp").value;
+  const port = parseInt(document.getElementById("cfgPort").value) || 587;
+  if (!rem) { toast("Informe o e-mail remetente", true); return; }
+  const nova = {
+    smtp_server:    smtp,
+    smtp_port:      port,
+    email_remetente: rem,
+    destinatarios:  ((_cfgEmail || {}).destinatarios || []),
+    assunto_padrao: ((_cfgEmail || {}).assunto_padrao || "Relatorio Mensal — Guardiao da Usina | UHE Pimental")
+  };
+  const btn = document.getElementById("btnSalvarCfgEmail");
+  const msg = document.getElementById("cfgEmailMsg");
+  btn.disabled = true; btn.textContent = "Salvando...";
+  const val = JSON.stringify(nova);
+  let ok = await supaPatch("config_app", {"chave":"eq.email_config"}, {valor: val}).catch(()=>false);
+  if (!ok) ok = await supaPost("config_app", {chave:"email_config", valor: val}).catch(()=>false);
+  btn.disabled = false; btn.textContent = "💾 Salvar";
+  _cfgEmail = nova;
+  if (ok) {
+    if (msg) msg.innerHTML = '<span style="color:#10b981">✅ Configuracao salva com sucesso.</span>';
+    toast("Configuracao de e-mail salva!");
+    document.getElementById("cfgPinEmail").value = "";
+  } else {
+    if (msg) msg.innerHTML = '<span style="color:#ef4444">❌ Erro ao salvar. Tente novamente.</span>';
+  }
+}
+
 
 async function carregarStatusEmail() {
   const el=document.getElementById("emailStatus");

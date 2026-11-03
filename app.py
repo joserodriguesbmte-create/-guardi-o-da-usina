@@ -3175,8 +3175,7 @@ elif "E-mail" in pagina:
         c3,c4 = st.columns(2)
         email_rem = c3.text_input("📧 E-mail remetente", value=cfg.get("email_remetente",""),
                                    placeholder="seu@gmail.com")
-        senha_app = c4.text_input("🔑 Senha de App", value=cfg.get("senha_app",""),
-                                   type="password", placeholder="xxxx xxxx xxxx xxxx")
+        c4.info("🔑 Senha de App configurada via **Streamlit Secrets** (`EMAIL_SENHA_APP`). Nao e armazenada no banco.")
 
         st.markdown("#### Destinatários")
         dest_atual = "\n".join(cfg.get("destinatarios",[]))
@@ -3197,7 +3196,6 @@ elif "E-mail" in pagina:
                 "smtp_server":      smtp_srv,
                 "smtp_port":        smtp_port,
                 "email_remetente":  email_rem,
-                "senha_app":        senha_app,
                 "destinatarios":    destinatarios,
                 "assunto_padrao":   assunto_pad,
             }
@@ -3209,8 +3207,9 @@ elif "E-mail" in pagina:
                 <p>E-mail de teste enviado com sucesso pelo sistema <b>Guardião da Usina</b>.</p>
                 <p>Sistema: Norte Energia — UHE Pimental</p>
                 <p>Usuário: {st.session_state.user}</p>"""
+                cfg_teste = carregar_config_email()  # recarrega com senha injetada do secrets
                 with st.spinner("Enviando e-mail de teste..."):
-                    ok, msg = enviar_relatorio(nova_cfg, html_teste, "🧪 Teste — Guardião da Usina")
+                    ok, msg = enviar_relatorio(cfg_teste, html_teste, "🧪 Teste — Guardião da Usina")
                 if ok:
                     st.success(msg)
                 else:
