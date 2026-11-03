@@ -852,9 +852,57 @@ const CHECKLISTS = {
 // STORAGE
 // ═════════════════════════════════════════════════════════════════
 function getQueue()    { return JSON.parse(localStorage.getItem("gd_queue") || "[]"); }
-function saveQueue(q)  { localStorage.setItem("gd_queue", JSON.stringify(q)); }
+// Limite de memoria do navegador: ~5 MB. Registros ja sincronizados ficam so
+// como historico leve (sem a foto) e no maximo HIST_MAX deles.
+const HIST_MAX = 300;
+function _compactarFila(q) {
+  q.forEach(r => {
+    if (r.synced && r.data && r.data.foto_base64) { r.data.foto_base64 = null; r.fotoEnviada = true; }
+  });
+  const sync = q.filter(r => r.synced);
+  if (sync.length > HIST_MAX) {
+    const remover = new Set(sync.sort((a,b)=>(a.id||"").localeCompare(b.id||"")).slice(0, sync.length-HIST_MAX).map(r=>r.id));
+    return q.filter(r => !remover.has(r.id));
+  }
+  return q;
+}
+function saveQueue(q) {
+  try {
+    localStorage.setItem("gd_queue", JSON.stringify(q));
+    return true;
+  } catch (e) {
+    // Memoria cheia: libera o que ja foi enviado e o cache, depois tenta de novo
+    try {
+      const so = q.filter(r => !r.synced);
+      q.length = 0; so.forEach(r => q.push(r));
+      localStorage.removeItem("gd_cache");
+      localStorage.setItem("gd_queue", JSON.stringify(q));
+      toast("Memoria do app liberada (historico enviado e cache apagados)");
+      return true;
+    } catch (e2) {
+      alert("ATENCAO: memoria do app cheia. Este registro NAO foi salvo.\n\n" +
+            "Os dados continuam na tela. Conecte na internet e toque em Sync para enviar " +
+            "os pendentes, depois salve de novo. Fotos ocupam mais espaco: se precisar, salve sem foto.");
+      throw new Error("Memoria cheia - registro nao salvo");
+    }
+  }
+}
+function memoriaUsadaKB() {
+  let t = 0;
+  try { for (let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); t += k.length + (localStorage.getItem(k)||"").length; } } catch(e) {}
+  return Math.round(t/1024); // mil caracteres; limite tipico do navegador ~5000
+}
 function getCache()    { return JSON.parse(localStorage.getItem("gd_cache") || "{}"); }
-function saveCache(c)  { localStorage.setItem("gd_cache", JSON.stringify(c)); }
+function saveCache(c)  {
+  try { localStorage.setItem("gd_cache", JSON.stringify(c)); }
+  catch (e) {
+    // sem espaco: guarda o cache sem as fotos do relatorio e sem historico longo
+    try {
+      const leve = {...c, fotosRel: [], sf6hist: (c.sf6hist||[]).slice(-150)};
+      localStorage.setItem("gd_cache", JSON.stringify(leve));
+    } catch (e2) { console.warn("cache nao salvo:", e2); }
+  }
+}
 function getSessao()   { return JSON.parse(localStorage.getItem("gd_sessao") || "{}"); }
 function saveSessao()  {
   const s = {
@@ -891,6 +939,16 @@ async function supaPost(table, body) {
   return r.ok;
 }
 
+async function supaUpsert(table, body, conflito) {
+  const r = await fetch(SUPA_URL + "/" + table + "?on_conflict=" + encodeURIComponent(conflito), {
+    method: "POST",
+    headers: {"apikey": SUPA_KEY, "Authorization": "Bearer " + SUPA_KEY,
+              "Content-Type": "application/json",
+              "Prefer": "resolution=merge-duplicates,return=minimal"},
+    body: JSON.stringify(body)
+  });
+  return r.ok;
+}
 async function supaPatch(table, filters, body) {
   const url = new URL(SUPA_URL + "/" + table);
   for (const [k, v] of Object.entries(filters)) url.searchParams.set(k, v);
@@ -1066,7 +1124,9 @@ function updateConnStatus() {
 function atualizarPendentes() {
   const q = getQueue();
   const p = q.filter(r => !r.synced).length;
-  document.getElementById("pendCount").textContent = p > 0 ? `· ${p} pendente(s)` : "· Tudo ok";
+  const kb = memoriaUsadaKB();
+  const aviso = kb > 3500 ? ` · memoria ${Math.round(kb/50)}% (sincronize)` : "";
+  document.getElementById("pendCount").textContent = (p > 0 ? `· ${p} pendente(s)` : "· Tudo ok") + aviso;
   document.getElementById("btnSync").disabled = p===0 || !navigator.onLine;
 }
 
@@ -1081,10 +1141,15 @@ async function syncQueue() {
   let ok=0, erros=0;
   for (const r of q.filter(r => !r.synced)) {
     const body = {...r.data};
-    const sent = await supaPost(r.table, body).catch(()=>false);
-    if (sent) { r.synced=true; ok++; } else erros++;
+    const sent = await (r.upsert ? supaUpsert(r.table, body, r.upsert) : supaPost(r.table, body)).catch(()=>false);
+    if (sent) {
+      r.synced=true; ok++;
+      // grava na hora: se o app fechar no meio, este registro nao e reenviado (evita duplicar)
+      try { saveQueue(q); } catch(e) {}
+    } else erros++;
   }
-  saveQueue(q);
+  const compacta = _compactarFila(q);
+  try { saveQueue(compacta); } catch(e) {}
   atualizarPendentes();
   btn.textContent = "🔄 Sync";
   if (erros===0) toast(`✅ ${ok} registro(s) sincronizado(s)!`);
@@ -2369,14 +2434,22 @@ async function salvarFotoRel() {
   const leg = (document.getElementById("fotoLegenda").value||"").trim();
   const btn = document.getElementById("btnSalvarFoto");
   btn.disabled = true; btn.textContent = "Salvando...";
-  const ok = await supaPost("fotos_inspecao", {
-    data: hoje(), sistema: "Relatorio Mensal",
-    legenda: leg, foto_base64: _fotoBase64,
-    usuario: getUsuario()
-  });
+  const registro = {data: hoje(), sistema: "Relatorio Mensal",
+    legenda: leg, foto_base64: _fotoBase64, usuario: getUsuario()};
+  let ok = navigator.onLine ? await supaPost("fotos_inspecao", registro).catch(()=>false) : false;
+  let naFila = false;
+  if (!ok) {
+    // sem internet: guarda na fila e envia no proximo Sync
+    try {
+      const q = getQueue();
+      q.push({table:"fotos_inspecao", synced:false, id:Date.now()+"_relfoto", data:registro});
+      saveQueue(q); atualizarPendentes();
+      ok = true; naFila = true;
+    } catch(e) { ok = false; }
+  }
   btn.disabled = false; btn.textContent = "💾 Salvar Foto no Relatorio";
   if (ok) {
-    toast("Foto salva!");
+    toast(naFila ? "Sem internet: foto guardada, sera enviada no Sync" : "Foto salva!");
     _fotoBase64 = null;
     document.getElementById("fotoInput").value = "";
     document.getElementById("fotoLegenda").value = "";
@@ -2609,7 +2682,16 @@ async function carregarStatusEmail() {
 }
 
 async function solicitarEnvioEmail() {
-  if (!navigator.onLine) { toast("Sem internet",true); return; }
+  if (!navigator.onLine) {
+    const val=JSON.stringify({solicitado_em:new Date().toISOString(),mes:getData().slice(0,7),usuario:getUsuario()});
+    try {
+      const q=getQueue().filter(r=>!(r.table==="config_app"&&!r.synced&&r.data&&r.data.chave==="email_solicitar_pwa"));
+      q.push({table:"config_app", upsert:"chave", synced:false, id:Date.now()+"_email", data:{chave:"email_solicitar_pwa",valor:val}});
+      saveQueue(q); atualizarPendentes();
+      toast("Sem internet: pedido guardado, sera enviado no Sync");
+    } catch(e) {}
+    return;
+  }
   const btn=document.getElementById("btnEnviarEmail");
   btn.disabled=true; btn.textContent="⏳ Solicitando...";
   const mes=getData().slice(0,7);
@@ -2675,6 +2757,9 @@ if (window.matchMedia) {
 }
 setInterval(updateConnStatus, 8000);
 
+if (navigator.storage && navigator.storage.persist) {
+  navigator.storage.persist().catch(()=>{});
+}
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(e => console.warn("SW:", e));
 }

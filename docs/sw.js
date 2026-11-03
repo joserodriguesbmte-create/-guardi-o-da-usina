@@ -1,6 +1,6 @@
 // Service worker — Guardiao da Usina PWA
 // Estrategia: cache-first para o shell do app, rede ignorada para Supabase
-const CACHE = 'guardiao-v9';
+const CACHE = 'guardiao-v11';
 const SHELL = [
   './index.html', './manifest.json', './icon.svg', './sw.js',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
@@ -33,7 +33,13 @@ self.addEventListener('fetch', e => {
         }
         return resp;
       }).catch(() => null);
-      return cached || fromNet;
+      if (cached) return cached;
+      return fromNet.then(resp => {
+        if (resp) return resp;
+        // Sem internet e sem copia desta URL: abrir o app salvo
+        if (e.request.mode === 'navigate') return caches.match('./index.html');
+        return new Response('', {status: 503, statusText: 'Offline'});
+      });
     })
   );
 });
