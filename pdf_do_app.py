@@ -56,6 +56,8 @@ def gerar_pdf_app(mes_iso: str, operador: str = "Jose Aparecido",
             erros = []
             pag = ctx.new_page()
             pag.on("pageerror", lambda e: erros.append(str(e)))
+            pag.on("console", lambda m: erros.append(m.text) if m.type in ("error", "warning") else None)
+            pag.on("requestfailed", lambda r: erros.append(f"falha {r.url[:80]}: {r.failure}"))
             pag.clock.set_fixed_time(momento)
 
             # Entra como se o operador tivesse feito login no app
@@ -70,8 +72,19 @@ def gerar_pdf_app(mes_iso: str, operador: str = "Jose Aparecido",
             pag.wait_for_function("typeof pullData==='function' && typeof Chart!=='undefined'", timeout=30000)
 
             # Busca os dados no banco, monta o relatorio e espera os graficos
-            pag.evaluate("async () => { await pullData(); showPage('rel'); }")
-            pag.wait_for_function("getCache().lastSync", timeout=60000)
+            # Busca os dados direto (sem depender do aviso de online do navegador)
+            diag = pag.evaluate("""async () => {
+                try {
+                    const r = await supaGet('config_app', {select: 'chave', limit: '1'});
+                    return 'ok';
+                } catch (e) { return 'teste do banco falhou: ' + e.message; }
+            }""")
+            if diag != "ok":
+                raise RuntimeError(diag + " | " + "; ".join(erros[:5]))
+            pag.evaluate("async () => { await pullData(); }")
+            if not pag.evaluate("!!getCache().lastSync"):
+                raise RuntimeError("dados do mes nao carregaram | " + "; ".join(erros[:5]))
+            pag.evaluate("showPage('rel')")
             pag.wait_for_timeout(1500)
 
             # Observacoes vindas do banco; textarea vira texto (nao corta na folha)
