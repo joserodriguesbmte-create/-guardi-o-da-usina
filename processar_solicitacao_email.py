@@ -250,10 +250,10 @@ def processar_pedido():
     if pedido.get("status") in ("enviado", "erro"):
         return None
     if pedido.get("status") == "enviando":
-        # se ficou preso em "enviando" por mais de 10 min (processo caiu), tenta de novo
+        # se ficou preso em "enviando" por mais de 3 min (processo caiu), tenta de novo
         try:
             desde = datetime.fromisoformat(pedido.get("enviando_em"))
-            if datetime.now(TZ_BR) - desde < timedelta(minutes=10):
+            if datetime.now(TZ_BR) - desde < timedelta(minutes=3):
                 return None
         except Exception:
             pass
@@ -267,10 +267,20 @@ def processar_pedido():
     salvar_config(CHAVE, json.dumps({**pedido, "status": "enviando",
                                      "enviando_em": datetime.now(TZ_BR).isoformat(timespec="seconds")},
                                     ensure_ascii=False))
+    import signal
+    def _interrompido(*_):
+        # vigia foi parado no meio do envio: devolve o pedido para a fila
+        salvar_config(CHAVE, json.dumps(pedido, ensure_ascii=False))
+        print("Interrompido no meio do envio; pedido devolvido para a fila", flush=True)
+        raise SystemExit(0)
+    anteriores = {sg: signal.signal(sg, _interrompido) for sg in (signal.SIGTERM, signal.SIGINT)}
     try:
         ok, msg = enviar_mes(mes_iso, operador)
     except Exception as e:
         ok, msg = False, f"Erro ao gerar/enviar: {e}"
+    finally:
+        for sg, h in anteriores.items():
+            signal.signal(sg, h)
 
     pedido.update({
         "status": "enviado" if ok else "erro",
