@@ -23,7 +23,7 @@ from database import (carregar_sf6, carregar_temps, carregar_pendencias,
                       carregar_operacoes, carregar_contadores, carregar_fotos,
                       carregar_config, salvar_config)
 from email_report import (gerar_html_relatorio, enviar_relatorio,
-                          carregar_config_email, html_para_pdf)
+                          carregar_config_email)
 
 CHAVE = "email_solicitar_pwa"
 TZ_BR = timezone(timedelta(hours=-3))
@@ -185,14 +185,20 @@ def enviar_mes(mes_iso: str, operador: str) -> tuple:
     dados = montar_dados(d_ini, d_fim, mes, operador)
     html = gerar_html_relatorio(dados, usar_cid=bool(dados["fotos"]))
 
-    anexos = []
+    # PDF igual ao do app (mesmo layout do botao Imprimir / Salvar PDF).
+    # Se falhar, o e-mail NAO e enviado: o erro fica gravado e aparece no app.
+    nome_pdf = f"Relatorio_Guardiao_{mes.replace('/', '_')}.pdf"
     try:
-        pdf = html_para_pdf(dados)
-        if pdf:
-            anexos.append((f"Relatorio_Guardiao_{mes.replace('/', '_')}.pdf", pdf))
-            print(f"  PDF gerado ({len(pdf)//1024} kB)")
+        from pdf_do_app import gerar_pdf_app
+        pdf = gerar_pdf_app(mes_iso, operador=operador,
+                            obs=dados.get("observacoes") or "",
+                            acoes=dados.get("acoes") or "")
     except Exception as e:
-        print(f"  PDF nao gerado: {e}")
+        return False, f"PDF do relatorio nao foi gerado, e-mail nao enviado: {e}"
+    if not pdf:
+        return False, "PDF do relatorio saiu vazio, e-mail nao enviado."
+    print(f"  PDF do app gerado ({len(pdf)//1024} kB)")
+    anexos = [(nome_pdf, pdf)]
 
     assunto = f"Relatorio Guardiao da Usina — {mes} | {operador}"
     ok, msg = enviar_relatorio(cfg, html, assunto,
@@ -201,8 +207,6 @@ def enviar_mes(mes_iso: str, operador: str) -> tuple:
     if ok:
         salvar_config("relatorio_enviado_mes", mes)
         salvar_config("relatorio_enviado_em", str(datetime.now(TZ_BR).date()))
-        if not anexos:
-            msg += " (sem PDF anexo: falha ao gerar o PDF)"
     return ok, msg
 
 

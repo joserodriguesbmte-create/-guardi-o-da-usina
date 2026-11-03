@@ -29,7 +29,9 @@ jobs:
           cache: pip
 
       - name: Instalar dependencias
-        run: pip install pandas psycopg2-binary Pillow matplotlib xhtml2pdf plotly
+        run: |
+          pip install pandas psycopg2-binary Pillow matplotlib xhtml2pdf plotly playwright
+          python -m playwright install --with-deps chromium
 
       - name: Processar pedido de envio
         env:
