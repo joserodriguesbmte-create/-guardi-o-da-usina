@@ -1,14 +1,7 @@
-name: Enviar relatorio solicitado pelo app
+name: Enviar relatorio (manual)
 
-# Verifica a cada 10 minutos se o botao "Solicitar Envio do Relatorio"
-# do app web foi usado e, se foi, gera e envia o relatorio mensal com PDF.
+# Envio manual. O envio pelo botao do app e feito pelo "Vigia do relatorio".
 on:
-  # Disparo imediato: o banco (Supabase) avisa o GitHub quando o botao do app e tocado
-  repository_dispatch:
-    types: [enviar-relatorio]
-  # Reserva: confere de tempos em tempos, caso o aviso falhe
-  schedule:
-    - cron: '*/10 * * * *'
   workflow_dispatch:
     inputs:
       mes:

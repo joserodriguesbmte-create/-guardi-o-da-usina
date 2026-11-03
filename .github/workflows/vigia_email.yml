@@ -1,0 +1,53 @@
+name: Vigia do relatorio (envio imediato)
+
+# Fica ligado olhando o banco a cada 20 s. Quando o botao "Solicitar envio do
+# relatorio" e tocado no app, gera o PDF e manda o e-mail em cerca de 1 minuto.
+# Cada rodada dura ~5h45 e, no fim, religa a si mesma.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/vigia_email.yml'
+      - 'processar_solicitacao_email.py'
+      - 'pdf_do_app.py'
+      - 'docs/index.html'
+  workflow_dispatch:
+  schedule:
+    - cron: '17 */6 * * *'   # reserva: religa se a corrente parar
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: vigia-email
+  cancel-in-progress: true
+
+jobs:
+  vigiar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Instalar dependencias
+        run: |
+          pip install pandas psycopg2-binary Pillow matplotlib xhtml2pdf plotly playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Vigiar pedidos do app
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          EMAIL_SENHA_APP: ${{ secrets.EMAIL_SENHA_APP }}
+        run: python processar_solicitacao_email.py --vigiar 20400
+
+      - name: Religar o vigia
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run vigia_email.yml --ref main -R ${{ github.repository }}

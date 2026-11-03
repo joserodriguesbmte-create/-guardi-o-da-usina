@@ -237,34 +237,36 @@ def enviar_mes(mes_iso: str, operador: str) -> tuple:
     return ok, msg
 
 
-def main():
-    if not os.environ.get("DATABASE_URL"):
-        print("ERRO: variavel DATABASE_URL nao definida.")
-        sys.exit(1)
-
-    if "--mes" in sys.argv:
-        mes_iso = sys.argv[sys.argv.index("--mes") + 1]
-        ok, msg = enviar_mes(mes_iso, "Jose Aparecido")
-        print(("OK: " if ok else "ERRO: ") + msg)
-        sys.exit(0 if ok else 1)
-
+def processar_pedido():
+    """Le o pedido do app. Se houver pedido novo, envia e grava o status.
+    Devolve None (nada a fazer), True (enviado) ou False (erro)."""
     bruto = carregar_config(CHAVE)
     if not bruto:
-        print("Nenhum pedido de envio.")
-        return
+        return None
     try:
         pedido = json.loads(bruto)
     except Exception:
-        print(f"Pedido invalido: {bruto!r}")
-        return
+        return None
     if pedido.get("status") in ("enviado", "erro"):
-        print(f"Ultimo pedido ja processado ({pedido.get('status')} em {pedido.get('processado_em')}).")
-        return
+        return None
+    if pedido.get("status") == "enviando":
+        # se ficou preso em "enviando" por mais de 10 min (processo caiu), tenta de novo
+        try:
+            desde = datetime.fromisoformat(pedido.get("enviando_em"))
+            if datetime.now(TZ_BR) - desde < timedelta(minutes=10):
+                return None
+        except Exception:
+            pass
 
     mes_iso = pedido.get("mes") or datetime.now(TZ_BR).strftime("%Y-%m")
     operador = pedido.get("usuario") or "Jose Aparecido"
-    print(f"Pedido de {operador} em {pedido.get('solicitado_em')} para {mes_iso}")
+    print(f"Pedido de {operador} em {pedido.get('solicitado_em')} para {mes_iso}", flush=True)
 
+    # marca "enviando" para nao enviar duas vezes se outro processo olhar ao mesmo tempo
+    pedido.pop("status", None)
+    salvar_config(CHAVE, json.dumps({**pedido, "status": "enviando",
+                                     "enviando_em": datetime.now(TZ_BR).isoformat(timespec="seconds")},
+                                    ensure_ascii=False))
     try:
         ok, msg = enviar_mes(mes_iso, operador)
     except Exception as e:
@@ -276,8 +278,43 @@ def main():
         "processado_em": datetime.now(TZ_BR).isoformat(timespec="seconds"),
     })
     salvar_config(CHAVE, json.dumps(pedido, ensure_ascii=False))
-    print(("OK: " if ok else "ERRO: ") + msg)
-    sys.exit(0 if ok else 1)
+    print(("OK: " if ok else "ERRO: ") + msg, flush=True)
+    return ok
+
+
+def vigiar(segundos_total: int, intervalo: int = 20):
+    """Fica olhando o pedido do app a cada `intervalo` segundos."""
+    import time
+    fim = time.time() + segundos_total
+    print(f"Vigia ligado por {segundos_total//60} min (confere a cada {intervalo}s)", flush=True)
+    while time.time() < fim:
+        try:
+            processar_pedido()
+        except Exception as e:
+            print(f"Falha ao conferir: {e}", flush=True)
+        time.sleep(intervalo)
+    print("Vigia encerrado (sera religado em seguida)", flush=True)
+
+
+def main():
+    if not os.environ.get("DATABASE_URL"):
+        print("ERRO: variavel DATABASE_URL nao definida.")
+        sys.exit(1)
+
+    if "--mes" in sys.argv:
+        mes_iso = sys.argv[sys.argv.index("--mes") + 1]
+        ok, msg = enviar_mes(mes_iso, "Jose Aparecido")
+        print(("OK: " if ok else "ERRO: ") + msg)
+        sys.exit(0 if ok else 1)
+
+    if "--vigiar" in sys.argv:
+        vigiar(int(sys.argv[sys.argv.index("--vigiar") + 1]))
+        return
+
+    r = processar_pedido()
+    if r is None:
+        print("Nenhum pedido novo.")
+    sys.exit(1 if r is False else 0)
 
 
 if __name__ == "__main__":
