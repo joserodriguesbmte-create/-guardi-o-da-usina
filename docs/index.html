@@ -1172,7 +1172,7 @@ async function syncQueue() {
   if (!navigator.onLine) { toast("Sem internet", true); return; }
   const btn = document.getElementById("btnSync");
   btn.disabled = true; btn.textContent = "⏳...";
-  const q = getQueue();
+  let q = _migrarFilaTemps(getQueue());
   let ok=0, erros=0;
   for (const r of q.filter(r => !r.synced)) {
     const body = {...r.data};
@@ -1210,7 +1210,7 @@ async function pullData() {
       supaGet("inspecoes",     {"sistema":"eq.Seccionadora","data":"gte."+ini,"select":"item,data,status,observacao"}),
       supaGet("pendencias",    {"select":"id,data_abertura,sistema,descricao,nota_sap,prioridade,status,observacao,usuario","order":"data_abertura.desc","limit":"200"}),
       supaGet("sf6_leituras",  {"select":"disjuntor,polo,pressao_corrigida,status_sf6,data,created_at","order":"created_at.desc","limit":"60"}),
-      supaGet("temperaturas",  {"order":"data.desc","limit":"50","select":"data,turno,temperatura_oleo,temperatura_enrol,observacao"}),
+      carregarTempsDB(),
       supaGet("contadores_dj", {"order":"data.desc","limit":"100","select":"data,disjuntor,polo_a,polo_b,polo_v,tripolar,curto_circuito"}),
       supaGet("operacoes_dj",  {"select":"disjuntor,num_operacoes_total"}),
       supaGet("sf6_leituras",  {"created_at":"gte."+ini12+"T00:00:00","select":"disjuntor,polo,pressao_corrigida,data,created_at","order":"created_at.asc","limit":"500"}),
@@ -1791,7 +1791,7 @@ async function renderTemp() {
   renderTempHist(cache.temperaturas || []);
   if (navigator.onLine) {
     try {
-      const rows = await supaGet("temperaturas",{order:"data.desc",limit:"50",select:"data,turno,temperatura_oleo,temperatura_enrol,observacao"});
+      const rows = await carregarTempsDB();
       const c = getCache(); c.temperaturas=rows; saveCache(c);
       renderTempHist(rows);
     } catch(e) {}
@@ -1821,26 +1821,66 @@ function renderTempHist(data) {
   document.getElementById("tempHist").innerHTML=html;
 }
 
+// ── Temperaturas do trafo ────────────────────────────────────────────
+// No banco cada leitura e uma linha por ponto (igual ao app Streamlit):
+// equipamento, ponto ("OTI — ..." / "WTI — ..."), temperatura.
+// Aqui as duas linhas sao juntadas em {temperatura_oleo, temperatura_enrol}.
+const EQUIP_TRAFO = "SE+01TRF — Trafo Trifásico 230/69kV 12,5 MVA";
+const PONTO_OTI = "OTI — Temperatura do Óleo";
+const PONTO_WTI = "WTI — Temperatura do Enrolamento";
+async function carregarTempsDB() {
+  const rows = await supaGet("temperaturas", {order:"data.desc,hora.desc", limit:"200",
+    select:"data,hora,turno,ponto,temperatura,observacao"});
+  const grupos = {};
+  (rows||[]).forEach(r => {
+    const k = (r.data||"")+"|"+(r.hora||"")+"|"+(r.turno||"");
+    if (!grupos[k]) grupos[k] = {data:r.data, hora:r.hora, turno:r.turno, temperatura_oleo:null, temperatura_enrol:null, observacao:r.observacao||""};
+    const pt = (r.ponto||"").toUpperCase();
+    if (pt.startsWith("OTI")) grupos[k].temperatura_oleo = r.temperatura;
+    else if (pt.startsWith("WTI")) grupos[k].temperatura_enrol = r.temperatura;
+  });
+  return Object.values(grupos).slice(0, 50);
+}
+function _linhasTemp(data, hora, turno, oti, wti, obs, usuario) {
+  return [[PONTO_OTI, oti], [PONTO_WTI, wti]].map(([ponto, t]) => ({
+    data, hora, turno, equipamento: EQUIP_TRAFO, ponto, temperatura: t,
+    umidade: 0, limite_max: 65, status: t > 65 ? "ALARME" : "NORMAL",
+    observacao: obs, usuario }));
+}
+// Registros antigos da fila (formato errado) viram duas linhas no formato do banco
+function _migrarFilaTemps(q) {
+  const novos = [];
+  q.forEach(r => {
+    if (r.table==="temperaturas" && !r.synced && r.data && r.data.temperatura_oleo!==undefined) {
+      const d = r.data;
+      _linhasTemp(d.data, d.hora||"00:00:00", d.turno, d.temperatura_oleo, d.temperatura_enrol, d.observacao||"", d.usuario)
+        .forEach((l,i) => novos.push({table:"temperaturas", synced:false, id:r.id+"_"+i, data:l}));
+      r.synced = true; r.migrado = true;
+    }
+  });
+  novos.forEach(n => q.push(n));
+  return q.filter(r => !r.migrado);
+}
+
 async function salvarTemp() {
   const data=document.getElementById("tData").value||hoje();
   const oti=parseFloat(document.getElementById("tOTI").value);
   const wti=parseFloat(document.getElementById("tWTI").value);
   if (isNaN(oti)||isNaN(wti)) { toast("Informe OTI e WTI",true); return; }
   const obs=document.getElementById("tObs").value;
-  const record={data, turno:getTurno(), temperatura_oleo:oti, temperatura_enrol:wti, observacao:obs, usuario:getUsuario()};
+  const linhas=_linhasTemp(data, agora(), getTurno(), oti, wti, obs, getUsuario());
+  const naFila=()=>{ const q=getQueue(); linhas.forEach((l,i)=>q.push({table:"temperaturas",synced:false,id:Date.now()+"_temp"+i,data:l})); saveQueue(q); };
   if (navigator.onLine) {
-    const ok=await supaPost("temperaturas",record).catch(()=>false);
+    const ok=await supaPost("temperaturas",linhas).catch(()=>false);
     if (ok) {
       toast("✅ Temperatura salva!");
-      const rows=await supaGet("temperaturas",{order:"data.desc",limit:"50",select:"data,turno,temperatura_oleo,temperatura_enrol,observacao"}).catch(()=>[]);
+      const rows=await carregarTempsDB().catch(()=>[]);
       const c=getCache(); c.temperaturas=rows; saveCache(c); renderTempHist(rows);
     } else {
-      const q=getQueue(); q.push({table:"temperaturas",synced:false,id:Date.now()+"_temp",data:record}); saveQueue(q);
-      atualizarPendentes(); toast("Erro. Salvo offline.",true);
+      naFila(); atualizarPendentes(); toast("Erro. Salvo offline.",true);
     }
   } else {
-    const q=getQueue(); q.push({table:"temperaturas",synced:false,id:Date.now()+"_temp",data:record}); saveQueue(q);
-    atualizarPendentes(); toast("Salvo offline");
+    naFila(); atualizarPendentes(); toast("Salvo offline");
   }
   document.getElementById("tOTI").value="";
   document.getElementById("tWTI").value="";
