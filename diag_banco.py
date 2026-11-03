@@ -34,3 +34,4 @@ print("  gravar (insert) teste:", chamar("POST", "/config_app", {"chave": "diag_
       {"Prefer": "return=minimal"}))
 print("  atualizar (patch) pedido:", chamar("PATCH", "/config_app?chave=eq.diag_upsert", {"valor": "teste2"},
       {"Prefer": "return=representation"}))
+
