@@ -4,7 +4,7 @@ Execute UMA VEZ: py -3.12 corrigir_polo_v.py
 """
 import psycopg2
 
-DB_URL = "postgresql://postgres.stgibmuefxrnistysckt:Guardiao2026.@aws-1-sa-east-1.pooler.supabase.com:6543/postgres"
+DB_URL = __import__("os").environ["DATABASE_URL"]  # defina DATABASE_URL antes de rodar
 
 c = psycopg2.connect(DB_URL, sslmode="require")
 cur = c.cursor()

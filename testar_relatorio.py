@@ -14,7 +14,7 @@ sys.path.insert(0, ROOT)
 from email_report import (gerar_html_relatorio, enviar_relatorio,
                            carregar_config_email, foto_para_base64)
 
-DB_URL = "postgresql://postgres.stgibmuefxrnistysckt:Guardiao2026.@aws-1-sa-east-1.pooler.supabase.com:6543/postgres"
+DB_URL = __import__("os").environ["DATABASE_URL"]  # defina DATABASE_URL antes de rodar
 
 # ── Período
 D_INI = "2026-06-01"

@@ -4,7 +4,7 @@ Execute: py -3.12 popular_nuvem.py
 """
 import os, psycopg2
 
-DB_URL = "postgresql://postgres.stgibmuefxrnistysckt:Guardiao2026.@aws-1-sa-east-1.pooler.supabase.com:6543/postgres"
+DB_URL = __import__("os").environ["DATABASE_URL"]  # defina DATABASE_URL antes de rodar
 
 DISJUNTORES = [
     ("Disjuntor SF6","PMDJ6-01","Disjuntor Bay 01PUL","ABB","LTB 245E2",230,6.0,5.5,5.0,"Bay 01PUL","Subestacao 230kV",1),

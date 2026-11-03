@@ -6,7 +6,7 @@ import pandas as pd
 import psycopg2
 from datetime import date
 
-DB_URL = "postgresql://postgres.stgibmuefxrnistysckt:Guardiao2026.@aws-1-sa-east-1.pooler.supabase.com:6543/postgres"
+DB_URL = __import__("os").environ["DATABASE_URL"]  # defina DATABASE_URL antes de rodar
 
 ARQUIVO = r"C:\Users\joser\Downloads\planilha 01.xlsx"
 

@@ -698,8 +698,9 @@ input[type="file"]{color:#94a3b8;font-size:0.78rem;margin-top:4px}
       </div>
       <button class="btn-primary" id="btnEnviarEmail" onclick="solicitarEnvioEmail()">📧 Solicitar Envio do Relatorio</button>
       <div style="font-size:0.72rem;color:#475569;margin-top:8px;text-align:center">
-        A solicitacao e registrada e o envio ocorre automaticamente pelo sistema.
+        A solicitacao e registrada e o envio ocorre automaticamente em ate 10 minutos.
       </div>
+      <div id="emailStatus" style="margin-top:12px"></div>
     </div>
   </div>
 
@@ -2589,6 +2590,22 @@ function renderEmail() {
       </div>
     </div>`).join("");
   document.getElementById("emailDest").innerHTML=html;
+  carregarStatusEmail();
+}
+
+async function carregarStatusEmail() {
+  const el=document.getElementById("emailStatus");
+  if (!el || !navigator.onLine) return;
+  try {
+    const rows=await supaGet("config_app",{"chave":"eq.email_solicitar_pwa","select":"valor"});
+    if (!rows || !rows.length) { el.innerHTML=""; return; }
+    const p=JSON.parse(rows[0].valor||"{}");
+    const fmt=iso=>iso?new Date(iso).toLocaleString("pt-BR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
+    let cor="#f59e0b", txt=`⏳ Pedido de ${fmt(p.solicitado_em)} aguardando envio (o sistema verifica a cada 10 min).`;
+    if (p.status==="enviado") { cor="#10b981"; txt=`✅ Enviado em ${fmt(p.processado_em)}. ${p.mensagem||""}`; }
+    if (p.status==="erro")    { cor="#ef4444"; txt=`❌ Falhou em ${fmt(p.processado_em)}: ${p.mensagem||"erro desconhecido"}`; }
+    el.innerHTML=`<div style="background:#0b1120;border:1px solid ${cor};border-radius:8px;padding:10px 12px;font-size:0.78rem;color:${cor}">${txt}</div>`;
+  } catch(e) { el.innerHTML=""; }
 }
 
 async function solicitarEnvioEmail() {
@@ -2600,7 +2617,7 @@ async function solicitarEnvioEmail() {
   let ok=await supaPatch("config_app",{"chave":"eq.email_solicitar_pwa"},{valor:val}).catch(()=>false);
   if (!ok) ok=await supaPost("config_app",{chave:"email_solicitar_pwa",valor:val}).catch(()=>false);
   btn.disabled=false; btn.textContent="📧 Solicitar Envio do Relatorio";
-  if (ok) toast("✅ Solicitacao registrada! Relatorio sera enviado em breve.");
+  if (ok) { toast("✅ Solicitacao registrada! Envio em ate 10 minutos."); carregarStatusEmail(); }
   else toast("Erro ao registrar solicitacao",true);
 }
 

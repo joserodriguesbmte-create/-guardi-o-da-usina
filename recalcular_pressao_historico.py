@@ -28,7 +28,7 @@ DB_HOST = "aws-1-sa-east-1.pooler.supabase.com"
 DB_PORT = 6543
 DB_NAME = "postgres"
 DB_USER = "postgres.stgibmuefxrnistysckt"
-DB_PASS = "Guardiao2026."
+DB_PASS = __import__("os").environ["DB_PASS"]  # defina DB_PASS antes de rodar
 
 APLICAR = "--aplicar" in sys.argv
 

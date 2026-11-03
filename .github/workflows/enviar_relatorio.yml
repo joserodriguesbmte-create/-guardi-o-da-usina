@@ -1,0 +1,42 @@
+name: Enviar relatorio solicitado pelo app
+
+# Verifica a cada 10 minutos se o botao "Solicitar Envio do Relatorio"
+# do app web foi usado e, se foi, gera e envia o relatorio mensal com PDF.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+    inputs:
+      mes:
+        description: 'Forcar envio de um mes (AAAA-MM). Vazio = processar pedido do app.'
+        required: false
+        default: ''
+
+concurrency:
+  group: enviar-relatorio
+  cancel-in-progress: false
+
+jobs:
+  enviar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install pandas psycopg2-binary Pillow matplotlib xhtml2pdf plotly
+
+      - name: Processar pedido de envio
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          if [ -n "${{ github.event.inputs.mes }}" ]; then
+            python processar_solicitacao_email.py --mes "${{ github.event.inputs.mes }}"
+          else
+            python processar_solicitacao_email.py
+          fi

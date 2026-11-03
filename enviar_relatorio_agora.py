@@ -3,7 +3,8 @@ Gera e envia o relatorio mensal completo por e-mail.
 Execute: py -3.12 enviar_relatorio_agora.py
 """
 import os, json
-os.environ["DATABASE_URL"] = "postgresql://postgres.stgibmuefxrnistysckt:Guardiao2026.@aws-1-sa-east-1.pooler.supabase.com:6543/postgres"
+if not os.environ.get("DATABASE_URL"):
+    raise SystemExit("Defina a variavel DATABASE_URL antes de rodar (nao deixe a senha no codigo).")
 
 from datetime import date, timedelta
 import pandas as pd

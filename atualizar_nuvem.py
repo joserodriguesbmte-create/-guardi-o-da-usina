@@ -1,6 +1,6 @@
 import psycopg2
 
-DB_URL = "postgresql://postgres.stgibmuefxrnistysckt:Guardiao2026.@aws-1-sa-east-1.pooler.supabase.com:6543/postgres"
+DB_URL = __import__("os").environ["DATABASE_URL"]  # defina DATABASE_URL antes de rodar
 
 tags_sec = [
     "PMCA6-01","PMCA6-02","PMCA6-03","PMCA6-04","PMCA6-05",

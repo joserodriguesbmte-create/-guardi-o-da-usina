@@ -6,7 +6,7 @@ Corrige pressão de alarme SF6 conforme placa do disjuntor Siemens 3AP1 FG:
 """
 import psycopg2
 
-DB_URL = "postgresql://postgres.stgibmuefxrnistysckt:Guardiao2026.@aws-1-sa-east-1.pooler.supabase.com:6543/postgres"
+DB_URL = __import__("os").environ["DATABASE_URL"]  # defina DATABASE_URL antes de rodar
 
 tags = ["PMDJ6-01","PMDJ6-02","PMDJ6-03","PMDJ6-04","PMDJ6-05"]
 
