@@ -2812,8 +2812,8 @@ async function salvarConfigEmail() {
   const msg = document.getElementById("cfgEmailMsg");
   btn.disabled = true; btn.textContent = "Salvando...";
   const val = JSON.stringify(nova);
-  let ok = await supaPatch("config_app", {"chave":"eq.email_config"}, {valor: val}).catch(()=>false);
-  if (!ok) ok = await supaPost("config_app", {chave:"email_config", valor: val}).catch(()=>false);
+  // upsert: cria a linha se nao existir, atualiza se existir
+  let ok = await supaUpsert("config_app", {chave:"email_config", valor: val}, "chave").catch(()=>false);
   btn.disabled = false; btn.textContent = "💾 Salvar";
   _cfgEmail = nova;
   if (ok) {
@@ -2860,8 +2860,8 @@ async function solicitarEnvioEmail() {
   btn.disabled=true; btn.textContent="⏳ Solicitando...";
   const mes=getData().slice(0,7);
   const val=JSON.stringify({solicitado_em:new Date().toISOString(),mes,usuario:getUsuario()});
-  let ok=await supaPatch("config_app",{"chave":"eq.email_solicitar_pwa"},{valor:val}).catch(()=>false);
-  if (!ok) ok=await supaPost("config_app",{chave:"email_solicitar_pwa",valor:val}).catch(()=>false);
+  // upsert: o PATCH sozinho responde "ok" mesmo sem linha no banco e o pedido nao era gravado
+  let ok=await supaUpsert("config_app",{chave:"email_solicitar_pwa",valor:val},"chave").catch(()=>false);
   btn.disabled=false; btn.textContent="📧 Solicitar Envio do Relatorio";
   if (ok) { toast("✅ Solicitacao registrada! E-mail em 1 a 2 minutos."); carregarStatusEmail(); }
   else toast("Erro ao registrar solicitacao",true);
